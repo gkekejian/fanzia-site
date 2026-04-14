@@ -15,7 +15,7 @@ const anton = Anton({
   variable: "--font-anton",
 });
 
-const SITE_URL = "https://fanzia.io";
+const SITE_URL = "https://www.fanzia.io";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
