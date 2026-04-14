@@ -46,8 +46,8 @@ export default function PrivacyPage() {
             </h2>
             <p>
               Requests to access or delete your information can be sent to{" "}
-              <a className="text-brand-red" href="mailto:hello@fanzia.io">
-                hello@fanzia.io
+              <a className="text-brand-red" href="mailto:contact@fanzia.io">
+                contact@fanzia.io
               </a>
               .
             </p>

@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   const { name, email, phone, message } = parsed.data;
-  const to = process.env.CONTACT_TO_EMAIL || "hello@fanzia.io";
+  const to = process.env.CONTACT_TO_EMAIL || "contact@fanzia.io";
   const from = process.env.CONTACT_FROM_EMAIL || "no-reply@fanzia.io";
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     if (result.error) {
       console.error("[contact] resend error:", result.error);
       return NextResponse.json(
-        { error: "Could not send. Please email hello@fanzia.io directly." },
+        { error: "Could not send. Please email contact@fanzia.io directly." },
         { status: 502 },
       );
     }
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("[contact] unexpected error:", err);
     return NextResponse.json(
-      { error: "Could not send. Please email hello@fanzia.io directly." },
+      { error: "Could not send. Please email contact@fanzia.io directly." },
       { status: 500 },
     );
   }

@@ -49,8 +49,8 @@ export default function TermsPage() {
             </h2>
             <p>
               Questions about these terms can be sent to{" "}
-              <a className="text-brand-red" href="mailto:hello@fanzia.io">
-                hello@fanzia.io
+              <a className="text-brand-red" href="mailto:contact@fanzia.io">
+                contact@fanzia.io
               </a>
               .
             </p>

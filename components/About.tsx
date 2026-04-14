@@ -21,7 +21,7 @@ export default function About() {
             <h2 className="h-section">
               A Glendale team building
               <br />
-              <span className="bg-brand-red px-3 text-white">growth infrastructure</span>
+              <span className="hl">growth infrastructure</span>
               <br />
               for local business.
             </h2>

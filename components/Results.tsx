@@ -7,15 +7,15 @@ const CASES = [
   {
     stat: "#1",
     statLabel: "On Google. Organic.",
-    client: "Technoland Computer Repair",
+    client: "35-Year Computer Repair Business",
     location: "Glendale, CA",
     result:
-      "Hundreds of 5-star reviews. Full website rebuild and digital transformation for a 35-year-old Glendale business.",
+      "Hundreds of 5-star reviews. Full website rebuild and digital transformation for a multi-decade Glendale business.",
   },
   {
     stat: "$20K",
     statLabel: "Monthly revenue / 6 mo",
-    client: "Bodies and Pilates",
+    client: "Boutique Pilates Studio",
     location: "Los Angeles, CA",
     result:
       "Targeted social campaigns and automated class sign-up funnels turned a local studio into a full-book operation.",
@@ -23,7 +23,7 @@ const CASES = [
   {
     stat: "7+",
     statLabel: "Private school screenings",
-    client: "SoCal Speech Therapy",
+    client: "Specialty Therapy Clinic",
     location: "Southern California",
     result:
       "Community outreach campaigns for private school screenings. Streamlined office operations and patient communication.",
@@ -45,12 +45,13 @@ export default function Results() {
             <h2 className="h-section">
               Real outcomes.
               <br />
-              <span className="bg-brand-red px-3 text-white">Real businesses.</span>
+              <span className="hl">Real businesses.</span>
             </h2>
           </div>
           <p className="text-base text-white/70 lg:col-span-5 lg:text-lg">
-            Numbers off the board. These aren&rsquo;t pilot projects. These
-            are live engagements driving revenue today.
+            Numbers off the board. These aren&rsquo;t pilot projects, they are
+            live engagements driving revenue today. Client names withheld on
+            request.
           </p>
         </div>
 

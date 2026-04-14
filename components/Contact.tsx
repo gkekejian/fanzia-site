@@ -55,8 +55,8 @@ export default function Contact() {
             </p>
 
             <div className="mt-10 space-y-5">
-              <ContactFact label="Email" value="hello@fanzia.io" href="mailto:hello@fanzia.io" />
-              <ContactFact label="Phone" value="(818) 555-0100" />
+              <ContactFact label="Email" value="contact@fanzia.io" href="mailto:contact@fanzia.io" />
+              <ContactFact label="Phone" value="(818) 796-3388" href="tel:+18187963388" />
               <ContactFact label="Location" value="Glendale & Los Angeles, CA" />
             </div>
           </div>
@@ -111,7 +111,7 @@ export default function Contact() {
                 )}
                 {status === "error" && (
                   <span className="text-brand-red">
-                    {error || "Could not send. Email hello@fanzia.io directly."}
+                    {error || "Could not send. Email contact@fanzia.io directly."}
                   </span>
                 )}
               </div>

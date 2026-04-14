@@ -68,7 +68,7 @@ export default function RootLayout({
     "@type": "LocalBusiness",
     name: "Fanzia, Inc.",
     url: SITE_URL,
-    email: "hello@fanzia.io",
+    email: "contact@fanzia.io",
     description:
       "AI and digital growth agency building custom technology for small businesses in Los Angeles.",
     areaServed: [

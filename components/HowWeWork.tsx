@@ -41,7 +41,7 @@ export default function HowWeWork() {
             <h2 className="h-section-light">
               A process built around
               <br />
-              <span className="bg-brand-red px-3 text-white">your business</span>,
+              <span className="hl">your business</span>,
               not ours.
             </h2>
           </div>

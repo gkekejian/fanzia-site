@@ -9,20 +9,20 @@ const QUOTES = [
   {
     quote:
       "Fanzia rebuilt our online presence from the ground up. We now rank at the top of Google in Glendale and our phone hasn't stopped ringing. They treat our business like their own.",
-    name: "Steve",
-    role: "Owner, Technoland Computer Repair",
+    initial: "G",
+    role: "Owner, 35-Year Computer Repair Business",
   },
   {
     quote:
       "Within six months we hit $20K a month. The campaigns they built brought in the right clients, and the automated sign-ups meant I could focus on teaching instead of chasing emails.",
-    name: "Naira",
-    role: "Owner, Bodies and Pilates",
+    initial: "P",
+    role: "Owner, Boutique Pilates Studio",
   },
   {
     quote:
       "They understood what a specialty practice actually needs. Their outreach and office systems changed how we run the clinic day to day.",
-    name: "Owner",
-    role: "SoCal Speech Therapy",
+    initial: "S",
+    role: "Owner, Specialty Therapy Clinic",
   },
 ];
 
@@ -76,15 +76,15 @@ export default function Testimonials() {
                   {QUOTES[i].quote}
                 </blockquote>
                 <figcaption className="mt-8 flex items-center gap-4">
-                  <span className="h-12 w-12 rounded-full bg-black text-center font-display text-xl leading-[3rem] text-brand-red">
-                    {QUOTES[i].name[0]}
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black font-display text-xl text-brand-red">
+                    {QUOTES[i].initial}
                   </span>
                   <span>
                     <span className="block font-display text-sm uppercase tracking-[0.2em] text-black">
-                      {QUOTES[i].name}
+                      {QUOTES[i].role}
                     </span>
                     <span className="text-sm text-black/70">
-                      {QUOTES[i].role}
+                      Name withheld on client request
                     </span>
                   </span>
                 </figcaption>

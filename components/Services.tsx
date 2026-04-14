@@ -56,7 +56,7 @@ export default function Services() {
             <p className="eyebrow">What We Build</p>
             <h2 className="h-section">
               Systems that{" "}
-              <span className="bg-brand-red px-3 text-white">generate leads</span>,
+              <span className="hl">generate leads</span>,
               <br />
               close work, and grow with you.
             </h2>

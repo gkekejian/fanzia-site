@@ -42,8 +42,8 @@ export default function Footer() {
             </p>
             <ul className="mt-4 space-y-2 text-sm">
               <li>
-                <a href="mailto:hello@fanzia.io" className="hover:text-brand-red">
-                  hello@fanzia.io
+                <a href="mailto:contact@fanzia.io" className="hover:text-brand-red">
+                  contact@fanzia.io
                 </a>
               </li>
               <li>

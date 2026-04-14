@@ -55,7 +55,7 @@ body {
   }
 
   .display {
-    @apply font-display uppercase leading-[0.92] tracking-tightest;
+    @apply font-display uppercase leading-[1.05] tracking-tightest;
   }
 
   .h-section {
@@ -64,6 +64,21 @@ body {
 
   .h-section-light {
     @apply display mt-4 text-5xl text-black md:text-6xl lg:text-7xl xl:text-8xl;
+  }
+
+  /* Inline red highlight pill that wraps cleanly across line breaks
+   * without bleeding into the adjacent line. Uses box-decoration-break
+   * so multi-line highlights each get proper padding + background. */
+  .hl {
+    @apply bg-brand-red px-3 py-0.5 text-white;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  .hl-black {
+    @apply bg-black px-3 py-0.5 text-brand-red;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
   .card-dark {

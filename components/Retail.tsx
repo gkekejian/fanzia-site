@@ -6,7 +6,7 @@ import WavePattern from "./WavePattern";
 
 const FACTS = [
   { k: "Location", v: "Lakewood Center" },
-  { k: "Category", v: "Toys & Novelty" },
+  { k: "Footprint", v: "2 Machines / Back-to-Back" },
   { k: "Payment", v: "Cashless Tap" },
   { k: "Operator", v: "Fanzia, Inc." },
 ];
@@ -61,9 +61,10 @@ export default function Retail() {
                 Toyz.
               </h2>
               <p className="mt-8 max-w-md text-lg font-semibold text-black md:text-xl">
-                A Fanzia-owned retail venture. Branded toy and novelty vending
-                machines operating at Lakewood Center Mall, powered by cashless
-                payment technology.
+                A Fanzia-owned retail venture. Two branded vending machines
+                installed back-to-back at Lakewood Center Mall. A licensed
+                Hot Wheels die-cast machine and a novelty / plush machine,
+                both powered by cashless tap payments.
               </p>
               <p className="mt-5 max-w-md text-base text-black/80">
                 VendToyz is{" "}
@@ -114,7 +115,7 @@ export default function Retail() {
                     />
                   </div>
                   <figcaption className="absolute bottom-0 left-0 right-0 flex items-center justify-between bg-black px-3 py-2 font-display text-[10px] uppercase tracking-[0.22em] text-white">
-                    <span>Hot Wheels</span>
+                    <span>Machine 01 / Hot Wheels</span>
                     <span className="text-brand-red">Lakewood</span>
                   </figcaption>
                 </figure>
@@ -129,8 +130,8 @@ export default function Retail() {
                     />
                   </div>
                   <figcaption className="absolute bottom-0 left-0 right-0 flex items-center justify-between bg-black px-3 py-2 font-display text-[10px] uppercase tracking-[0.22em] text-white">
-                    <span>What Kidz Want</span>
-                    <span className="text-brand-red">Live</span>
+                    <span>Machine 02 / Novelty</span>
+                    <span className="text-brand-red">Lakewood</span>
                   </figcaption>
                 </figure>
               </div>
@@ -138,13 +139,13 @@ export default function Retail() {
               <div className="mt-4 grid grid-cols-3 gap-4 md:gap-5">
                 <div className="border-[6px] border-black bg-black p-5 text-white">
                   <span className="block font-display text-[10px] uppercase tracking-[0.22em] text-brand-red">
-                    Live Locations
+                    Installed
                   </span>
                   <span className="mt-2 block font-display text-5xl leading-none md:text-6xl">
-                    2+
+                    2
                   </span>
                   <span className="mt-1 block font-display text-[10px] uppercase tracking-[0.22em] text-white/60">
-                    and growing
+                    Back-to-back
                   </span>
                 </div>
                 <div className="border-[6px] border-black bg-black p-5 text-white">
@@ -165,7 +166,7 @@ export default function Retail() {
                     href="#contact"
                     className="mt-2 block font-display text-base leading-tight text-white underline decoration-brand-red decoration-2 underline-offset-4 md:text-lg"
                   >
-                    hello@fanzia.io
+                    contact@fanzia.io
                   </a>
                 </div>
               </div>
