@@ -18,7 +18,7 @@ export default function Hero() {
             <span>Live // Glendale &amp; Los Angeles</span>
           </div>
           <div className="hidden md:block">Built by Operators / For Operators</div>
-          <div>Est. 2019</div>
+          <div>Est. 2021</div>
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export default function Hero() {
           <dl className="mt-14 grid max-w-2xl grid-cols-3 gap-0 border-t border-white/10">
             {[
               { v: "100%", k: "Custom-built" },
-              { v: "7+", k: "Years operating" },
+              { v: "5+", k: "Years operating" },
               { v: "LA", k: "Local & loud" },
             ].map((s, i) => (
               <div
@@ -106,7 +106,7 @@ export default function Hero() {
             Glendale, CA
           </div>
           <div className="absolute -right-8 bottom-16 rotate-[4deg] bg-black px-8 py-2 font-display text-xs uppercase tracking-[0.3em] text-white shadow-[6px_6px_0_0_rgba(0,0,0,0.4)]">
-            Est. 2019
+            Est. 2021
           </div>
 
           <div className="relative z-10 flex flex-col items-center px-6 py-16 text-center">

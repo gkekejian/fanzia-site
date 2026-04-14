@@ -25,7 +25,7 @@ export default function About() {
               your neighborhood.
             </h2>
             <p className="mt-8 max-w-2xl text-lg text-white/75 md:text-xl">
-              Fanzia started in 2019 as a sports fan-engagement platform,
+              Fanzia started in 2021 as a sports fan-engagement platform,
               livestream tech, community tools, the original &ldquo;by the fanz
               for the fanz&rdquo; energy. The platform worked. What we learned
               building it worked better.
@@ -92,7 +92,7 @@ export default function About() {
 
               {/* Corner ribbons */}
               <div className="absolute -left-4 top-6 rotate-[-3deg] bg-black px-5 py-1.5 font-display text-[10px] uppercase tracking-[0.28em] text-brand-red">
-                Est. 2019
+                Est. 2021
               </div>
               <div className="absolute -right-3 bottom-10 rotate-[3deg] bg-black px-5 py-1.5 font-display text-[10px] uppercase tracking-[0.28em] text-white">
                 Glendale / LA
