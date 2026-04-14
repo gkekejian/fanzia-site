@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import MotionSection from "./MotionSection";
+import WavePattern from "./WavePattern";
 
 const QUOTES = [
   {
@@ -34,54 +35,75 @@ export default function Testimonials() {
   }, []);
 
   return (
-    <MotionSection className="section bg-black text-white">
-      <div className="container">
-        <div className="max-w-3xl">
-          <p className="eyebrow">Receipts</p>
-          <h2 className="h-section">
-            Built by operators. <span className="text-brand-red">Trusted</span> by operators.
-          </h2>
+    <MotionSection className="relative overflow-hidden bg-brand-red text-black noise">
+      <WavePattern
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        stroke="#000"
+        opacity={0.15}
+        lines={26}
+      />
+      <div className="container relative py-24 md:py-32">
+        <div className="flex items-center gap-4">
+          <span className="inline-flex items-center gap-2 bg-black px-3 py-1.5 font-display text-[11px] uppercase tracking-[0.3em] text-brand-red">
+            <span className="h-1.5 w-1.5 bg-brand-red" />
+            What Clients Say
+          </span>
+          <span className="h-px flex-1 bg-black/30" />
         </div>
 
-        <div className="relative mt-16 min-h-[260px] border-l-4 border-brand-red pl-6 md:pl-10">
-          <AnimatePresence mode="wait">
-            <motion.figure
-              key={i}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-              className="max-w-4xl"
-            >
-              <blockquote className="font-display text-2xl uppercase leading-tight tracking-tightest text-white md:text-4xl lg:text-5xl">
-                &ldquo;{QUOTES[i].quote}&rdquo;
-              </blockquote>
-              <figcaption className="mt-8 flex items-center gap-4">
-                <span className="h-10 w-10 rounded-full bg-brand-red" />
-                <span>
-                  <span className="block font-display text-sm uppercase tracking-[0.2em] text-white">
-                    {QUOTES[i].name}
-                  </span>
-                  <span className="text-sm text-white/60">
-                    {QUOTES[i].role}
-                  </span>
-                </span>
-              </figcaption>
-            </motion.figure>
-          </AnimatePresence>
+        <div className="mt-10 grid gap-10 lg:grid-cols-12 lg:items-center">
+          <div className="lg:col-span-4">
+            <div className="font-display text-[10rem] leading-none text-black md:text-[14rem]">
+              &ldquo;
+            </div>
+            <h2 className="display text-4xl text-black md:text-5xl lg:text-6xl">
+              Trusted by
+              <br />
+              operators.
+            </h2>
+          </div>
 
-          <div className="mt-10 flex gap-2">
-            {QUOTES.map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                aria-label={`Show testimonial ${idx + 1}`}
-                onClick={() => setI(idx)}
-                className={`h-1.5 transition-all ${
-                  idx === i ? "w-12 bg-brand-red" : "w-3 bg-white/20"
-                }`}
-              />
-            ))}
+          <div className="relative min-h-[320px] border-l-4 border-black pl-6 md:pl-10 lg:col-span-8">
+            <AnimatePresence mode="wait">
+              <motion.figure
+                key={i}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+              >
+                <blockquote className="font-display text-2xl uppercase leading-[1.05] tracking-tightest text-black md:text-4xl lg:text-5xl">
+                  {QUOTES[i].quote}
+                </blockquote>
+                <figcaption className="mt-8 flex items-center gap-4">
+                  <span className="h-12 w-12 rounded-full bg-black text-center font-display text-xl leading-[3rem] text-brand-red">
+                    {QUOTES[i].name[0]}
+                  </span>
+                  <span>
+                    <span className="block font-display text-sm uppercase tracking-[0.2em] text-black">
+                      {QUOTES[i].name}
+                    </span>
+                    <span className="text-sm text-black/70">
+                      {QUOTES[i].role}
+                    </span>
+                  </span>
+                </figcaption>
+              </motion.figure>
+            </AnimatePresence>
+
+            <div className="mt-10 flex gap-2">
+              {QUOTES.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  aria-label={`Show testimonial ${idx + 1}`}
+                  onClick={() => setI(idx)}
+                  className={`h-1.5 transition-all ${
+                    idx === i ? "w-12 bg-black" : "w-3 bg-black/30"
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>

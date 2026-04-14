@@ -40,9 +40,9 @@ export default function Nav() {
           <Image
             src="/brand/logo-white.png"
             alt="Fanzia"
-            width={140}
-            height={36}
-            className="h-8 w-auto md:h-9"
+            width={200}
+            height={52}
+            className="h-10 w-auto md:h-12"
             priority
           />
         </a>

@@ -1,26 +1,30 @@
 "use client";
 
 import MotionSection from "./MotionSection";
+import WavePattern from "./WavePattern";
 
 const CASES = [
   {
+    stat: "#1",
+    statLabel: "On Google. Organic.",
     client: "Technoland Computer Repair",
     location: "Glendale, CA",
-    headline: "#1 on Google. Organically.",
     result:
       "Hundreds of 5-star reviews. Full website rebuild and digital transformation for a 35-year-old Glendale business.",
   },
   {
+    stat: "$20K",
+    statLabel: "Monthly revenue / 6 mo",
     client: "Bodies and Pilates",
     location: "Los Angeles, CA",
-    headline: "$20K/mo in 6 months.",
     result:
       "Targeted social campaigns and automated class sign-up funnels turned a local studio into a full-book operation.",
   },
   {
+    stat: "7+",
+    statLabel: "Private school screenings",
     client: "SoCal Speech Therapy",
     location: "Southern California",
-    headline: "Streamlined intake end-to-end.",
     result:
       "Community outreach campaigns for private school screenings. Streamlined office operations and patient communication.",
   },
@@ -28,40 +32,70 @@ const CASES = [
 
 export default function Results() {
   return (
-    <MotionSection id="results" className="section bg-black text-white">
-      <div className="container">
-        <div className="max-w-3xl">
-          <p className="eyebrow">Results</p>
-          <h2 className="h-section">
-            Real outcomes for <span className="text-brand-red">real</span> local businesses.
-          </h2>
+    <MotionSection id="results" className="relative bg-black text-white">
+      <WavePattern
+        className="pointer-events-none absolute -left-20 top-20 h-[500px] w-[700px]"
+        stroke="#f13737"
+        opacity={0.3}
+      />
+      <div className="container relative py-24 md:py-32">
+        <div className="grid items-end gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <p className="eyebrow">Receipts</p>
+            <h2 className="h-section">
+              Real outcomes.
+              <br />
+              <span className="bg-brand-red px-3 text-white">Real businesses.</span>
+            </h2>
+          </div>
+          <p className="text-base text-white/70 lg:col-span-5 lg:text-lg">
+            Numbers off the board. These aren&rsquo;t pilot projects. These
+            are live engagements driving revenue today.
+          </p>
         </div>
 
-        <div className="mt-16 grid gap-0 border border-white/10 md:grid-cols-3">
+        <div className="mt-16 grid gap-0">
           {CASES.map((c, i) => (
             <article
               key={c.client}
-              className={`group relative overflow-hidden bg-brand-ink p-8 transition-colors hover:bg-brand-coal md:p-10 ${
-                i < CASES.length - 1
-                  ? "border-b border-white/10 md:border-b-0 md:border-r"
-                  : ""
-              }`}
+              className={`group relative grid grid-cols-1 gap-0 border-white/10 bg-black transition hover:bg-brand-ink md:grid-cols-12 md:items-stretch ${
+                i === 0 ? "border-t-4 border-brand-red" : "border-t border-white/10"
+              } ${i === CASES.length - 1 ? "border-b-4 border-brand-red" : ""}`}
             >
-              <div className="flex items-center justify-between">
-                <span className="font-display text-xs uppercase tracking-[0.24em] text-brand-red">
-                  {c.location}
-                </span>
-                <span
+              {/* Huge stat */}
+              <div className="relative flex items-center overflow-hidden bg-brand-red p-8 md:col-span-4 md:p-12">
+                <div
                   aria-hidden
-                  className="h-3 w-3 rotate-45 bg-brand-red transition group-hover:scale-125"
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage:
+                      "repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0 2px, transparent 2px 18px)",
+                  }}
                 />
+                <div className="relative">
+                  <span className="block font-display text-7xl leading-[0.9] text-white md:text-[8rem] lg:text-[9.5rem]">
+                    {c.stat}
+                  </span>
+                  <span className="mt-2 block font-display text-xs uppercase tracking-[0.22em] text-black">
+                    {c.statLabel}
+                  </span>
+                </div>
               </div>
-              <h3 className="mt-6 font-display text-4xl leading-[0.95] tracking-tightest md:text-5xl">
-                {c.headline}
-              </h3>
-              <p className="mt-5 text-white/70 md:text-lg">{c.result}</p>
-              <div className="mt-6 border-t border-white/10 pt-4 font-display text-sm uppercase tracking-[0.18em] text-white/60">
-                {c.client}
+
+              {/* Body */}
+              <div className="flex flex-col justify-center p-8 md:col-span-8 md:p-12">
+                <div className="flex items-center gap-3">
+                  <span className="font-display text-xs uppercase tracking-[0.24em] text-brand-red">
+                    {c.location}
+                  </span>
+                  <span className="h-px w-10 bg-brand-red" />
+                </div>
+                <h3 className="mt-3 font-display text-3xl uppercase leading-[0.95] tracking-tightest text-white md:text-4xl lg:text-5xl">
+                  {c.client}
+                </h3>
+                <p className="mt-4 max-w-2xl text-white/75 md:text-lg">
+                  {c.result}
+                </p>
               </div>
             </article>
           ))}
