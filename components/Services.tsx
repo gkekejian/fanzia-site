@@ -30,12 +30,6 @@ const SERVICES: Service[] = [
     body:
       "Targeted ad campaigns on Meta, Google, and YouTube designed to drive real leads, not vanity metrics. Full funnel strategy from impression to conversion.",
   },
-  {
-    title: "Retail & Vending (VendToyz)",
-    body:
-      "Our own retail operation. Branded toy and novelty vending machines at Lakewood Center Mall, powered by cashless payment technology.",
-    tag: "Fanzia venture",
-  },
 ];
 
 export default function Services() {
@@ -48,7 +42,7 @@ export default function Services() {
             Systems that generate leads, close work, and grow with you.
           </h2>
           <p className="mt-5 text-lg text-brand-text/80">
-            Five focused practice areas. Everything custom-built for local
+            Four focused practice areas. Everything custom-built for local
             businesses.
           </p>
         </div>

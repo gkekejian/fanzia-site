@@ -15,7 +15,7 @@ export default function About() {
             Fanzia is a Glendale-based AI and digital growth agency. We build
             custom technology, from intelligent websites to automated sales
             systems, that helps local businesses operate smarter and grow
-            faster. Founded by George Kekejian.
+            faster.
           </p>
         </div>
 
@@ -24,7 +24,7 @@ export default function About() {
             { k: "Based in", v: "Glendale, CA" },
             { k: "Serving", v: "Los Angeles area" },
             { k: "Specialty", v: "AI & automation" },
-            { k: "Founder", v: "George Kekejian" },
+            { k: "Founded", v: "Los Angeles, CA" },
           ].map((item) => (
             <div
               key={item.k}

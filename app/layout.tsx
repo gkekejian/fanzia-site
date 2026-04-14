@@ -72,7 +72,6 @@ export default function RootLayout({
       addressRegion: "CA",
       addressCountry: "US",
     },
-    founder: { "@type": "Person", name: "George Kekejian" },
     sameAs: [
       "https://www.instagram.com/fanzia",
       "https://www.linkedin.com/company/fanzia",
