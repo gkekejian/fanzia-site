@@ -55,7 +55,7 @@ body {
   }
 
   .display {
-    @apply font-display uppercase leading-[1.15] tracking-tightest;
+    @apply font-display uppercase leading-[1.1] tracking-tightest;
   }
 
   .h-section {
@@ -66,16 +66,16 @@ body {
     @apply display mt-4 text-5xl text-black md:text-6xl lg:text-7xl xl:text-8xl;
   }
 
-  /* Inline highlight block that wraps cleanly across line breaks.
-   * Rendered as inline-block per line (via box-decoration-clone) with
-   * generous vertical padding and explicit line-height so the background
-   * strip can never touch the adjacent line. */
+  /* Inline red emphasis: red-colored text, no background rectangle.
+   * Display fonts like Anton have a tall font-box that makes
+   * background-color highlights overlap adjacent lines, so we skip
+   * the background and rely on color + weight instead. */
   .hl {
-    @apply bg-brand-red px-4 pb-2 pt-1 text-white box-decoration-clone leading-[1];
+    @apply text-brand-red;
   }
 
   .hl-black {
-    @apply bg-black px-4 pb-2 pt-1 text-brand-red box-decoration-clone leading-[1];
+    @apply text-black;
   }
 
   .card-dark {
