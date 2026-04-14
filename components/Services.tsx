@@ -63,7 +63,7 @@ export default function Services() {
           </div>
           <p className="text-base text-white/70 lg:col-span-5 lg:text-lg">
             Four focused practice areas. Everything custom-built for local
-            businesses. No templates, no recycled playbooks.
+            operators. No templates, no recycled playbooks, no agency theater.
           </p>
         </div>
 

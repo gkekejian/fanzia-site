@@ -17,7 +17,7 @@ export default function Hero() {
             <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-white" />
             <span>Live // Glendale &amp; Los Angeles</span>
           </div>
-          <div className="hidden md:block">By the Fanz / For the Fanz</div>
+          <div className="hidden md:block">Built by Operators / For Operators</div>
           <div>Est. 2019</div>
         </div>
       </div>
@@ -35,17 +35,17 @@ export default function Hero() {
             AI-Powered Growth Agency
           </span>
 
-          <h1 className="mt-8 display text-[3.6rem] leading-[0.9] text-white sm:text-7xl md:text-[7rem] lg:text-[7.5rem] xl:text-[9rem]">
-            <span className="block">Grow</span>
-            <span className="block text-brand-red">Faster.</span>
-            <span className="block">Smarter.</span>
-            <span className="block">Local.</span>
+          <h1 className="mt-8 display text-[3.6rem] leading-[0.95] text-white sm:text-7xl md:text-[7rem] lg:text-[7.5rem] xl:text-[9rem]">
+            <span className="block">The Agency</span>
+            <span className="block">Run By</span>
+            <span className="block text-brand-red">Operators.</span>
           </h1>
 
           <p className="mt-8 max-w-xl text-lg text-white/75 md:text-xl">
-            Custom AI tools, automated lead generation, intelligent websites,
-            and CRM systems built for small businesses in Los Angeles. We build
-            the infrastructure that makes your business operate smarter.
+            Fanzia builds custom AI, automated lead generation, intelligent
+            websites, and CRM systems for local businesses. We run our own
+            operations too, so we build the kind of infrastructure we&rsquo;d
+            actually want to use.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
@@ -119,9 +119,9 @@ export default function Hero() {
               className="w-[260px] drop-shadow-[0_0_40px_rgba(0,0,0,0.35)] md:w-[360px] lg:w-[420px]"
             />
             <p className="mt-10 max-w-xs font-display text-sm uppercase leading-relaxed tracking-[0.22em] text-black">
-              By the Fanz.
+              Built by Operators.
               <br />
-              For the Fanz.
+              For Operators.
             </p>
           </div>
         </motion.div>

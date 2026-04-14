@@ -19,17 +19,25 @@ export default function About() {
           <div className="lg:col-span-7">
             <p className="eyebrow">About Fanzia</p>
             <h2 className="h-section">
-              A Glendale team building
+              Built for the businesses
               <br />
-              <span className="hl">growth infrastructure</span>
-              <br />
-              for local business.
+              that <span className="hl">actually build</span>{" "}
+              your neighborhood.
             </h2>
             <p className="mt-8 max-w-2xl text-lg text-white/75 md:text-xl">
-              Fanzia is a Glendale-based AI and digital growth agency. We build
-              custom technology, from intelligent websites to automated sales
-              systems, that helps local businesses operate smarter and grow
-              faster.
+              Fanzia started in 2019 as a sports fan-engagement platform,
+              livestream tech, community tools, the original &ldquo;by the fanz
+              for the fanz&rdquo; energy. The platform worked. What we learned
+              building it worked better.
+            </p>
+            <p className="mt-5 max-w-2xl text-lg text-white/75 md:text-xl">
+              The shops, studios, clinics, and retail operators around us
+              needed <span className="font-semibold text-white">infrastructure</span>,
+              not another marketing vendor. So we evolved. Today Fanzia builds
+              custom AI and automation for local businesses, and we run our own
+              retail venture (VendToyz) at Lakewood Center Mall. We are the
+              agency run by people who also own the kind of businesses we build
+              for.
             </p>
 
             <dl className="mt-10 grid grid-cols-2 gap-0 border-[3px] border-brand-red">
@@ -76,9 +84,9 @@ export default function About() {
                   className="w-[220px] drop-shadow-[0_0_30px_rgba(0,0,0,0.35)] md:w-[300px]"
                 />
                 <p className="mt-8 max-w-xs font-display text-sm uppercase leading-relaxed tracking-[0.3em] text-black">
-                  By the Fanz.
+                  Built by Operators.
                   <br />
-                  For the Fanz.
+                  For Operators.
                 </p>
               </div>
 

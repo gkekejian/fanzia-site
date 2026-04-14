@@ -62,16 +62,17 @@ export default function Retail() {
               </h2>
               <p className="mt-8 max-w-md text-lg font-semibold text-black md:text-xl">
                 A Fanzia-owned retail venture. Two branded vending machines
-                installed back-to-back at Lakewood Center Mall. A licensed
-                Hot Wheels die-cast machine and a novelty / plush machine,
-                both powered by cashless tap payments.
+                installed back-to-back at Lakewood Center Mall: a licensed
+                <span className="font-bold"> Hot Wheels die-cast</span> machine
+                and a novelty / plush machine. Both powered by cashless tap
+                payments.
               </p>
               <p className="mt-5 max-w-md text-base text-black/80">
                 VendToyz is{" "}
                 <span className="bg-black px-1.5 text-brand-red">not a service we sell</span>.
                 It is a live retail business that Fanzia, Inc. owns and operates.
-                Distributors, mall operators, and supply partners can engage with
-                VendToyz directly.
+                Distributors, licensors, mall operators, and supply partners can
+                engage with VendToyz directly.
               </p>
 
               <dl className="mt-8 grid grid-cols-2 gap-0 border-[3px] border-black bg-black/5">
@@ -170,6 +171,106 @@ export default function Retail() {
                   </a>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Featured Machine: Hot Wheels */}
+          <div className="mt-16 grid grid-cols-1 gap-0 border-[6px] border-black md:grid-cols-12">
+            <div className="relative bg-black p-8 text-white md:col-span-7 md:p-12">
+              <span className="inline-flex items-center gap-2 border border-brand-red bg-black px-3 py-1.5 font-display text-[11px] uppercase tracking-[0.3em] text-brand-red">
+                <span className="h-1.5 w-1.5 bg-brand-red" />
+                Featured Machine / 01
+              </span>
+
+              <h3 className="mt-6 font-display text-5xl uppercase leading-[0.95] tracking-tightest md:text-6xl lg:text-7xl">
+                Hot Wheels
+                <br />
+                <span className="text-brand-red">Die-Cast.</span>
+              </h3>
+
+              <p className="mt-6 max-w-2xl text-base text-white/80 md:text-lg">
+                A licensed Hot Wheels die-cast vending machine. Mattel&rsquo;s
+                iconic collectible car brand, dispensed straight from a
+                cashless-tap kiosk. What&rsquo;s inside isn&rsquo;t capsule
+                junk. It&rsquo;s real collectibles.
+              </p>
+
+              <ul className="mt-6 grid gap-3 text-sm md:grid-cols-2">
+                {[
+                  { k: "Premium", v: "Die-cast collectible cars" },
+                  { k: "Limited", v: "Rotating special releases" },
+                  { k: "Licensed", v: "Official Mattel Hot Wheels" },
+                  { k: "Audience", v: "Kid + adult collectors" },
+                ].map((f) => (
+                  <li
+                    key={f.k}
+                    className="flex items-baseline gap-3 border-t border-white/10 pt-3"
+                  >
+                    <span className="font-display text-[10px] uppercase tracking-[0.24em] text-brand-red">
+                      {f.k}
+                    </span>
+                    <span className="text-white/85">{f.v}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <a
+                  href="#contact"
+                  className="inline-flex items-center justify-center bg-brand-red px-6 py-3 font-display text-sm uppercase tracking-[0.2em] text-white shadow-[5px_5px_0_0_#fff] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[3px_3px_0_0_#fff]"
+                >
+                  Supplier / Licensor Inquiries
+                </a>
+                <span className="font-display text-[10px] uppercase tracking-[0.24em] text-white/50">
+                  Lakewood Center, Back-to-Back Install
+                </span>
+              </div>
+            </div>
+
+            <div className="relative min-h-[360px] bg-black md:col-span-5">
+              <Image
+                src="/retail/vendtoyz-hotwheels.jpg"
+                alt="VendToyz Hot Wheels die-cast vending machine at Lakewood Center Mall"
+                fill
+                sizes="(min-width: 768px) 40vw, 100vw"
+                className="object-cover"
+              />
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between bg-black/85 px-4 py-3 font-display text-[10px] uppercase tracking-[0.24em] text-white">
+                <span>Hot Wheels // Licensed</span>
+                <span className="text-brand-red">Collector Grade</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Machine 02 - Novelty */}
+          <div className="mt-6 grid grid-cols-1 gap-0 border-[6px] border-black md:grid-cols-12">
+            <div className="relative min-h-[280px] bg-black md:order-2 md:col-span-5">
+              <Image
+                src="/retail/vendtoyz-yellow.png"
+                alt="VendToyz novelty plush vending machine at Lakewood Center Mall"
+                fill
+                sizes="(min-width: 768px) 40vw, 100vw"
+                className="object-cover"
+              />
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between bg-black/85 px-4 py-3 font-display text-[10px] uppercase tracking-[0.24em] text-white">
+                <span>Novelty // Plush</span>
+                <span className="text-brand-red">Lakewood</span>
+              </div>
+            </div>
+            <div className="relative bg-brand-red p-8 text-black md:order-1 md:col-span-7 md:p-10">
+              <span className="inline-flex items-center gap-2 bg-black px-3 py-1.5 font-display text-[11px] uppercase tracking-[0.3em] text-brand-red">
+                <span className="h-1.5 w-1.5 bg-brand-red" />
+                Featured Machine / 02
+              </span>
+              <h3 className="mt-6 font-display text-5xl uppercase leading-[0.95] tracking-tightest md:text-6xl">
+                Novelty &amp; Plush.
+              </h3>
+              <p className="mt-6 max-w-xl text-base text-black/90 md:text-lg">
+                Branded plush, mystery toys, collectible squishies, and
+                kid-favorite impulse picks. Rotating inventory keeps the
+                machine fresh for repeat mall traffic. Sits directly behind
+                the Hot Wheels unit as a single back-to-back retail footprint.
+              </p>
             </div>
           </div>
         </div>

@@ -50,8 +50,9 @@ export default function Contact() {
               <span className="text-brand-red">We&rsquo;ll help you get it done.</span>
             </h2>
             <p className="mt-6 max-w-lg text-lg text-white/70">
-              A free 30-minute consultation. No pitch deck. Just a conversation
-              about where AI and automation can move your business.
+              A free 30-minute consultation. No pitch deck, no slide theatre.
+              Just a conversation, operator to operator, about where AI and
+              automation can move your business.
             </p>
 
             <div className="mt-10 space-y-5">

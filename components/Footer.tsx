@@ -19,7 +19,7 @@ export default function Footer() {
               Angeles, CA.
             </p>
             <p className="mt-6 font-display text-xs uppercase tracking-[0.3em] text-brand-red">
-              By the Fanz, for the Fanz.
+              Built by Operators. For Operators.
             </p>
           </div>
 
