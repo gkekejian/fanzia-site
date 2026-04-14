@@ -9,15 +9,22 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          primary: "#1a1a2e",
-          accent: "#e94560",
-          secondary: "#16213e",
-          light: "#f5f5f5",
-          text: "#333333",
+          black: "#000000",
+          ink: "#0a0a0a",
+          coal: "#141414",
+          smoke: "#1f1f1f",
+          red: "#F13737",
+          rose: "#BF1313",
+          cream: "#f5f5f5",
+          chalk: "#e9e9e9",
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        sans: ["var(--font-jakarta)", "Inter", "system-ui", "sans-serif"],
+        display: ["var(--font-anton)", "Impact", "Arial Black", "sans-serif"],
+      },
+      letterSpacing: {
+        tightest: "-0.04em",
       },
       container: {
         center: true,
@@ -30,7 +37,18 @@ const config: Config = {
           sm: "640px",
           md: "768px",
           lg: "1024px",
-          xl: "1200px",
+          xl: "1280px",
+          "2xl": "1440px",
+        },
+      },
+      animation: {
+        marquee: "marquee 40s linear infinite",
+        "marquee-slow": "marquee 60s linear infinite",
+      },
+      keyframes: {
+        marquee: {
+          "0%": { transform: "translateX(0%)" },
+          "100%": { transform: "translateX(-50%)" },
         },
       },
     },

@@ -11,21 +11,22 @@ export default function PrivacyPage() {
   return (
     <>
       <Nav />
-      <main className="pt-32 pb-20">
+      <main className="bg-black pt-32 pb-20 text-white">
         <div className="container max-w-3xl">
-          <h1 className="text-4xl font-bold text-brand-primary">
+          <p className="eyebrow">Legal</p>
+          <h1 className="display mt-4 text-5xl text-white md:text-6xl">
             Privacy Policy
           </h1>
-          <p className="mt-2 text-sm text-brand-text/60">
+          <p className="mt-3 text-sm text-white/50">
             Last updated: {new Date().getFullYear()}
           </p>
 
-          <div className="prose mt-8 max-w-none text-brand-text/80">
+          <div className="mt-10 space-y-6 text-white/80">
             <p>
               Fanzia, Inc. respects your privacy. This policy explains what
               information we collect when you use fanzia.io and how we use it.
             </p>
-            <h2 className="mt-8 text-2xl font-bold text-brand-primary">
+            <h2 className="mt-10 font-display text-2xl uppercase tracking-tightest text-white">
               Information We Collect
             </h2>
             <p>
@@ -33,22 +34,19 @@ export default function PrivacyPage() {
               phone number, and the contents of your message. We use this
               information solely to respond to your inquiry.
             </p>
-            <h2 className="mt-8 text-2xl font-bold text-brand-primary">
+            <h2 className="mt-10 font-display text-2xl uppercase tracking-tightest text-white">
               Analytics
             </h2>
             <p>
               We may use privacy-respecting analytics to measure aggregate
               traffic. We do not sell personal information.
             </p>
-            <h2 className="mt-8 text-2xl font-bold text-brand-primary">
+            <h2 className="mt-10 font-display text-2xl uppercase tracking-tightest text-white">
               Contact
             </h2>
             <p>
               Requests to access or delete your information can be sent to{" "}
-              <a
-                className="text-brand-accent"
-                href="mailto:hello@fanzia.io"
-              >
+              <a className="text-brand-red" href="mailto:hello@fanzia.io">
                 hello@fanzia.io
               </a>
               .

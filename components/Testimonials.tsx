@@ -34,16 +34,16 @@ export default function Testimonials() {
   }, []);
 
   return (
-    <MotionSection className="section bg-brand-secondary text-white">
+    <MotionSection className="section bg-black text-white">
       <div className="container">
-        <div className="max-w-2xl">
-          <p className="eyebrow !text-brand-accent">What clients say</p>
-          <h2 className="mt-3 text-3xl font-bold md:text-4xl lg:text-5xl">
-            Built by operators, trusted by operators.
+        <div className="max-w-3xl">
+          <p className="eyebrow">Receipts</p>
+          <h2 className="h-section">
+            Built by operators. <span className="text-brand-red">Trusted</span> by operators.
           </h2>
         </div>
 
-        <div className="relative mt-12 min-h-[220px]">
+        <div className="relative mt-16 min-h-[260px] border-l-4 border-brand-red pl-6 md:pl-10">
           <AnimatePresence mode="wait">
             <motion.figure
               key={i}
@@ -51,29 +51,34 @@ export default function Testimonials() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16 }}
               transition={{ duration: 0.45, ease: "easeOut" }}
-              className="max-w-3xl"
+              className="max-w-4xl"
             >
-              <blockquote className="text-xl leading-relaxed text-white/90 md:text-2xl">
+              <blockquote className="font-display text-2xl uppercase leading-tight tracking-tightest text-white md:text-4xl lg:text-5xl">
                 &ldquo;{QUOTES[i].quote}&rdquo;
               </blockquote>
-              <figcaption className="mt-6 text-sm">
-                <span className="font-semibold text-white">
-                  {QUOTES[i].name}
+              <figcaption className="mt-8 flex items-center gap-4">
+                <span className="h-10 w-10 rounded-full bg-brand-red" />
+                <span>
+                  <span className="block font-display text-sm uppercase tracking-[0.2em] text-white">
+                    {QUOTES[i].name}
+                  </span>
+                  <span className="text-sm text-white/60">
+                    {QUOTES[i].role}
+                  </span>
                 </span>
-                <span className="text-white/60">, {QUOTES[i].role}</span>
               </figcaption>
             </motion.figure>
           </AnimatePresence>
 
-          <div className="mt-8 flex gap-2">
+          <div className="mt-10 flex gap-2">
             {QUOTES.map((_, idx) => (
               <button
                 key={idx}
                 type="button"
                 aria-label={`Show testimonial ${idx + 1}`}
                 onClick={() => setI(idx)}
-                className={`h-2 rounded-full transition-all ${
-                  idx === i ? "w-8 bg-brand-accent" : "w-2 bg-white/30"
+                className={`h-1.5 transition-all ${
+                  idx === i ? "w-12 bg-brand-red" : "w-3 bg-white/20"
                 }`}
               />
             ))}

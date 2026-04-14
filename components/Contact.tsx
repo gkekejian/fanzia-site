@@ -38,101 +38,120 @@ export default function Contact() {
   }
 
   return (
-    <MotionSection id="contact" className="section bg-brand-primary text-white">
-      <div className="container grid gap-12 lg:grid-cols-2">
-        <div>
-          <p className="eyebrow !text-brand-accent">Contact</p>
-          <h2 className="mt-3 text-3xl font-bold md:text-4xl lg:text-5xl">
-            Tell us what you&rsquo;re building. We&rsquo;ll help you get it done.
-          </h2>
-          <p className="mt-6 text-lg text-white/80">
-            A free 30-minute consultation. No pitch deck. Just a conversation
-            about where AI and automation can move your business.
-          </p>
+    <MotionSection id="contact" className="section bg-black text-white">
+      <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" aria-hidden />
+      <div className="container relative">
+        <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
+          <div className="lg:col-span-6">
+            <p className="eyebrow">Let&rsquo;s Talk</p>
+            <h2 className="h-section">
+              Tell us what you&rsquo;re building.
+              <br />
+              <span className="text-brand-red">We&rsquo;ll help you get it done.</span>
+            </h2>
+            <p className="mt-6 max-w-lg text-lg text-white/70">
+              A free 30-minute consultation. No pitch deck. Just a conversation
+              about where AI and automation can move your business.
+            </p>
 
-          <div className="mt-10 space-y-4 text-sm text-white/80">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                Email
-              </div>
-              <a
-                href="mailto:hello@fanzia.io"
-                className="text-base font-semibold text-white hover:text-brand-accent"
-              >
-                hello@fanzia.io
-              </a>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                Phone
-              </div>
-              <span className="text-base font-semibold text-white">
-                (818) 555-0100
-              </span>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                Location
-              </div>
-              <span className="text-base font-semibold text-white">
-                Glendale &amp; Los Angeles, CA
-              </span>
+            <div className="mt-10 space-y-5">
+              <ContactFact label="Email" value="hello@fanzia.io" href="mailto:hello@fanzia.io" />
+              <ContactFact label="Phone" value="(818) 555-0100" />
+              <ContactFact label="Location" value="Glendale & Los Angeles, CA" />
             </div>
           </div>
-        </div>
 
-        <form
-          onSubmit={onSubmit}
-          className="rounded-2xl bg-white p-6 text-brand-text shadow-xl md:p-8"
-          noValidate
-        >
-          <div className="grid gap-5">
-            <Field label="Name" name="name" required autoComplete="name" />
-            <Field
-              label="Email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-            />
-            <Field label="Phone" name="phone" type="tel" autoComplete="tel" />
-            <label className="block">
-              <span className="text-sm font-semibold text-brand-primary">
-                Message
-              </span>
-              <textarea
-                name="message"
-                required
-                rows={5}
-                className="mt-1.5 w-full rounded-md border border-black/10 bg-white px-3 py-2.5 text-base text-brand-text shadow-sm focus:border-brand-accent focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
-                placeholder="Tell us about your business and what you want to build."
-              />
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={status === "sending"}
-            className="btn-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-60"
+          <form
+            onSubmit={onSubmit}
+            noValidate
+            className="relative lg:col-span-6"
           >
-            {status === "sending" ? "Sending..." : "Submit"}
-          </button>
+            <div className="absolute -left-3 -top-3 h-full w-full border-2 border-brand-red" aria-hidden />
+            <div className="relative border-2 border-white bg-black p-6 md:p-10">
+              <div className="mb-6 flex items-center justify-between">
+                <span className="font-display text-xs uppercase tracking-[0.3em] text-brand-red">
+                  Transmission / 001
+                </span>
+                <span className="font-display text-xs uppercase tracking-[0.3em] text-white/40">
+                  secure
+                </span>
+              </div>
 
-          <div className="mt-4 min-h-[1.25rem] text-sm" aria-live="polite">
-            {status === "ok" && (
-              <span className="text-green-700">
-                Thanks. We&rsquo;ll be in touch within one business day.
-              </span>
-            )}
-            {status === "error" && (
-              <span className="text-brand-accent">
-                {error || "Could not send. Email hello@fanzia.io directly."}
-              </span>
-            )}
-          </div>
-        </form>
+              <div className="grid gap-5">
+                <Field label="Name" name="name" required autoComplete="name" />
+                <Field label="Email" name="email" type="email" required autoComplete="email" />
+                <Field label="Phone" name="phone" type="tel" autoComplete="tel" />
+                <label className="block">
+                  <span className="font-display text-xs uppercase tracking-[0.22em] text-white/70">
+                    Message
+                  </span>
+                  <textarea
+                    name="message"
+                    required
+                    rows={5}
+                    className="mt-2 w-full rounded-none border border-white/20 bg-black px-4 py-3 text-base text-white placeholder:text-white/30 focus:border-brand-red focus:outline-none"
+                    placeholder="Tell us about your business and what you want to build."
+                  />
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={status === "sending"}
+                className="btn-primary mt-8 w-full disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {status === "sending" ? "Sending..." : "Submit Transmission"}
+              </button>
+
+              <div className="mt-4 min-h-[1.25rem] text-sm" aria-live="polite">
+                {status === "ok" && (
+                  <span className="text-brand-red">
+                    Received. We&rsquo;ll be in touch within one business day.
+                  </span>
+                )}
+                {status === "error" && (
+                  <span className="text-brand-red">
+                    {error || "Could not send. Email hello@fanzia.io directly."}
+                  </span>
+                )}
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </MotionSection>
+  );
+}
+
+function ContactFact({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string;
+  href?: string;
+}) {
+  const inner = (
+    <>
+      <span className="block font-display text-[10px] uppercase tracking-[0.3em] text-brand-red">
+        {label}
+      </span>
+      <span className="mt-1 block font-display text-2xl uppercase tracking-tight text-white md:text-3xl">
+        {value}
+      </span>
+    </>
+  );
+  return (
+    <div className="border-b border-white/10 pb-5">
+      {href ? (
+        <a href={href} className="block hover:text-brand-red">
+          {inner}
+        </a>
+      ) : (
+        inner
+      )}
+    </div>
   );
 }
 
@@ -151,16 +170,16 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-brand-primary">
+      <span className="font-display text-xs uppercase tracking-[0.22em] text-white/70">
         {label}
-        {required && <span className="ml-0.5 text-brand-accent">*</span>}
+        {required && <span className="ml-1 text-brand-red">*</span>}
       </span>
       <input
         name={name}
         type={type}
         required={required}
         autoComplete={autoComplete}
-        className="mt-1.5 w-full rounded-md border border-black/10 bg-white px-3 py-2.5 text-base text-brand-text shadow-sm focus:border-brand-accent focus:outline-none focus:ring-2 focus:ring-brand-accent/30"
+        className="mt-2 w-full rounded-none border border-white/20 bg-black px-4 py-3 text-base text-white placeholder:text-white/30 focus:border-brand-red focus:outline-none"
       />
     </label>
   );

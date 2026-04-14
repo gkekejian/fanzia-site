@@ -25,49 +25,34 @@ const STEPS = [
 
 export default function HowWeWork() {
   return (
-    <MotionSection id="how-we-work" className="section bg-brand-light">
+    <MotionSection id="how-we-work" className="section bg-brand-cream text-black">
       <div className="container">
-        <div className="max-w-2xl">
-          <p className="eyebrow">How we work</p>
-          <h2 className="h-section">A process built around your business, not ours.</h2>
+        <div className="max-w-3xl">
+          <p className="eyebrow">The Process</p>
+          <h2 className="h-section-light">
+            A process built around <span className="text-brand-red">your business</span>,
+            not ours.
+          </h2>
         </div>
 
-        <ol className="mt-14 grid gap-6 md:grid-cols-3">
+        <ol className="mt-16 grid gap-0 border border-black md:grid-cols-3">
           {STEPS.map((s, i) => (
-            <li key={s.n} className="relative">
-              <div className="card h-full">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-brand-accent">
-                    {s.n}
-                  </span>
-                  <span className="h-px flex-1 bg-brand-accent/30" />
-                </div>
-                <h3 className="mt-4 text-xl font-bold text-brand-primary">
-                  {s.title}
-                </h3>
-                <p className="mt-3 text-brand-text/80">{s.body}</p>
-              </div>
-              {i < STEPS.length - 1 && (
-                <span
-                  aria-hidden
-                  className="absolute -right-3 top-1/2 hidden -translate-y-1/2 text-brand-accent md:block"
-                >
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 12h14m0 0l-6-6m6 6l-6 6"
-                    />
-                  </svg>
+            <li
+              key={s.n}
+              className={`relative bg-white p-8 md:p-10 ${
+                i < STEPS.length - 1 ? "border-b border-black md:border-b-0 md:border-r" : ""
+              }`}
+            >
+              <div className="flex items-baseline gap-4">
+                <span className="font-display text-7xl leading-none text-brand-red md:text-8xl">
+                  {s.n}
                 </span>
-              )}
+                <span className="h-px flex-1 bg-black" />
+              </div>
+              <h3 className="mt-8 font-display text-3xl uppercase tracking-tightest md:text-4xl">
+                {s.title}
+              </h3>
+              <p className="mt-3 text-base text-black/70 md:text-lg">{s.body}</p>
             </li>
           ))}
         </ol>

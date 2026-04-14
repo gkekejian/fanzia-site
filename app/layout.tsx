@@ -1,11 +1,18 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans, Anton } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-jakarta",
+});
+
+const anton = Anton({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-anton",
 });
 
 const SITE_URL = "https://fanzia.io";
@@ -40,13 +47,15 @@ export const metadata: Metadata = {
     description:
       "Custom AI tools, automated lead generation, intelligent websites, and CRM systems built for small businesses in Los Angeles.",
   },
-  alternates: {
-    canonical: SITE_URL,
+  alternates: { canonical: SITE_URL },
+  robots: { index: true, follow: true },
+  icons: {
+    icon: "/brand/logo-red.png",
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -79,8 +88,8 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="font-sans antialiased">
+    <html lang="en" className={`${jakarta.variable} ${anton.variable}`}>
+      <body className="bg-black font-sans text-brand-cream antialiased">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
