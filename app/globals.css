@@ -2,6 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Accessibility baselines */
+*:focus-visible {
+  outline: 2px solid #f13737;
+  outline-offset: 3px;
+}
+
+/* Skip link: hidden off-screen until focused */
+.skip-link {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  width: auto;
+  height: auto;
+  background: #f13737;
+  color: #fff;
+  padding: 0.75rem 1.25rem;
+  font-family: var(--font-anton), Impact, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.875rem;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-marquee {
+    animation: none !important;
+  }
+}
+
 :root {
   --brand-black: #000000;
   --brand-red: #f13737;

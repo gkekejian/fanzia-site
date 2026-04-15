@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import MotionSection from "./MotionSection";
 
 type Status = "idle" | "sending" | "ok" | "error";
@@ -8,6 +8,7 @@ type Status = "idle" | "sending" | "ok" | "error";
 export default function Contact() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const mountedAt = useRef<number>(Date.now());
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -15,13 +16,17 @@ export default function Contact() {
     setError(null);
 
     const form = e.currentTarget;
-    const data = Object.fromEntries(new FormData(form).entries());
+    const data = Object.fromEntries(new FormData(form).entries()) as Record<
+      string,
+      string
+    >;
+    const payload = { ...data, _start: mountedAt.current };
 
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -79,6 +84,30 @@ export default function Contact() {
               </div>
 
               <div className="grid gap-5">
+                {/* Honeypot: invisible to humans, irresistible to bots.
+                    Must not be tabbable or announced to screen readers. */}
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    left: "-10000px",
+                    top: "auto",
+                    width: 1,
+                    height: 1,
+                    overflow: "hidden",
+                  }}
+                >
+                  <label>
+                    Website (leave blank)
+                    <input
+                      type="text"
+                      name="website"
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </label>
+                </div>
+
                 <Field label="Name" name="name" required autoComplete="name" />
                 <Field label="Email" name="email" type="email" required autoComplete="email" />
                 <Field label="Phone" name="phone" type="tel" autoComplete="tel" />

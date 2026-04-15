@@ -28,11 +28,20 @@ const QUOTES = [
 
 export default function Testimonials() {
   const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
+    // Respect prefers-reduced-motion: don't auto-advance
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+    if (paused) return;
     const id = setInterval(() => setI((v) => (v + 1) % QUOTES.length), 7000);
     return () => clearInterval(id);
-  }, []);
+  }, [paused]);
 
   return (
     <MotionSection className="relative overflow-hidden bg-brand-red text-black noise">
@@ -63,7 +72,16 @@ export default function Testimonials() {
             </h2>
           </div>
 
-          <div className="relative min-h-[320px] border-l-4 border-black pl-6 md:pl-10 lg:col-span-8">
+          <div
+            className="relative min-h-[320px] border-l-4 border-black pl-6 md:pl-10 lg:col-span-8"
+            role="region"
+            aria-label="Client testimonials"
+            aria-live="polite"
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
+            onFocus={() => setPaused(true)}
+            onBlur={() => setPaused(false)}
+          >
             <AnimatePresence mode="wait">
               <motion.figure
                 key={i}

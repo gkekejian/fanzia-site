@@ -10,8 +10,11 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <>
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
       <Nav />
-      <main className="bg-black pt-32 pb-20 text-white">
+      <main id="main" tabIndex={-1} className="bg-black pt-32 pb-20 text-white">
         <div className="container max-w-3xl">
           <p className="eyebrow">Legal</p>
           <h1 className="display mt-4 text-5xl text-white md:text-6xl">
