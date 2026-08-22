@@ -21,32 +21,32 @@ const SITE_URL = "https://www.fanzia.io";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Fanzia | AI-Powered Growth for Local Businesses",
+    default: "Fanzia — Trading Card Retail & Wholesale | Glendale, CA",
     template: "%s | Fanzia",
   },
   description:
-    "Fanzia builds custom AI tools, automated lead generation, intelligent websites, and CRM systems for small businesses in Glendale and Los Angeles.",
+    "Southern California trading card retailer and wholesale supplier. Pokémon, Magic, and sports cards in packs, boxes, and bundles. Storefront in Glendale.",
   keywords: [
-    "AI agency Los Angeles",
-    "Glendale web design",
-    "lead generation automation",
-    "CRM for small business",
-    "AI consulting Los Angeles",
+    "trading card store Glendale",
+    "Pokemon cards Los Angeles",
+    "Magic the Gathering wholesale",
+    "trading card wholesale supplier",
+    "sports card retailer Southern California",
   ],
   openGraph: {
     type: "website",
     url: SITE_URL,
     siteName: "Fanzia",
-    title: "Fanzia | AI-Powered Growth for Local Businesses",
+    title: "Fanzia — Trading Card Retail & Wholesale | Glendale, CA",
     description:
-      "Custom AI tools, automated lead generation, intelligent websites, and CRM systems built for small businesses in Los Angeles.",
+      "Southern California trading card retailer and wholesale supplier. Pokémon, Magic, and sports cards in packs, boxes, and bundles. Storefront in Glendale.",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Fanzia | AI-Powered Growth for Local Businesses",
+    title: "Fanzia — Trading Card Retail & Wholesale | Glendale, CA",
     description:
-      "Custom AI tools, automated lead generation, intelligent websites, and CRM systems built for small businesses in Los Angeles.",
+      "Southern California trading card retailer and wholesale supplier. Pokémon, Magic, and sports cards in packs, boxes, and bundles. Storefront in Glendale.",
   },
   alternates: { canonical: SITE_URL },
   robots: { index: true, follow: true },
@@ -64,33 +64,60 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const localBusinessJsonLd = {
+  const organizationJsonLd = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: "Fanzia, Inc.",
+    "@type": "Organization",
+    name: "Fanzia",
     url: SITE_URL,
+    logo: `${SITE_URL}/brand/logo-black.png`,
     email: "contact@fanzia.io",
-    description:
-      "AI and digital growth agency building custom technology for small businesses in Los Angeles.",
-    areaServed: [
-      { "@type": "City", name: "Glendale" },
-      { "@type": "City", name: "Los Angeles" },
-    ],
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Glendale",
-      addressRegion: "CA",
-      addressCountry: "US",
-    },
+    telephone: "+1-818-796-3388",
+    foundingDate: "2021",
     sameAs: [
       "https://www.instagram.com/fanzia",
-      "https://www.linkedin.com/company/fanzia",
+      // {{TODO: social URLs}} — confirm live TikTok handle before publishing
+      "https://www.tiktok.com/@fanzia",
+    ],
+  };
+
+  const localBusinessJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    name: "Fanzia Glendale",
+    url: SITE_URL,
+    email: "contact@fanzia.io",
+    telephone: "+1-818-796-3388",
+    // {{TODO: og image}} — replace with real storefront photography once shot
+    image: `${SITE_URL}/brand/logo-black.png`,
+    priceRange: "$$",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "320 North Verdugo Road",
+      addressLocality: "Glendale",
+      addressRegion: "CA",
+      postalCode: "91206",
+      addressCountry: "US",
+    },
+    // {{TODO: confirm hours}} — default posted hours below
+    openingHoursSpecification: [
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        opens: "11:00",
+        closes: "18:00",
+      },
     ],
   };
 
   return (
     <html lang="en" className={`${jakarta.variable} ${anton.variable}`}>
       <body className="bg-black font-sans text-brand-cream antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

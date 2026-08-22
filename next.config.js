@@ -32,6 +32,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: https://fanzia-site.vercel.app https://*.vercel.app",
       "media-src 'self'",
       "connect-src 'self' https://vitals.vercel-insights.com https://vercel.live",
+      "frame-src 'self' https://www.google.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

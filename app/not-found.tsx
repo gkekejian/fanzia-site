@@ -17,9 +17,14 @@ export default function NotFound() {
         <p className="mt-4 text-white/60">
           The page you were looking for doesn&rsquo;t exist.
         </p>
-        <Link href="/" className="btn-primary mt-10 inline-flex">
-          Back to Home
-        </Link>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <Link href="/store" className="btn-primary">
+            Visit the Store
+          </Link>
+          <Link href="/wholesale" className="btn-ghost">
+            Wholesale Inquiries
+          </Link>
+        </div>
       </div>
     </main>
   );
