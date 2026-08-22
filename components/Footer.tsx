@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -15,11 +16,19 @@ export default function Footer() {
               className="h-9 w-auto"
             />
             <p className="mt-4 max-w-sm text-sm text-white/60">
-              AI-Powered Growth for Local Businesses. Glendale &amp; Los
-              Angeles, CA.
+              320 North Verdugo Road, Glendale, CA 91206
+            </p>
+            <p className="mt-1 max-w-sm text-sm text-white/60">
+              <a href="tel:+18187963388" className="hover:text-brand-red">
+                (818) 796-3388
+              </a>{" "}
+              &middot;{" "}
+              <a href="mailto:contact@fanzia.io" className="hover:text-brand-red">
+                contact@fanzia.io
+              </a>
             </p>
             <p className="mt-6 font-display text-xs uppercase tracking-[0.3em] text-brand-red">
-              Built by Operators. For Operators.
+              By the Fans. For the Fans.
             </p>
           </div>
 
@@ -28,11 +37,13 @@ export default function Footer() {
               Site
             </p>
             <ul className="mt-4 space-y-2 text-sm">
-              <li><a href="#services" className="hover:text-brand-red">Services</a></li>
-              <li><a href="#how-we-work" className="hover:text-brand-red">Process</a></li>
-              <li><a href="#results" className="hover:text-brand-red">Results</a></li>
-              <li><a href="#retail" className="hover:text-brand-red">Retail / VendToyz</a></li>
-              <li><a href="#contact" className="hover:text-brand-red">Contact</a></li>
+              <li><Link href="/store" className="hover:text-brand-red">Store</Link></li>
+              <li><Link href="/products" className="hover:text-brand-red">Products</Link></li>
+              <li><Link href="/wholesale" className="hover:text-brand-red">Wholesale</Link></li>
+              <li><Link href="/catalog" className="hover:text-brand-red">Catalog</Link></li>
+              <li><Link href="/supply" className="hover:text-brand-red">Supply</Link></li>
+              <li><Link href="/about" className="hover:text-brand-red">About</Link></li>
+              <li><Link href="/contact" className="hover:text-brand-red">Contact</Link></li>
             </ul>
           </nav>
 
@@ -42,11 +53,12 @@ export default function Footer() {
             </p>
             <ul className="mt-4 space-y-2 text-sm">
               <li>
-                <a href="mailto:contact@fanzia.io" className="hover:text-brand-red">
-                  contact@fanzia.io
-                </a>
+                <Link href="/policies" className="hover:text-brand-red">
+                  Policies
+                </Link>
               </li>
               <li>
+                {/* {{TODO: social URLs}} — confirm live Instagram handle before publishing */}
                 <a
                   href="https://www.instagram.com/fanzia"
                   className="inline-flex items-center gap-2 hover:text-brand-red"
@@ -57,13 +69,14 @@ export default function Footer() {
                 </a>
               </li>
               <li>
+                {/* {{TODO: social URLs}} — confirm live TikTok handle before publishing */}
                 <a
-                  href="https://www.linkedin.com/company/fanzia"
+                  href="https://www.tiktok.com/@fanzia"
                   className="inline-flex items-center gap-2 hover:text-brand-red"
                   rel="noreferrer"
                   target="_blank"
                 >
-                  <LinkedInIcon /> LinkedIn
+                  <TikTokIcon /> TikTok
                 </a>
               </li>
             </ul>
@@ -71,10 +84,10 @@ export default function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/50 md:flex-row md:items-center">
-          <span>&copy; {year} Fanzia, Inc. All rights reserved.</span>
+          <span>&copy; {year} Fanzia. All rights reserved.</span>
           <span className="flex gap-6">
-            <a href="/terms" className="hover:text-brand-red">Terms</a>
-            <a href="/privacy" className="hover:text-brand-red">Privacy</a>
+            <Link href="/terms" className="hover:text-brand-red">Terms</Link>
+            <Link href="/privacy" className="hover:text-brand-red">Privacy</Link>
           </span>
         </div>
       </div>
@@ -100,10 +113,10 @@ function InstagramIcon() {
   );
 }
 
-function LinkedInIcon() {
+function TikTokIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.22 8h4.56v14H.22V8zm7.4 0h4.37v1.92h.06c.61-1.15 2.1-2.37 4.32-2.37 4.62 0 5.47 3.04 5.47 6.99V22h-4.56v-6.22c0-1.48-.03-3.39-2.06-3.39-2.07 0-2.39 1.62-2.39 3.29V22H7.62V8z" />
+      <path d="M16.6 5.82c-.9-.79-1.47-1.94-1.47-3.22H12.9v13.44c0 1.44-1.17 2.6-2.6 2.6a2.6 2.6 0 1 1 0-5.2c.24 0 .48.03.7.1V10.3a5.83 5.83 0 0 0-.7-.04A5.83 5.83 0 1 0 16 16.09V9.4a7.4 7.4 0 0 0 4.29 1.36V8.53a4.85 4.85 0 0 1-3.69-2.71z" />
     </svg>
   );
 }

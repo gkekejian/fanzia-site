@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Fanzia — AI-Powered Growth for Local Businesses";
+export const alt = "Fanzia — Trading Card Retail & Wholesale";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -91,7 +91,7 @@ export default async function OpengraphImage() {
                 backgroundColor: "#F13737",
               }}
             />
-            Glendale &amp; Los Angeles, CA
+            Glendale, CA
           </div>
 
           <div
@@ -122,9 +122,9 @@ export default async function OpengraphImage() {
                 letterSpacing: -1,
               }}
             >
-              AI-Powered Growth
+              Trading Card Retail
               <br />
-              for Local Businesses.
+              &amp; Wholesale.
             </div>
           </div>
 
@@ -147,7 +147,7 @@ export default async function OpengraphImage() {
                 backgroundColor: "#F13737",
               }}
             />
-            Built by Operators. For Operators.
+            By the Fans. For the Fans.
           </div>
         </div>
       </div>

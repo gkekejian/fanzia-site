@@ -8,5 +8,6 @@ out
 .DS_Store
 *.log
 .turbo
+tsconfig.tsbuildinfo
 
 .vercel

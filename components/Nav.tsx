@@ -1,15 +1,17 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const LINKS = [
-  { href: "#services", label: "Services" },
-  { href: "#how-we-work", label: "Process" },
-  { href: "#results", label: "Results" },
-  { href: "#retail", label: "Retail" },
-  { href: "#about", label: "About" },
-  { href: "#contact", label: "Contact" },
+  { href: "/store", label: "Store" },
+  { href: "/products", label: "Products" },
+  { href: "/wholesale", label: "Wholesale" },
+  { href: "/catalog", label: "Catalog" },
+  { href: "/supply", label: "Supply" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export default function Nav() {
@@ -32,11 +34,7 @@ export default function Nav() {
       }`}
     >
       <div className="container flex h-20 items-center justify-between text-white">
-        <a
-          href="#top"
-          className="flex items-center gap-3"
-          aria-label="Fanzia home"
-        >
+        <Link href="/" className="flex items-center gap-3" aria-label="Fanzia home">
           <Image
             src="/brand/logo-white.png"
             alt="Fanzia"
@@ -45,21 +43,21 @@ export default function Nav() {
             className="h-10 w-auto md:h-12"
             priority
           />
-        </a>
+        </Link>
 
         <nav className="hidden items-center gap-8 lg:flex">
           {LINKS.map((l) => (
-            <a
+            <Link
               key={l.href}
               href={l.href}
               className="font-display text-xs uppercase tracking-[0.2em] text-white/70 transition hover:text-brand-red"
             >
               {l.label}
-            </a>
+            </Link>
           ))}
-          <a href="#contact" className="btn-primary !py-3 !px-5 text-sm">
-            Free Consultation
-          </a>
+          <Link href="/wholesale" className="btn-primary !py-3 !px-5 text-sm">
+            Wholesale Inquiries
+          </Link>
         </nav>
 
         <button
@@ -90,22 +88,22 @@ export default function Nav() {
         <div className="border-t border-white/10 bg-black lg:hidden">
           <nav className="container flex flex-col gap-1 py-4">
             {LINKS.map((l) => (
-              <a
+              <Link
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
                 className="rounded-none border-b border-white/5 px-2 py-3 font-display text-sm uppercase tracking-[0.2em] text-white/90 hover:text-brand-red"
               >
                 {l.label}
-              </a>
+              </Link>
             ))}
-            <a
-              href="#contact"
+            <Link
+              href="/wholesale"
               onClick={() => setOpen(false)}
               className="btn-primary mt-3 w-full"
             >
-              Free Consultation
-            </a>
+              Wholesale Inquiries
+            </Link>
           </nav>
         </div>
       )}
