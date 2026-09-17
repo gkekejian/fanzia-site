@@ -154,3 +154,21 @@ nav.admin-nav a {
 nav.admin-nav a:hover {
   color: var(--fz-red);
 }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--fz-red);
+  outline-offset: 2px;
+}

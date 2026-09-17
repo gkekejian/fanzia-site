@@ -1,8 +1,12 @@
+import type { PgDatabase } from "drizzle-orm/pg-core";
 import { cookies } from "next/headers";
 import { eq, isNull, gt, and } from "drizzle-orm";
-import { db } from "@/db/client";
+import { db as defaultDb } from "@/db/client";
 import { session as sessionTable, user as userTable } from "@/db/schema";
 import { generateToken, hashToken } from "@/lib/crypto";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyDb = PgDatabase<any, any, any>;
 
 export const SESSION_COOKIE = "fz_session";
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -14,9 +18,11 @@ export type AuthedUser = {
   role: "owner" | "ai_operator";
 };
 
+/** Accepts an injectable db handle purely for tests (see tests/concurrentSessions.test.ts). */
 export async function createSession(
   userId: string,
   meta: { ip?: string | null; userAgent?: string | null },
+  db: AnyDb = defaultDb,
 ) {
   const raw = generateToken();
   const tokenHash = hashToken(raw);
@@ -39,7 +45,10 @@ export async function createSession(
  * §14.1: "the AI operator session never locks out, and is never locked
  * out by, an owner session").
  */
-export async function getSessionUser(rawToken: string | undefined): Promise<AuthedUser | null> {
+export async function getSessionUser(
+  rawToken: string | undefined,
+  db: AnyDb = defaultDb,
+): Promise<AuthedUser | null> {
   if (!rawToken) return null;
   const tokenHash = hashToken(rawToken);
   const rows = await db
@@ -66,7 +75,7 @@ export async function getCurrentUser(): Promise<AuthedUser | null> {
   return getSessionUser(raw);
 }
 
-export async function revokeSession(rawToken: string) {
+export async function revokeSession(rawToken: string, db: AnyDb = defaultDb) {
   const tokenHash = hashToken(rawToken);
   await db.update(sessionTable).set({ revokedAt: new Date() }).where(eq(sessionTable.tokenHash, tokenHash));
 }

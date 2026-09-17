@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { application } from "@/db/schema";
+import { application, termsAcceptance } from "@/db/schema";
 import { applicationSchema } from "@/lib/validation/application";
 import { scoreApplication } from "@/lib/applications/triage";
 import { generateToken, hashToken } from "@/lib/crypto";
@@ -8,6 +8,9 @@ import { sendTransactionalEmail } from "@/lib/email/send";
 import { recordAudit } from "@/lib/audit";
 import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
+import { getLatestPublishedTermsVersion } from "@/lib/terms";
+import { termsClickwrapLabel } from "@/lib/policies/clickwrap";
+import { notifyOwners } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req.headers);
@@ -25,6 +28,11 @@ export async function POST(req: NextRequest) {
   // Honeypot: a bot fills every field, including ones humans never see.
   if (input.website) {
     return NextResponse.json({ ok: true }); // pretend success, no record created
+  }
+
+  const termsVersion = await getLatestPublishedTermsVersion("terms_of_sale");
+  if (!termsVersion) {
+    return NextResponse.json({ error: "Terms of Sale are not currently available. Try again shortly." }, { status: 503 });
   }
 
   const { score, reasons } = scoreApplication(input);
@@ -56,6 +64,19 @@ export async function POST(req: NextRequest) {
     })
     .returning();
 
+  // Berman-compliant clickwrap evidence, captured at the exact moment of
+  // submission: the visible checkbox language, the immutable published
+  // terms_version it links to, and the request's own IP/UA/page context
+  // (build prompt §12, test gate #20).
+  await db.insert(termsAcceptance).values({
+    applicationId: created!.id,
+    termsVersionId: termsVersion.id,
+    visibleLanguageSnapshot: termsClickwrapLabel(termsVersion.versionLabel),
+    ip,
+    userAgent: req.headers.get("user-agent") ?? "unknown",
+    pageContext: "/apply",
+  });
+
   await recordAudit({
     actorType: "applicant",
     action: "application.submitted",
@@ -71,6 +92,14 @@ export async function POST(req: NextRequest) {
     subject: "Your Fanzia wholesale application",
     text: `Thanks for applying to Fanzia wholesale. You can check your application status or add documents any time at:\n\n${resumeUrl}\n\nThis link is valid for ${ttlHours} hours.`,
   });
+
+  const reviewUrl = `${process.env.APP_BASE_URL ?? "http://localhost:3100"}/admin/applications/${created!.id}`;
+  await notifyOwners(
+    "New Fanzia wholesale application",
+    `${input.businessLegalName} submitted a wholesale application (triage score ${score}).${
+      reasons.length ? `\n\nFlags for review:\n- ${reasons.join("\n- ")}` : ""
+    }\n\nReview: ${reviewUrl}`,
+  );
 
   return NextResponse.json({ ok: true });
 }

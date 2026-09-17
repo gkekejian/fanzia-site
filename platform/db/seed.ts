@@ -1,8 +1,9 @@
 import "dotenv/config";
 import { db } from "./client";
-import { currency, settings, user, apiKey } from "./schema";
+import { currency, settings, user, apiKey, termsVersion } from "./schema";
 import { generateApiKey } from "@/lib/crypto";
-import { eq } from "drizzle-orm";
+import { DRAFT_POLICIES } from "@/lib/policies/content";
+import { eq, and, isNotNull } from "drizzle-orm";
 
 /**
  * Refuses to run against anything that doesn't look like a local/dev
@@ -52,6 +53,32 @@ async function main() {
       },
     ])
     .onConflictDoNothing();
+
+  // Publish v1 draft policies as terms_version rows so the clickwrap on the
+  // application form (and the standalone policy pages) can link to a real,
+  // immutable, versioned row instead of only the static DRAFT_POLICIES
+  // module. These are still marked DRAFT — PENDING LEGAL REVIEW in the
+  // rendered body text itself; "published" here means "the current version
+  // buyers see and accept," not "final legal document" (PROJECT_SCOPE_FINAL.md §8).
+  for (const [docType, policy] of Object.entries(DRAFT_POLICIES) as [
+    keyof typeof DRAFT_POLICIES,
+    (typeof DRAFT_POLICIES)[keyof typeof DRAFT_POLICIES],
+  ][]) {
+    const existing = await db
+      .select()
+      .from(termsVersion)
+      .where(and(eq(termsVersion.docType, docType), isNotNull(termsVersion.publishedAt)))
+      .limit(1);
+    if (existing.length === 0) {
+      await db.insert(termsVersion).values({
+        docType,
+        versionLabel: policy.versionLabel,
+        bodyMarkdown: policy.body,
+        isDraft: false,
+        publishedAt: new Date(),
+      });
+    }
+  }
 
   const georgeEmail = process.env.SEED_OWNER_GEORGE_EMAIL ?? "george@fanzia.io";
   const josephEmail = process.env.SEED_OWNER_JOSEPH_EMAIL ?? "CHANGE-BEFORE-USE@fanzia.io";

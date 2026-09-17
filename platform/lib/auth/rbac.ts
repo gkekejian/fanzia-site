@@ -2,6 +2,7 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/db/client";
 import { agentProposal } from "@/db/schema";
 import { recordAudit } from "@/lib/audit";
+import { notifyOwners } from "@/lib/notifications";
 import type { AuthedUser } from "./session";
 import type { AuthedAgent } from "./apiKey";
 
@@ -91,6 +92,11 @@ export async function performOrPropose<T>(
         entityId: entity.id ?? null,
         after: payload,
       },
+      db,
+    );
+    await notifyOwners(
+      "Agent proposal awaiting your decision",
+      `Muse (ai_operator) attempted "${action}" and it was queued instead of executed.\n\nReview: ${process.env.APP_BASE_URL ?? "http://localhost:3100"}/admin/agent-proposals`,
       db,
     );
     return { executed: false, proposalId: proposal!.id };

@@ -1,8 +1,12 @@
+import type { PgDatabase } from "drizzle-orm/pg-core";
 import { and, eq, isNull } from "drizzle-orm";
-import { db } from "@/db/client";
+import { db as defaultDb } from "@/db/client";
 import { apiKey as apiKeyTable, user as userTable } from "@/db/schema";
 import { hashToken } from "@/lib/crypto";
 import type { AuthedUser } from "./session";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyDb = PgDatabase<any, any, any>;
 
 export type AuthedAgent = AuthedUser & { scopes: string[]; apiKeyId: string };
 
@@ -12,8 +16,13 @@ export type AuthedAgent = AuthedUser & { scopes: string[]; apiKeyId: string };
  * credential type"). Revoked or inactive keys/users resolve to null, same
  * as an expired session — callers must treat "not authenticated" and
  * "authenticated but forbidden" identically until an explicit scope check.
+ * Accepts an injectable db handle purely for tests, same pattern as
+ * lib/auth/session.ts.
  */
-export async function getAgentFromApiKey(rawKey: string | undefined): Promise<AuthedAgent | null> {
+export async function getAgentFromApiKey(
+  rawKey: string | undefined,
+  db: AnyDb = defaultDb,
+): Promise<AuthedAgent | null> {
   if (!rawKey) return null;
   const keyHash = hashToken(rawKey);
   const rows = await db

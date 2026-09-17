@@ -28,6 +28,11 @@ export const applicationSchema = z.object({
   contactPhone: z.string().max(30).optional().default(""),
   channelEvidenceUrl: z.string().url().optional().or(z.literal("")).default(""),
   sellersPermitNumber: z.string().max(60).optional().default(""),
+  // Berman-compliant clickwrap: submission is blocked server-side, not
+  // just client-side, unless this is explicitly true (build prompt §12).
+  termsAccepted: z.literal(true, {
+    errorMap: () => ({ message: "You must check the box to accept the Terms of Sale to submit an application." }),
+  }),
   website: z.string().max(0).optional().default(""), // honeypot
 });
 
