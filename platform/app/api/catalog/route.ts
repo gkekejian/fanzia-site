@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getPublicCatalog } from "@/lib/catalog/queries";
 
+// Runtime data (the live catalog) — never statically prerendered.
+export const dynamic = "force-dynamic";
+
 /**
  * No auth check here at all — this route is reachable by anyone, and its
  * response is the entire surface test gate #1 protects: it must be

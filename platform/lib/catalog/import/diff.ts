@@ -1,6 +1,8 @@
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { and, eq, desc, ilike } from "drizzle-orm";
 import { product, sourcingRoute, supplier, priceEpoch, sourceCheck } from "@/db/schema";
+import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
+import { isBelowMarkupFloor } from "../pricingMath";
 import { catalogImportRowSchema } from "./rowSchema";
 import { defaultMarkupBpsForRouteType } from "../pricingDefaults";
 import type { RawImportRow } from "./parse";
@@ -18,6 +20,40 @@ export type ComputedRow = {
   matchedProductId: string | null;
   included: boolean;
 };
+
+/**
+ * Build prompt §9: the former 28% "margin floor" becomes a 28% markup floor
+ * (`markup_floor_bps`, default 2800), overridable per sourcing route. A
+ * proposed price is only ever blocked, never silently raised to the floor —
+ * silently changing the proposed price would break the reviewability the
+ * whole import pipeline is built on (test gate #15).
+ */
+export async function effectiveMarkupFloorBps(
+  existingRoute: { markupFloorBpsOverride: number | null } | null | undefined,
+  db: AnyDb,
+): Promise<number> {
+  if (existingRoute?.markupFloorBpsOverride != null) return existingRoute.markupFloorBpsOverride;
+  return getSetting<number>(SETTINGS_KEYS.markupFloorBps, 2800, db);
+}
+
+function belowFloorRow(
+  rowNumber: number,
+  raw: RawImportRow,
+  proposedMarkupBps: number,
+  floorBps: number,
+): ComputedRow {
+  const floorPct = (floorBps / 100).toFixed(floorBps % 100 === 0 ? 0 : 2);
+  return {
+    rowNumber,
+    diffType: "invalid",
+    stagedData: raw,
+    validationErrors: [
+      `markup_bps ${proposedMarkupBps} is below the ${floorPct}% markup floor (${floorBps} bps) — raise markup_bps_override, lower cost, or set a route-level floor override before this row can be included.`,
+    ],
+    matchedProductId: null,
+    included: false,
+  };
+}
 
 /**
  * Classifies every row in a staged import against *current live state*
@@ -54,7 +90,12 @@ export async function computeDiff(db: AnyDb, rawRows: RawImportRow[]): Promise<C
     const [existingProduct] = await db.select().from(product).where(eq(product.sku, row.sku)).limit(1);
 
     if (!existingProduct) {
-      const markupBps = row.markup_bps_override ?? (await defaultMarkupBpsForRouteType(row.route_type));
+      const markupBps = row.markup_bps_override ?? (await defaultMarkupBpsForRouteType(row.route_type, db));
+      const floorBps = await effectiveMarkupFloorBps(null, db);
+      if (isBelowMarkupFloor(markupBps, floorBps)) {
+        results.push(belowFloorRow(rowNumber, raw, markupBps, floorBps));
+        continue;
+      }
       results.push({
         rowNumber,
         diffType: "add",
@@ -99,7 +140,7 @@ export async function computeDiff(db: AnyDb, rawRows: RawImportRow[]): Promise<C
           .limit(1)
       : [];
 
-    const proposedMarkupBps = row.markup_bps_override ?? (await defaultMarkupBpsForRouteType(row.route_type));
+    const proposedMarkupBps = row.markup_bps_override ?? (await defaultMarkupBpsForRouteType(row.route_type, db));
     const priceChanged =
       !latestPrice ||
       latestPrice.costMinor !== row.cost_minor ||
@@ -108,6 +149,18 @@ export async function computeDiff(db: AnyDb, rawRows: RawImportRow[]): Promise<C
 
     const availabilityChanged =
       row.stock_observed !== undefined && (!latestCheck || latestCheck.stockObserved !== row.stock_observed);
+
+    // The floor only gates rows that would set a NEW price. A row that
+    // leaves the price untouched (availability-only change, or no change at
+    // all) is never invalidated by the floor — the price it proposes is the
+    // price already live, which the floor did not block when it was set.
+    if (priceChanged) {
+      const floorBps = await effectiveMarkupFloorBps(existingRoute, db);
+      if (isBelowMarkupFloor(proposedMarkupBps, floorBps)) {
+        results.push(belowFloorRow(rowNumber, raw, proposedMarkupBps, floorBps));
+        continue;
+      }
+    }
 
     const diffType: DiffType = priceChanged ? "price_change" : availabilityChanged ? "availability_change" : "unchanged";
 

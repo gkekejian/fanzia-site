@@ -1,5 +1,9 @@
 import { getPublicCatalog } from "@/lib/catalog/queries";
 
+// The catalog changes at runtime (imports publish new products and prices),
+// so this page is never statically prerendered.
+export const dynamic = "force-dynamic";
+
 /**
  * Server component calling getPublicCatalog() directly — the same
  * PublicProductDTO-typed function the public /api/catalog route uses.

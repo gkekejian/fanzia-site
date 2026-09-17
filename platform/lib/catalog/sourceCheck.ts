@@ -37,7 +37,7 @@ export async function createSourceCheck(
   if (!route) throw new NotFoundError("Sourcing route not found");
 
   const checkedAt = new Date();
-  const validUntil = await computeValidUntil(input.confidence, checkedAt);
+  const validUntil = await computeValidUntil(input.confidence, checkedAt, db);
 
   const [created] = await db
     .insert(sourceCheck)

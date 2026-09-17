@@ -115,7 +115,7 @@ export async function getAdminCatalog(actor: Actor, db: AnyDb = defaultDb): Prom
   const checkByRoute = await latestSourceChecksByRoute(db, routeIds);
 
   const canSeeCost = canSeeCostStack(actor);
-  const markupFloorBps = await getSetting<number>(SETTINGS_KEYS.markupFloorBps, 2800);
+  const markupFloorBps = await getSetting<number>(SETTINGS_KEYS.markupFloorBps, 2800, db);
 
   return rows.map((p) => {
     const price = priceByProduct.get(p.id) ?? null;

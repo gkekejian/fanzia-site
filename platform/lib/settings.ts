@@ -1,6 +1,10 @@
+import type { PgDatabase } from "drizzle-orm/pg-core";
 import { eq } from "drizzle-orm";
-import { db } from "@/db/client";
+import { db as defaultDb } from "@/db/client";
 import { settings as settingsTable } from "@/db/schema";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyDb = PgDatabase<any, any, any>;
 
 /**
  * Every admin-configurable threshold from the build prompt lives here,
@@ -8,15 +12,19 @@ import { settings as settingsTable } from "@/db/schema";
  * §2). Phase 1 only reads a handful of these (resume-token TTL, session
  * TTL, retention days); later phases add the commerce-related ones
  * (cutoffs, hold periods, fee amounts) without any schema change.
+ *
+ * `db` is injectable (default: the real one) purely so unit tests can point
+ * this at an in-process test database — production call sites never pass
+ * one and get the real connection. Same pattern as lib/audit.ts.
  */
-export async function getSetting<T>(key: string, fallback: T): Promise<T> {
+export async function getSetting<T>(key: string, fallback: T, db: AnyDb = defaultDb): Promise<T> {
   const rows = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
   const row = rows[0];
   if (!row) return fallback;
   return row.value as T;
 }
 
-export async function setSetting(key: string, value: unknown, description: string) {
+export async function setSetting(key: string, value: unknown, description: string, db: AnyDb = defaultDb) {
   await db
     .insert(settingsTable)
     .values({ key, value, description })

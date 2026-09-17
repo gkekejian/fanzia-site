@@ -5,8 +5,8 @@ import { catalogImport, catalogImportRow, product, supplier, sourcingRoute, pric
 import { performOrPropose, actorUserId, type Actor } from "@/lib/auth/rbac";
 import { recordAudit } from "@/lib/audit";
 import { parseCatalogFile, MAX_IMPORT_BYTES, InvalidImportFileError } from "./parse";
-import { computeDiff } from "./diff";
-import { priceFromCostAndMarkup, realizedGrossMarginBps } from "../pricingMath";
+import { computeDiff, effectiveMarkupFloorBps } from "./diff";
+import { priceFromCostAndMarkup, realizedGrossMarginBps, isBelowMarkupFloor } from "../pricingMath";
 import { computeValidUntil } from "../staleness";
 import type { CatalogImportRowInput } from "./rowSchema";
 
@@ -207,6 +207,36 @@ export async function publishCatalogImport(input: { importId: string; actor: Act
 
         const staged = row.stagedData as StagedRowData;
 
+        if (row.diffType === "add" || row.diffType === "price_change") {
+          // Defensive floor re-check before ANY live-table write: computeDiff
+          // marks below-floor rows invalid so they can never be included, but
+          // a price epoch must never be written below the floor no matter how
+          // the staged row got here. The row is skipped — never silently
+          // repriced — and no product/route/price is created for it.
+          let floorRoute: { markupFloorBpsOverride: number | null } | null = null;
+          if (staged.matchedRouteId) {
+            const [rr] = await db
+              .select()
+              .from(sourcingRoute)
+              .where(eq(sourcingRoute.id, staged.matchedRouteId))
+              .limit(1);
+            floorRoute = rr ?? null;
+          }
+          const floorBps = await effectiveMarkupFloorBps(floorRoute, db);
+          if (isBelowMarkupFloor(staged.proposedMarkupBps, floorBps)) {
+            await db
+              .update(catalogImportRow)
+              .set({
+                included: false,
+                validationErrors: [
+                  `markup_bps ${staged.proposedMarkupBps} is below the markup floor (${floorBps} bps) — row skipped at publish.`,
+                ],
+              })
+              .where(eq(catalogImportRow.id, row.id));
+            continue;
+          }
+        }
+
         let productId = row.matchedProductId;
         if (!productId) {
           const [existing] = await db.select().from(product).where(eq(product.sku, staged.sku)).limit(1);
@@ -286,7 +316,7 @@ export async function publishCatalogImport(input: { importId: string; actor: Act
         if (staged.stock_observed !== undefined && (row.diffType === "availability_change" || row.diffType === "add")) {
           const checkedAt = new Date();
           const confidence = staged.check_confidence ?? "observed";
-          const validUntil = await computeValidUntil(confidence, checkedAt);
+          const validUntil = await computeValidUntil(confidence, checkedAt, db);
           await db.insert(sourceCheck).values({
             sourcingRouteId: routeId,
             checkedAt,
