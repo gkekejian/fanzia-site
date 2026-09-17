@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db/client";
+import { application } from "@/db/schema";
+import { applicationSchema } from "@/lib/validation/application";
+import { scoreApplication } from "@/lib/applications/triage";
+import { generateToken, hashToken } from "@/lib/crypto";
+import { sendTransactionalEmail } from "@/lib/email/send";
+import { recordAudit } from "@/lib/audit";
+import { checkRateLimit, clientIp } from "@/lib/rateLimit";
+import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
+
+export async function POST(req: NextRequest) {
+  const ip = clientIp(req.headers);
+  if (!checkRateLimit(`apply:${ip}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
+  }
+
+  const json = await req.json().catch(() => null);
+  const parsed = applicationSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
+  }
+  const input = parsed.data;
+
+  // Honeypot: a bot fills every field, including ones humans never see.
+  if (input.website) {
+    return NextResponse.json({ ok: true }); // pretend success, no record created
+  }
+
+  const { score, reasons } = scoreApplication(input);
+  const rawResumeToken = generateToken();
+  const ttlHours = await getSetting<number>(SETTINGS_KEYS.resumeTokenTtlHours, 168);
+
+  const [created] = await db
+    .insert(application)
+    .values({
+      businessLegalName: input.businessLegalName,
+      channelType: input.channelType,
+      addressLine1: input.addressLine1,
+      addressLine2: input.addressLine2 || null,
+      city: input.city,
+      state: input.state,
+      postalCode: input.postalCode,
+      country: input.country,
+      contactName: input.contactName,
+      contactEmail: input.contactEmail,
+      contactPhone: input.contactPhone || null,
+      channelEvidenceUrl: input.channelEvidenceUrl || null,
+      sellersPermitNumber: input.sellersPermitNumber || null,
+      resumeTokenHash: hashToken(rawResumeToken),
+      resumeTokenExpiresAt: new Date(Date.now() + ttlHours * 60 * 60 * 1000),
+      triageScore: score,
+      needsReviewReasons: reasons,
+      status: "submitted",
+      submittedAt: new Date(),
+    })
+    .returning();
+
+  await recordAudit({
+    actorType: "applicant",
+    action: "application.submitted",
+    entityType: "application",
+    entityId: created!.id,
+    ip,
+    userAgent: req.headers.get("user-agent"),
+  });
+
+  const resumeUrl = `${process.env.APP_BASE_URL ?? "http://localhost:3100"}/apply/continue?token=${rawResumeToken}`;
+  await sendTransactionalEmail({
+    to: input.contactEmail,
+    subject: "Your Fanzia wholesale application",
+    text: `Thanks for applying to Fanzia wholesale. You can check your application status or add documents any time at:\n\n${resumeUrl}\n\nThis link is valid for ${ttlHours} hours.`,
+  });
+
+  return NextResponse.json({ ok: true });
+}

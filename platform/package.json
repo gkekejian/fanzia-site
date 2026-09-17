@@ -1,0 +1,50 @@
+{
+  "name": "fanzia-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fanzia Wholesale Platform — internal ops/commerce app. Independent from the fanzia-site marketing app.",
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx db/migrate.ts",
+    "db:seed": "tsx db/seed.ts",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "scan:secrets": "bash scripts/scan-secrets.sh",
+    "scan:claims": "bash scripts/scan-prohibited-claims.sh"
+  },
+  "dependencies": {
+    "next": "14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "zod": "3.23.8",
+    "resend": "4.0.0",
+    "drizzle-orm": "0.36.4",
+    "pg": "8.13.1",
+    "otpauth": "9.3.6",
+    "qrcode": "1.5.4",
+    "@aws-sdk/client-s3": "3.716.0",
+    "@aws-sdk/s3-request-presigner": "3.716.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.16.11",
+    "@types/react": "18.3.11",
+    "@types/react-dom": "18.3.0",
+    "@types/pg": "8.11.10",
+    "@types/qrcode": "1.5.5",
+    "drizzle-kit": "0.28.1",
+    "typescript": "5.6.2",
+    "eslint": "8.57.1",
+    "eslint-config-next": "14.2.35",
+    "vitest": "2.1.5",
+    "tsx": "4.19.2",
+    "dotenv": "16.4.5",
+    "@electric-sql/pglite": "^0.2.0"
+  }
+}

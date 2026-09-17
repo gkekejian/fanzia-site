@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789631570168,
+      "tag": "0000_identity_and_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789631591919,
+      "tag": "0001_applications",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789631598970,
+      "tag": "0002_terms_and_agent",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789631603336,
+      "tag": "0003_immutability_triggers",
+      "breakpoints": true
+    }
+  ]
+}
