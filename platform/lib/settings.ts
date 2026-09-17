@@ -30,4 +30,12 @@ export const SETTINGS_KEYS = {
   applicationDocumentRetentionDays: "application_document_retention_days",
   resumeTokenTtlHours: "resume_token_ttl_hours",
   ownerDailyDigestHour: "owner_daily_digest_hour_pst",
+  // Phase 2 — catalog and pricing (build prompt §5, §9).
+  importMarkupBpsDefault: "import_markup_bps_default",
+  domesticMarkupBpsDefault: "domestic_markup_bps_default",
+  markupFloorBps: "markup_floor_bps",
+  sourceCheckStalenessObservedHours: "source_check_staleness_observed_hours",
+  sourceCheckStalenessQuotedDays: "source_check_staleness_quoted_days",
+  sourceCheckStalenessConfirmedDays: "source_check_staleness_confirmed_days",
+  buyerMagicLinkTtlMinutes: "buyer_magic_link_ttl_minutes",
 } as const;

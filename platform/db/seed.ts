@@ -1,8 +1,22 @@
 import "dotenv/config";
 import { db } from "./client";
-import { currency, settings, user, apiKey, termsVersion } from "./schema";
+import {
+  currency,
+  settings,
+  user,
+  apiKey,
+  termsVersion,
+  account,
+  accountContact,
+  supplier,
+  product,
+  sourcingRoute,
+  priceEpoch,
+  sourceCheck,
+} from "./schema";
 import { generateApiKey } from "@/lib/crypto";
 import { DRAFT_POLICIES } from "@/lib/policies/content";
+import { priceFromCostAndMarkup, realizedGrossMarginBps } from "@/lib/catalog/pricingMath";
 import { eq, and, isNotNull } from "drizzle-orm";
 
 /**
@@ -19,6 +33,159 @@ function assertLocalDatabase() {
       "Refusing to seed: DATABASE_URL does not look like a local/dev database, or NODE_ENV=production.",
     );
   }
+}
+
+/**
+ * Clearly-labeled, obviously-fictitious catalog data so the Phase 2
+ * public/member catalog split, draft-request flow, and admin import/review
+ * screens have something to show in local dev — never real Fanzia supplier
+ * names, costs, or availability (PROJECT_SCOPE_FINAL.md §2/§8: "Never
+ * invent supplier data, prices, or availability"). Every name below is
+ * prefixed FIXTURE so it can never be mistaken for a live record.
+ */
+async function seedCatalogFixtures(createdBy: string) {
+  const [existingSupplier] = await db
+    .select()
+    .from(supplier)
+    .where(eq(supplier.name, "FIXTURE — Sample Supplier (not a real Fanzia source)"))
+    .limit(1);
+  if (existingSupplier) return; // already seeded
+
+  const [fixtureSupplier] = await db
+    .insert(supplier)
+    .values({ name: "FIXTURE — Sample Supplier (not a real Fanzia source)", notes: "Local/dev fixture only. Never a real supplier." })
+    .returning();
+
+  const fixtureProducts = [
+    {
+      sku: "FIXTURE-SKU-001",
+      name: "FIXTURE — Sample Booster Box (test data)",
+      editionLanguage: "Japanese",
+      origin: "Japan",
+      condition: "sealed" as const,
+      packsPerUnit: 30,
+      cardsPerPack: 5,
+      releaseStatus: "in_stock",
+      descriptionOriginal: "Fixture product for local development and demos. Not a real product, price, or supply claim.",
+      costMinor: 8000, // $80.00
+      markupBps: 3500,
+      routeType: "import" as const,
+      stockObserved: 40,
+    },
+    {
+      sku: "FIXTURE-SKU-002",
+      name: "FIXTURE — Sample Elite Trainer Box (test data)",
+      editionLanguage: "English",
+      origin: "United States",
+      condition: "sealed" as const,
+      packsPerUnit: 9,
+      cardsPerPack: 10,
+      releaseStatus: "in_stock",
+      descriptionOriginal: "Fixture product for local development and demos. Not a real product, price, or supply claim.",
+      costMinor: 3200, // $32.00
+      markupBps: 1750,
+      routeType: "domestic" as const,
+      stockObserved: 120,
+    },
+  ];
+
+  for (const fp of fixtureProducts) {
+    const [createdProduct] = await db
+      .insert(product)
+      .values({
+        sku: fp.sku,
+        name: fp.name,
+        editionLanguage: fp.editionLanguage,
+        origin: fp.origin,
+        condition: fp.condition,
+        packsPerUnit: fp.packsPerUnit,
+        cardsPerPack: fp.cardsPerPack,
+        releaseStatus: fp.releaseStatus,
+        descriptionOriginal: fp.descriptionOriginal,
+        status: "active",
+        publiclyVisible: true,
+        imageStatus: "none",
+      })
+      .returning();
+
+    const [route] = await db
+      .insert(sourcingRoute)
+      .values({
+        productId: createdProduct!.id,
+        supplierId: fixtureSupplier!.id,
+        routeType: fp.routeType,
+        confidence: "observed",
+        sourceType: "member_page",
+        sourceReference: "fixture://local-dev",
+        verifiedBy: createdBy,
+        verifiedAt: new Date(),
+      })
+      .returning();
+
+    const priceMinor = priceFromCostAndMarkup(fp.costMinor, fp.markupBps);
+    await db.insert(priceEpoch).values({
+      productId: createdProduct!.id,
+      sourcingRouteId: route!.id,
+      costMinor: fp.costMinor,
+      currencyCode: "USD",
+      markupBps: fp.markupBps,
+      priceMinor,
+      realizedGrossMarginBps: realizedGrossMarginBps(fp.costMinor, priceMinor),
+      createdBy,
+    });
+
+    await db.insert(sourceCheck).values({
+      sourcingRouteId: route!.id,
+      checkedBy: createdBy,
+      stockObserved: fp.stockObserved,
+      priceObservedMinor: fp.costMinor,
+      currencyCode: "USD",
+      method: "member_page",
+      confidence: "observed",
+      validUntil: new Date(Date.now() + 72 * 60 * 60 * 1000),
+      evidenceObjectKey: null,
+    });
+  }
+
+  console.log("[seed] Fixture catalog: 1 fixture supplier, 2 fixture products with price + availability.");
+}
+
+/**
+ * A single obviously-fictitious buyer account so the member catalog/draft
+ * request/buyer-login flow can be exercised locally without any real
+ * applicant data (build prompt §2/§8). The email domain is deliberately
+ * non-routable-looking and prefixed to avoid ever being mistaken for a
+ * real customer.
+ */
+async function seedFixtureBuyerAccount() {
+  const email = "buyer@fixture.fanzia.local";
+  const [existing] = await db.select().from(account).where(eq(account.primaryContactEmail, email)).limit(1);
+  if (existing) return;
+
+  const [fixtureAccount] = await db
+    .insert(account)
+    .values({
+      legalName: "FIXTURE — Sample Buyer LLC (test data)",
+      channelType: "vending",
+      taxStatus: "pending",
+      addressLine1: "1 Fixture Way",
+      city: "Glendale",
+      state: "CA",
+      postalCode: "91201",
+      country: "US",
+      primaryContactName: "Fixture Buyer",
+      primaryContactEmail: email,
+    })
+    .returning();
+
+  await db.insert(accountContact).values({
+    accountId: fixtureAccount!.id,
+    name: "Fixture Buyer",
+    email,
+    roleOnAccount: "primary",
+  });
+
+  console.log(`[seed] Fixture buyer account seeded: ${email} — use /member/login locally to sign in.`);
 }
 
 async function main() {
@@ -50,6 +217,41 @@ async function main() {
         key: "owner_daily_digest_hour_pst",
         value: 8,
         description: "Hour (America/Los_Angeles) the daily Action Center digest email sends.",
+      },
+      {
+        key: "import_markup_bps_default",
+        value: 3500,
+        description: "Default markup (bps) for import routes absent a per-route override (build prompt §9: 35%).",
+      },
+      {
+        key: "domestic_markup_bps_default",
+        value: 1750,
+        description: "Default markup (bps) for domestic routes absent a per-route override (build prompt §9: 17.5%).",
+      },
+      {
+        key: "markup_floor_bps",
+        value: 2800,
+        description: "Global markup floor (bps) flagged during catalog import review when a route's markup falls below it (build prompt §3: 28%).",
+      },
+      {
+        key: "source_check_staleness_observed_hours",
+        value: 72,
+        description: "Hours an 'observed' source_check stays valid before it's stale (build prompt §5).",
+      },
+      {
+        key: "source_check_staleness_quoted_days",
+        value: 7,
+        description: "Days a 'quoted' source_check stays valid before it's stale (build prompt §5).",
+      },
+      {
+        key: "source_check_staleness_confirmed_days",
+        value: 30,
+        description: "Days a 'confirmed' source_check stays valid absent a supplier-specific term (build prompt §5 default; real supplier terms override per route).",
+      },
+      {
+        key: "buyer_magic_link_ttl_minutes",
+        value: 15,
+        description: "Minutes a buyer sign-in magic link stays valid.",
       },
     ])
     .onConflictDoNothing();
@@ -124,6 +326,12 @@ async function main() {
       console.log("\n[seed] Muse (ai_operator) API key — shown ONCE, store it now:");
       console.log(`        ${raw}\n`);
     }
+  }
+
+  const [anyOwner] = await db.select().from(user).where(eq(user.role, "owner")).limit(1);
+  if (anyOwner) {
+    await seedCatalogFixtures(anyOwner.id);
+    await seedFixtureBuyerAccount();
   }
 
   console.log("[seed] Done.", {

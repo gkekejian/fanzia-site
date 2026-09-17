@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/db/client";
-import { account, application, applicationStatusEvent, termsAcceptance } from "@/db/schema";
+import { account, accountContact, application, applicationStatusEvent, termsAcceptance } from "@/db/schema";
 import { performOrPropose } from "@/lib/auth/rbac";
 import type { Actor } from "@/lib/auth/rbac";
 import { sendTransactionalEmail } from "@/lib/email/send";
@@ -95,6 +95,19 @@ export async function decideApplication(
           .update(termsAcceptance)
           .set({ accountId })
           .where(eq(termsAcceptance.applicationId, app.id));
+
+        // Buyer portal login (Phase 2) authenticates as an account_contact,
+        // not the admin `user` table (build prompt §14.1 identities are
+        // owner/ai_operator only) — see db/schema/account.ts's comment on
+        // accountContact anticipating exactly this wiring, and
+        // lib/auth/buyerMagicLink.ts for the login flow it enables.
+        await db.insert(accountContact).values({
+          accountId,
+          name: app.contactName,
+          email: app.contactEmail,
+          phone: app.contactPhone,
+          roleOnAccount: "primary",
+        });
       }
 
       const [updated] = await db

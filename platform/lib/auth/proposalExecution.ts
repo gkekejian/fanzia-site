@@ -2,6 +2,7 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/db/client";
 import { decideApplication } from "@/lib/applications/decide";
 import { determineTax } from "@/lib/applications/taxDetermine";
+import { publishCatalogImport } from "@/lib/catalog/import/service";
 import type { AuthedUser } from "./session";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,7 +46,9 @@ export async function executeApprovedProposal(
         },
         db,
       );
+    case "catalog_import.publish":
+      return publishCatalogImport({ importId: payload.importId as string, actor }, db);
     default:
-      throw new Error(`Execution of proposed action "${proposal.proposedAction}" is not implemented in Phase 1.`);
+      throw new Error(`Execution of proposed action "${proposal.proposedAction}" is not implemented.`);
   }
 }

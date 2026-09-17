@@ -7,3 +7,8 @@ export * from "./application";
 export * from "./terms";
 export * from "./agentProposal";
 export * from "./complianceTask";
+export * from "./catalog";
+export * from "./pricing";
+export * from "./catalogImport";
+export * from "./buyerAuth";
+export * from "./draftRequest";

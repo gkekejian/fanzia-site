@@ -36,6 +36,20 @@
       "when": 1789661383905,
       "tag": "0004_terms_acceptance_nullable_account",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789664506472,
+      "tag": "0005_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789664509867,
+      "tag": "0006_catalog_immutability_triggers",
+      "breakpoints": true
     }
   ]
 }

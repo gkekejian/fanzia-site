@@ -39,6 +39,12 @@ export const RESTRICTED_ACTIONS = new Set([
   "application.tax_determine",
   "terms.publish",
   "account.contact.notify",
+  // Phase 2: the only step in the catalog-import pipeline that writes live
+  // product/price/route data (build prompt §14: "changing prices,
+  // markups..."). Upload, staging, row review, and approve never touch
+  // those tables — see lib/catalog/import/service.ts — so only publish
+  // needs to be gated here.
+  "catalog_import.publish",
 ]);
 
 /** Absolute — no role, including owner, has a code path for these (build prompt §14.1). */
@@ -53,6 +59,21 @@ export function assertOwner(actor: Actor, context: string): asserts actor is { k
 }
 
 export class ForbiddenError extends Error {}
+
+export function actorUserId(actor: Actor): string {
+  return actor.kind === "owner" ? actor.user.id : actor.agent.id;
+}
+
+/**
+ * Build prompt §14: cost stack (supplier identity, landed cost, markup) is
+ * masked at the API layer for any agent scope lacking explicit
+ * `cost_stack:read` (test gate #33). Owners always see it; ai_operator only
+ * with the explicit scope on its API key (db/schema/user.ts `apiKey.scopes`).
+ */
+export function canSeeCostStack(actor: Actor): boolean {
+  if (actor.kind === "owner") return true;
+  return actor.agent.scopes.includes("cost_stack:read");
+}
 
 /**
  * Central gate for every mutating admin action. Owners always execute
