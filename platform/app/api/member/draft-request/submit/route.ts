@@ -17,8 +17,12 @@ export async function POST(req: NextRequest) {
   const buyer = await requireBuyer(req);
   if (buyer instanceof NextResponse) return buyer;
 
+  const json = await req.json().catch(() => null);
+
   try {
-    const created = await submitDraftRequest(db, buyer);
+    const created = await submitDraftRequest(db, buyer, {
+      importAcknowledged: json?.importAcknowledged === true,
+    });
 
     await recordAudit({
       actorType: "buyer",
@@ -30,6 +34,7 @@ export async function POST(req: NextRequest) {
         contactId: buyer.accountContactId,
         subtotalMinor: created.subtotalMinor,
         smallOrderFeeMinor: created.smallOrderFeeMinor,
+        importAcknowledged: json?.importAcknowledged === true,
       },
       ip: req.headers.get("x-forwarded-for"),
       userAgent: req.headers.get("user-agent"),

@@ -1,11 +1,12 @@
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, desc, eq, ne } from "drizzle-orm";
 import { db as defaultDb } from "@/db/client";
 import {
   account,
   invoice,
   orderRequest,
   payment,
+  shipment,
   type OrderRequestLine,
 } from "@/db/schema";
 import { getDraftRequest, clearDraftRequest } from "@/lib/catalog/draftRequest";
@@ -98,7 +99,13 @@ type DraftLine = { productId: string; qtyRequested: number };
  * member catalog, enforce the $500 minimum, disclose the $25 small-order
  * fee, set the 48-hour expiry, and clear the draft.
  */
-export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity) {
+export class ImportAcknowledgmentRequiredError extends InvoicingError {
+  constructor() {
+    super("This order includes imported product. Please acknowledge the import notice before submitting.", 400);
+  }
+}
+
+export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity, opts?: { importAcknowledged?: boolean }) {
   if (!canOrder(normalizeContactRole(buyer.contactRole))) throw new ViewerForbiddenError();
 
   const draft = await getDraftRequest(buyer.accountId, db);
@@ -109,9 +116,11 @@ export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity) {
   const priceById = new Map(catalog.map((p) => [p.id, p]));
 
   const pricedLines: OrderRequestLine[] = [];
+  let hasImportProduct = false;
   for (const line of lines) {
     const item = priceById.get(line.productId);
     if (!item) throw new UnpricedLineError();
+    if (item.requiresImportAcknowledgment) hasImportProduct = true;
     const lineTotalMinor = item.priceMinor * line.qtyRequested;
     pricedLines.push({
       productId: item.id,
@@ -122,6 +131,10 @@ export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity) {
       lineTotalMinor,
       currencyCode: item.currencyCode,
     });
+  }
+
+  if (hasImportProduct && !opts?.importAcknowledged) {
+    throw new ImportAcknowledgmentRequiredError();
   }
 
   const subtotalMinor = pricedLines.reduce((sum, l) => sum + l.lineTotalMinor, 0);
@@ -390,6 +403,11 @@ export async function getInvoiceDetail(db: AnyDb, invoiceId: string) {
     .filter((p) => p.fundsClearedAt !== null && p.fundsClearedAt.getTime() <= Date.now())
     .reduce((sum, p) => sum + p.amountMinor, 0);
   const cleared = invoiceCleared(inv.totalMinor, payments);
+  const shipments = await db
+    .select()
+    .from(shipment)
+    .where(eq(shipment.invoiceId, invoiceId))
+    .orderBy(desc(shipment.createdAt));
   return {
     invoice: inv,
     account: acct ?? null,
@@ -398,5 +416,6 @@ export async function getInvoiceDetail(db: AnyDb, invoiceId: string) {
     balanceMinor: balanceDue(inv.totalMinor, payments),
     isCleared: cleared,
     readyForFulfillment: cleared && inv.status === "paid",
+    shipments,
   };
 }

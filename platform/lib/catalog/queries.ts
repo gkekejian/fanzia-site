@@ -84,11 +84,16 @@ export async function getMemberCatalog(db: AnyDb = defaultDb): Promise<MemberPro
     .map((r) => priceByProduct.get(r.id)!.sourcingRouteId)
     .filter((id): id is string => Boolean(id));
   const checkByRoute = await latestSourceChecksByRoute(db, routeIds);
+  const routeRows = routeIds.length
+    ? await db.select().from(sourcingRoute).where(inArray(sourcingRoute.id, routeIds))
+    : [];
+  const routeTypeById = new Map(routeRows.map((r) => [r.id, r.routeType]));
 
   return priced.map((p) => {
     const price = priceByProduct.get(p.id)!;
     const check = price.sourcingRouteId ? checkByRoute.get(price.sourcingRouteId) ?? null : null;
-    return toMemberProductDTO(p, price, check);
+    const routeType = price.sourcingRouteId ? routeTypeById.get(price.sourcingRouteId) ?? null : null;
+    return toMemberProductDTO(p, price, check, routeType === "import");
   });
 }
 

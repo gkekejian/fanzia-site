@@ -108,6 +108,13 @@ function ContinueForm() {
         <p>
           Status: <span className="badge">{data.status}</span>
         </p>
+        <p style={{ color: "var(--fz-muted)" }}>
+          {data.status === "approved"
+            ? "Your application was approved — check your email for sign-in instructions to your wholesale account."
+            : data.status === "declined"
+              ? "Your application was not approved — check your email for the details."
+              : "What's next: our team reviews every application, usually within a few business days. You can upload documents above at any time to strengthen your application. We'll email you when a decision is made."}
+        </p>
 
         <h2>Documents</h2>
         {data.documents.length === 0 ? (

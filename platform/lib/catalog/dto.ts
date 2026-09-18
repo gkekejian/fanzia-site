@@ -59,12 +59,19 @@ export type MemberProductDTO = PublicProductDTO & {
   priceMinor: number;
   currencyCode: string;
   availability: MemberAvailability | null;
+  /**
+   * Terms-relevant flag: this product is sourced through an import route, so
+   * the buyer must acknowledge the import notice before ordering. Not
+   * cost, margin, supplier, or route data — those stay server-only.
+   */
+  requiresImportAcknowledgment: boolean;
 };
 
 export function toMemberProductDTO(
   p: ProductRow,
   price: Pick<PriceEpochRow, "priceMinor" | "currencyCode">,
   latestCheck: { checkedAt: Date; confidence: string; validUntil: Date } | null,
+  requiresImportAcknowledgment: boolean = false,
 ): MemberProductDTO {
   return {
     ...toPublicProductDTO(p),
@@ -79,6 +86,7 @@ export function toMemberProductDTO(
           stale: isExpired(latestCheck.validUntil),
         }
       : null,
+    requiresImportAcknowledgment,
   };
 }
 
@@ -118,8 +126,8 @@ export function toAdminProductDTO(
   latestCheck: { checkedAt: Date; confidence: string; validUntil: Date } | null,
 ): AdminProductDTO {
   const base: AdminProductDTO = price
-    ? { ...toMemberProductDTO(p, price, latestCheck), status: p.status, publiclyVisible: p.publiclyVisible }
-    : { ...toPublicProductDTO(p), id: p.id, priceMinor: 0, currencyCode: "", availability: null, status: p.status, publiclyVisible: p.publiclyVisible };
+    ? { ...toMemberProductDTO(p, price, latestCheck, route?.routeType === "import"), status: p.status, publiclyVisible: p.publiclyVisible }
+    : { ...toPublicProductDTO(p), id: p.id, priceMinor: 0, currencyCode: "", availability: null, requiresImportAcknowledgment: false, status: p.status, publiclyVisible: p.publiclyVisible };
 
   if (!canSeeCostStack || !price || !route) return base;
 

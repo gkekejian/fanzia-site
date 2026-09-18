@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatMoney } from "@/lib/format";
+import { IMPORT_CLICKWRAP_TEXT } from "@/lib/disclaimers";
 
 type DraftLine = { productId: string; qtyRequested: number };
 
@@ -14,6 +15,8 @@ type SubmitResult = {
 
 export function DraftRequestReview() {
   const [lines, setLines] = useState<DraftLine[] | null>(null);
+  const [importProductIds, setImportProductIds] = useState<Set<string>>(new Set());
+  const [importAck, setImportAck] = useState(false);
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
@@ -29,7 +32,17 @@ export function DraftRequestReview() {
         setNotes(body.draft?.notes ?? "");
       })
       .catch(() => setLines([]));
+    fetch("/api/member/catalog")
+      .then(async (res) => {
+        if (!res.ok) throw new Error();
+        const body = await res.json();
+        const items = (body.products ?? []) as { id: string; requiresImportAcknowledgment?: boolean }[];
+        setImportProductIds(new Set(items.filter((p) => p.requiresImportAcknowledgment).map((p) => p.id)));
+      })
+      .catch(() => {});
   }, []);
+
+  const hasImportProduct = (lines ?? []).some((l) => importProductIds.has(l.productId));
 
   async function save() {
     setStatus("saving");
@@ -52,7 +65,11 @@ export function DraftRequestReview() {
   async function submit() {
     setSubmitting(true);
     setSubmitError(null);
-    const res = await fetch("/api/member/draft-request/submit", { method: "POST" });
+    const res = await fetch("/api/member/draft-request/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ importAcknowledged: importAck }),
+    });
     const body = await res.json().catch(() => ({}));
     setSubmitting(false);
     if (!res.ok) {
@@ -153,6 +170,20 @@ export function DraftRequestReview() {
       )}
       <label htmlFor="notes">Notes (optional)</label>
       <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      {hasImportProduct && (
+        <div className="card" style={{ marginTop: "1rem" }} role="group" aria-labelledby="import-ack-label">
+          <label htmlFor="import-ack" style={{ display: "flex", gap: "0.6rem", alignItems: "flex-start" }}>
+            <input
+              id="import-ack"
+              type="checkbox"
+              checked={importAck}
+              onChange={(e) => setImportAck(e.target.checked)}
+              style={{ marginTop: "0.2rem" }}
+            />
+            <span id="import-ack-label">{IMPORT_CLICKWRAP_TEXT}</span>
+          </label>
+        </div>
+      )}
       <button type="button" className="btn" style={{ marginTop: "1rem" }} onClick={save} disabled={status === "saving"}>
         {status === "saving" ? "Saving…" : "Save draft"}
       </button>{" "}
@@ -161,10 +192,15 @@ export function DraftRequestReview() {
         className="btn btn-secondary"
         style={{ marginTop: "1rem" }}
         onClick={submit}
-        disabled={submitting || !lines || lines.length === 0}
+        disabled={submitting || !lines || lines.length === 0 || (hasImportProduct && !importAck)}
       >
         {submitting ? "Submitting…" : "Submit order request"}
       </button>
+      {hasImportProduct && !importAck && (
+        <p className="field-error" role="alert" style={{ marginTop: "0.5rem" }}>
+          Your draft includes imported product — check the box above to acknowledge the import notice before submitting.
+        </p>
+      )}
       {submitError && (
         <p className="field-error" role="alert" style={{ marginTop: "0.5rem" }}>
           {submitError}

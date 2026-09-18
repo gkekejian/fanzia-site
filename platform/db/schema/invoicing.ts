@@ -74,8 +74,33 @@ export const invoice = pgTable("invoice", {
 });
 
 /**
- * A manually recorded payment against an invoice — there is no live payment
- * processor; owners record card/ACH/wire payments here. funds_cleared_at is
+ * A shipment against a paid invoice. Created only after cleared funds
+ * cover the invoice total — nothing ships before cleared funds.
+ * Status lifecycle: preparing → shipped → delivered; canceled is terminal
+ * and only allowed from preparing. One active shipment per invoice.
+ */
+export const shipment = pgTable("shipment", {
+  id: idColumn(),
+  invoiceId: uuid("invoice_id")
+    .notNull()
+    .references(() => invoice.id, { onDelete: "cascade" }),
+  accountId: uuid("account_id")
+    .notNull()
+    .references(() => account.id),
+  carrier: text("carrier").notNull(),
+  trackingNumber: text("tracking_number").notNull(),
+  status: text("status").notNull().default("preparing"),
+  shippedAt: timestamp("shipped_at", { withTimezone: true }),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  notes: text("notes"),
+  cancelReason: text("cancel_reason"),
+  createdBy: uuid("created_by").references(() => user.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * A payment against an invoice — recorded manually by an owner (card/ACH/wire)
+ * or automatically by the Stripe webhook (card). funds_cleared_at is
  * computed at record time (card: immediately; ACH: +5 business days for the
  * account's first three payments, +2 after; wire: NULL until an owner
  * confirms receipt via the confirm-wire endpoint).

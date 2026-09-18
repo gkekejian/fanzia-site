@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatMoney } from "@/lib/format";
 
+type MemberShipment = {
+  status: string;
+  carrier: string;
+  trackingNumber: string;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+};
+
 type MemberInvoice = {
   id: string;
   invoiceNumber: string;
@@ -12,6 +20,7 @@ type MemberInvoice = {
   status: string;
   sentAt: string | null;
   createdAt: string;
+  shipment: MemberShipment | null;
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -95,6 +104,22 @@ export function MemberInvoices() {
                     <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>
                       {new Date(inv.createdAt).toLocaleDateString()}
                     </span>
+                    {inv.shipment && (
+                      <>
+                        <br />
+                        <span style={{ fontSize: "0.85rem" }}>
+                          {inv.shipment.status === "delivered"
+                            ? `Delivered via ${inv.shipment.carrier}`
+                            : inv.shipment.status === "shipped"
+                              ? `Shipped via ${inv.shipment.carrier}`
+                              : `Preparing shipment via ${inv.shipment.carrier}`}
+                          <br />
+                          <span style={{ color: "var(--fz-muted)" }}>
+                            Tracking: <span style={{ fontFamily: "monospace" }}>{inv.shipment.trackingNumber}</span>
+                          </span>
+                        </span>
+                      </>
+                    )}
                   </td>
                   <td>{formatMoney(inv.totalMinor)}</td>
                   <td>{formatMoney(inv.balanceMinor)}</td>

@@ -45,6 +45,19 @@ type Detail = {
   balanceMinor: number;
   isCleared: boolean;
   readyForFulfillment: boolean;
+  shipments: Shipment[];
+};
+
+type Shipment = {
+  id: string;
+  carrier: string;
+  trackingNumber: string;
+  status: string;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  notes: string | null;
+  cancelReason: string | null;
+  createdAt: string;
 };
 
 export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
@@ -57,6 +70,9 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const [payMethod, setPayMethod] = useState("card");
   const [payReference, setPayReference] = useState("");
   const [payDate, setPayDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [carrier, setCarrier] = useState("");
+  const [tracking, setTracking] = useState("");
+  const [shipNotes, setShipNotes] = useState("");
 
   async function load() {
     const res = await fetch(`/api/admin/invoices/${invoiceId}`);
@@ -141,6 +157,55 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
     setBusy(false);
     if (!res.ok) {
       setMessage(data.error ?? "Could not confirm the wire.");
+      return;
+    }
+    await load();
+  }
+
+  async function onCreateShipment(e: FormEvent) {
+    e.preventDefault();
+    if (!carrier.trim() || !tracking.trim()) {
+      setMessage("Enter a carrier and tracking number.");
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    const res = await fetch(`/api/admin/invoices/${invoiceId}/shipments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ carrier, trackingNumber: tracking, notes: shipNotes || undefined }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setMessage(data.error ?? "Could not create the shipment.");
+      return;
+    }
+    setCarrier("");
+    setTracking("");
+    setShipNotes("");
+    setMessage("Shipment created.");
+    await load();
+  }
+
+  async function onShipmentAction(shipmentId: string, action: "ship" | "deliver" | "cancel") {
+    const prompts = {
+      ship: "Mark this shipment as shipped? The buyer will be emailed the carrier and tracking number.",
+      deliver: "Mark this shipment as delivered? The buyer will be emailed.",
+      cancel: "Cancel this shipment? A canceled shipment can be replaced with a new one.",
+    } as const;
+    if (!window.confirm(prompts[action])) return;
+    setBusy(true);
+    setMessage(null);
+    const res = await fetch(`/api/admin/shipments/${shipmentId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setMessage(data.error ?? "Could not update the shipment.");
       return;
     }
     await load();
@@ -394,6 +459,99 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           </form>
         </section>
       )}
+
+      <section className="card">
+        <h2>Fulfillment</h2>
+        {detail.shipments.length === 0 && !detail.readyForFulfillment && (
+          <p style={{ color: "var(--fz-muted)" }}>
+            No shipments yet. A shipment can be created once cleared funds cover the total.
+          </p>
+        )}
+        {detail.shipments.map((s) => (
+          <div key={s.id} className="card" style={{ marginTop: "0.75rem" }}>
+            <p>
+              <strong>{s.carrier}</strong> · <span style={{ fontFamily: "monospace" }}>{s.trackingNumber}</span>
+              <br />
+              <span className="badge">{s.status}</span>
+              {s.shippedAt && <span> · Shipped {new Date(s.shippedAt).toLocaleDateString()}</span>}
+              {s.deliveredAt && <span> · Delivered {new Date(s.deliveredAt).toLocaleDateString()}</span>}
+              {s.status === "canceled" && s.cancelReason && <span> · {s.cancelReason}</span>}
+            </p>
+            {s.notes && <p style={{ color: "var(--fz-muted)" }}>{s.notes}</p>}
+            <div>
+              {s.status === "preparing" && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    style={{ padding: "0.3rem 0.8rem" }}
+                    onClick={() => onShipmentAction(s.id, "ship")}
+                  >
+                    Mark shipped
+                  </button>{" "}
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={busy}
+                    style={{ padding: "0.3rem 0.8rem" }}
+                    onClick={() => onShipmentAction(s.id, "cancel")}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+              {s.status === "shipped" && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busy}
+                  style={{ padding: "0.3rem 0.8rem" }}
+                  onClick={() => onShipmentAction(s.id, "deliver")}
+                >
+                  Mark delivered
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        {detail.readyForFulfillment && !detail.shipments.some((s) => s.status !== "canceled") && (
+          <form onSubmit={onCreateShipment} style={{ marginTop: "1rem" }}>
+            <h3>New shipment</h3>
+            <label htmlFor="carrier">Carrier</label>
+            <input
+              id="carrier"
+              value={carrier}
+              onChange={(e) => setCarrier(e.target.value)}
+              placeholder="UPS, FedEx, USPS…"
+              style={{ maxWidth: "20rem" }}
+            />
+            <label htmlFor="tracking" style={{ marginTop: "0.75rem" }}>
+              Tracking number
+            </label>
+            <input
+              id="tracking"
+              value={tracking}
+              onChange={(e) => setTracking(e.target.value)}
+              style={{ maxWidth: "20rem" }}
+            />
+            <label htmlFor="ship-notes" style={{ marginTop: "0.75rem" }}>
+              Notes (optional)
+            </label>
+            <input
+              id="ship-notes"
+              value={shipNotes}
+              onChange={(e) => setShipNotes(e.target.value)}
+              style={{ maxWidth: "20rem" }}
+            />
+            <div>
+              <button type="submit" className="btn" disabled={busy} style={{ marginTop: "1rem" }}>
+                {busy ? "Creating…" : "Create shipment"}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
     </main>
   );
 }

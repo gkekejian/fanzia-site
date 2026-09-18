@@ -71,6 +71,13 @@
       "when": 1789715100000,
       "tag": "0009_cashbook",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789716963161,
+      "tag": "0010_fulfillment",
+      "breakpoints": true
     }
   ]
 }
