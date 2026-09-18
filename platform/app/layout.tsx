@@ -14,10 +14,10 @@ export const metadata: Metadata = {
 // so the bootstrap would silently never run in production.
 export const dynamic = "force-dynamic";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Once per server process: pending migrations, then real-owner provisioning.
-  // No-op during build and on repeat renders; never throws.
-  ensureStartupTasks();
+  // Awaited (not fire-and-forget) — see ensureStartupTasks.
+  await ensureStartupTasks();
   return (
     <html lang="en">
       <body>{children}</body>

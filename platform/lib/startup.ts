@@ -70,18 +70,28 @@ export async function runStartupTasks(): Promise<void> {
   }
 }
 
-let started = false;
+let startupPromise: Promise<void> | null = null;
 
 /**
- * Fire-and-forget entry point, called from the root layout. Runs the startup
+ * Entry point, called (and awaited) from the root layout. Runs the startup
  * tasks exactly once per server process; skipped during `next build`
- * prerendering and when there is nothing to do. Safe to call on every render.
+ * prerendering. Returns a shared promise so concurrent first renders all
+ * wait for the same run instead of racing it.
+ *
+ * The caller MUST await this. Fire-and-forget does not work on serverless:
+ * once the HTTP response is sent the instance can be frozen, which tears
+ * down the DB connection mid-migration ("Connection terminated
+ * unexpectedly"). Awaiting keeps the function alive until the work lands.
+ * Never rejects: a failed boot task is logged, not fatal.
  */
-export function ensureStartupTasks(): void {
-  if (started) return;
-  if (process.env.NEXT_PHASE === "phase-production-build") return;
-  started = true;
-  runStartupTasks().catch((err) => {
-    console.error("[startup] ensureStartupTasks failed:", err);
-  });
+export function ensureStartupTasks(): Promise<void> {
+  if (!startupPromise) {
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return Promise.resolve();
+    }
+    startupPromise = runStartupTasks().catch((err) => {
+      console.error("[startup] ensureStartupTasks failed:", err);
+    });
+  }
+  return startupPromise;
 }
