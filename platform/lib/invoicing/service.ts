@@ -183,6 +183,12 @@ function offerTotalMinor(req: OrderRequestRow): number {
   return req.subtotalMinor + (req.smallOrderFeeMinor ?? 0);
 }
 
+/** Direct buyer-facing URL for an offer (used in notification emails). */
+function offerUrl(requestId: string): string {
+  const base = process.env.APP_BASE_URL ?? "http://localhost:3100";
+  return `${base}/member/order-requests/${requestId}`;
+}
+
 /**
  * Rollover policy enforcement for a single order request — the heart of
  * the offer state machine.
@@ -259,7 +265,8 @@ export async function processExpiredOffer(
             `Good news — your Fanzia wholesale offer of ${total} was automatically extended ` +
             `another 48 hours. It is now valid until ${rolled.expiresAt.toLocaleString()}.\n\n` +
             `This automatic extension happens once per offer; nothing is needed from you right now. ` +
-            `If it expires again, you'll be asked to review and reaccept the terms.`,
+            `If it expires again, you'll be asked to review and reaccept the terms.\n\n` +
+            `View your offer: ${offerUrl(rolled.id)}`,
         },
         "offer.auto_rolled_over",
       );
@@ -304,7 +311,7 @@ export async function processExpiredOffer(
           `You have two options:\n` +
           `1. Review and reaccept the same terms to receive a fresh 48-hour offer.\n` +
           `2. Cancel the offer — no payment was taken for it, so there is nothing to refund.\n\n` +
-          `Sign in to your account to choose.`,
+          `Review and choose here: ${offerUrl(expired.id)}`,
       },
       "offer.expired_final",
     );
