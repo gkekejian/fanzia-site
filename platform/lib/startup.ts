@@ -35,9 +35,21 @@ export async function runStartupTasks(): Promise<void> {
   try {
     await lockClient.query(`SELECT pg_advisory_lock(${MIGRATION_LOCK_KEY})`);
     try {
-      await migrate(drizzle(pool), {
-        migrationsFolder: path.join(process.cwd(), "db", "migrations"),
-      });
+      const migrationsFolder = path.join(process.cwd(), "db", "migrations");
+      // Visibility: on serverless the migrations folder must be bundled
+      // (see outputFileTracingIncludes in next.config.js). Log what we find
+      // so a missing folder is obvious in the function logs instead of a
+      // bare ENOENT from the migrator.
+      let migrationFiles: string[];
+      try {
+        migrationFiles = (await import("fs")).readdirSync(migrationsFolder);
+      } catch {
+        migrationFiles = [];
+      }
+      console.log(
+        `[startup] migrations folder: ${migrationsFolder} (${migrationFiles.length} files)`
+      );
+      await migrate(drizzle(pool), { migrationsFolder });
       console.log("[startup] database migrations are up to date");
     } finally {
       await lockClient.query(`SELECT pg_advisory_unlock(${MIGRATION_LOCK_KEY})`);
