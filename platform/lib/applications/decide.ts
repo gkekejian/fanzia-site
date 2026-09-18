@@ -11,7 +11,16 @@ type AnyDb = PgDatabase<any, any, any>;
 
 export class NotFoundError extends Error {}
 
-export type ApplicationDecision = "approved" | "declined" | "needs_review";
+/**
+ * Terminal decisions are final: once an application is approved or declined,
+ * it cannot be re-decided (re-approving would resend emails and risk
+ * duplicate side effects; flipping approved→declined would orphan the
+ * created buyer account). The API maps this to 409.
+ */
+export class AlreadyDecidedError extends Error {}
+
+import type { ApplicationDecision } from "./decisionReasons";
+export type { ApplicationDecision } from "./decisionReasons";
 
 /**
  * One function backs both the direct admin action and re-execution of an
@@ -29,6 +38,9 @@ export async function decideApplication(
 ) {
   const [app] = await db.select().from(application).where(eq(application.id, input.applicationId)).limit(1);
   if (!app) throw new NotFoundError("Application not found");
+  if (app.status === "approved" || app.status === "declined") {
+    throw new AlreadyDecidedError(`Application was already ${app.status} and cannot be re-decided.`);
+  }
 
   const action =
     input.decision === "approved"

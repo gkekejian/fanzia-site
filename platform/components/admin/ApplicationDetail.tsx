@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import {
+  DECISION_REASONS,
+  defaultReasonCode,
+  type ApplicationDecision,
+} from "@/lib/applications/decisionReasons";
 
 type Document = {
   id: string;
@@ -54,11 +59,19 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
   const [data, setData] = useState<ApplicationData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [reason, setReason] = useState("");
+  const [decision, setDecision] = useState<ApplicationDecision>("approved");
+  const [reasonCode, setReasonCode] = useState(defaultReasonCode("approved"));
+  const [reasonNote, setReasonNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [taxStatus, setTaxStatus] = useState("exempt");
   const [taxEvidenceKey, setTaxEvidenceKey] = useState("");
   const [taxNotes, setTaxNotes] = useState("");
+
+  function onDecisionChange(next: ApplicationDecision) {
+    setDecision(next);
+    setReasonCode(defaultReasonCode(next));
+    setReasonNote("");
+  }
 
   async function load() {
     const res = await fetch(`/api/admin/applications/${applicationId}`);
@@ -74,13 +87,14 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applicationId]);
 
-  async function decide(decision: "approved" | "declined" | "needs_review") {
+  async function onDecide(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setBusy(true);
     setActionMessage(null);
     const res = await fetch(`/api/admin/applications/${applicationId}/decision`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision, reason: reason || undefined }),
+      body: JSON.stringify({ decision, reasonCode, reasonNote: reasonNote || undefined }),
     });
     const body = await res.json().catch(() => ({}));
     setBusy(false);
@@ -189,19 +203,51 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
       <section className="card">
         <h2>Approval decision</h2>
         <p>Approving or declining is separate from — and never grants — tax-exempt status.</p>
-        <label htmlFor="reason">Reason (optional, included in the applicant&apos;s email)</label>
-        <textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
-        <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
-          <button type="button" className="btn" disabled={busy} onClick={() => decide("approved")}>
-            Approve
-          </button>
-          <button type="button" className="btn btn-danger" disabled={busy} onClick={() => decide("declined")}>
-            Decline
-          </button>
-          <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => decide("needs_review")}>
-            Flag needs review
-          </button>
-        </div>
+        {app.status === "approved" || app.status === "declined" ? (
+          <p>
+            Decision recorded: <span className={`badge ${app.status === "approved" ? "badge-ok" : "badge-bad"}`}>{app.status}</span>
+            {app.decisionReason && (
+              <>
+                {" — "}reason: {app.decisionReason}
+              </>
+            )}
+          </p>
+        ) : (
+          <form onSubmit={onDecide}>
+            <label htmlFor="decision">Decision</label>
+            <select id="decision" value={decision} onChange={(e) => onDecisionChange(e.target.value as ApplicationDecision)}>
+              <option value="approved">Approve</option>
+              <option value="declined">Decline</option>
+              <option value="needs_review">Flag needs review</option>
+            </select>
+
+            <label htmlFor="reasonCode">Reason (included in the applicant&apos;s email)</label>
+            <select id="reasonCode" value={reasonCode} onChange={(e) => setReasonCode(e.target.value)}>
+              {DECISION_REASONS[decision].map((r) => (
+                <option key={r.code} value={r.code}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="reasonNote">
+              Note (optional{reasonCode === "other" ? ", required for “Other”" : ""})
+            </label>
+            <input
+              id="reasonNote"
+              type="text"
+              value={reasonNote}
+              onChange={(e) => setReasonNote(e.target.value)}
+              placeholder={reasonCode === "other" ? "Describe the reason…" : "Anything extra for the record…"}
+              required={reasonCode === "other"}
+              maxLength={500}
+            />
+
+            <button type="submit" className="btn" disabled={busy} style={{ marginTop: "1rem" }}>
+              {busy ? "Recording…" : "Record decision"}
+            </button>
+          </form>
+        )}
       </section>
 
       <section className="card">
