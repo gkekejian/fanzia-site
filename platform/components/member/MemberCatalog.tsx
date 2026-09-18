@@ -1,48 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { COMMERCIAL_DISCLOSURE_SHORT } from "@/lib/disclaimers";
-
-type MemberProduct = {
-  id: string;
-  sku: string;
-  name: string;
-  editionLanguage: string;
-  origin: string;
-  condition: string;
-  packsPerUnit: number;
-  cardsPerPack: number | null;
-  releaseStatus: string;
-  description: string;
-  priceMinor: number;
-  currencyCode: string;
-  availability: { checkedAt: string; confidence: string; statusLabel: string; stale: boolean } | null;
-  msrpMinor: number | null;
-  marginMinor: number | null;
-  marginBps: number | null;
-  trending: boolean;
-  trendingRank: number | null;
-};
-
-// Client-side display only — the currency table is the source of truth
-// server-side (db/schema/currency.ts). Seeded currencies only.
-const EXPONENT: Record<string, number> = { USD: 2, JPY: 0 };
-
-function formatPrice(minor: number, currencyCode: string): string {
-  const exponent = EXPONENT[currencyCode] ?? 2;
-  const amount = minor / 10 ** exponent;
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: currencyCode || "USD" }).format(amount);
-}
-
-/** Buyer's per-unit retail margin vs MSRP, e.g. "$4.50 (18.0%)" — "—" when MSRP is unknown. */
-function formatMargin(p: MemberProduct): string {
-  if (p.marginMinor === null || p.marginBps === null) return "—";
-  const pct = (p.marginBps / 100).toFixed(1);
-  return `${formatPrice(p.marginMinor, p.currencyCode)} (${pct}%)`;
-}
+import {
+  applyFilter,
+  draftSummaryNames,
+  EMPTY_FILTER,
+  searchMatches,
+  type ProductFilter,
+  type ShoppingProduct,
+} from "@/lib/member/shopping";
+import { useDraft } from "./useDraft";
+import { ProductCard } from "./ProductCard";
+import { StickyDraftBar } from "./StickyDraftBar";
+import { SearchAndQuickAdd } from "./SearchAndQuickAdd";
+import { CuratedRows } from "./CuratedRows";
+import { FilterSheet } from "./FilterSheet";
 
 /** Trending products first (by rank), then everything else in catalog order. */
-function sortTrendingFirst(products: MemberProduct[]): MemberProduct[] {
+function sortTrendingFirst(products: ShoppingProduct[]): ShoppingProduct[] {
   return [...products].sort((a, b) => {
     const ra = a.trendingRank ?? Number.MAX_SAFE_INTEGER;
     const rb = b.trendingRank ?? Number.MAX_SAFE_INTEGER;
@@ -51,19 +27,22 @@ function sortTrendingFirst(products: MemberProduct[]): MemberProduct[] {
 }
 
 export function MemberCatalog() {
-  const [products, setProducts] = useState<MemberProduct[] | null>(null);
+  const [products, setProducts] = useState<ShoppingProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [qty, setQty] = useState<Record<string, number>>({});
-  const [savedProductId, setSavedProductId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<ProductFilter>({ ...EMPTY_FILTER });
+  const [boughtBeforeIds, setBoughtBeforeIds] = useState<Set<string>>(new Set());
+  const [resumeDismissed, setResumeDismissed] = useState(false);
   const [disclosureDismissed, setDisclosureDismissed] = useState(false);
+
+  const { lines, qtyById, setQty, saveError } = useDraft();
 
   useEffect(() => {
     try {
-      if (sessionStorage.getItem("fz-commercial-disclosure-dismissed") === "1") {
-        setDisclosureDismissed(true);
-      }
+      if (sessionStorage.getItem("fz-commercial-disclosure-dismissed") === "1") setDisclosureDismissed(true);
+      if (sessionStorage.getItem("fz-resume-dismissed") === "1") setResumeDismissed(true);
     } catch {
-      // storage unavailable — banner simply shows again next load
+      // storage unavailable — banners simply show again next load
     }
   }, []);
 
@@ -75,68 +54,63 @@ export function MemberCatalog() {
         setProducts(body.products);
       })
       .catch((err) => setError(err.message));
-
-    fetch("/api/member/draft-request")
+    fetch("/api/member/purchased-products")
       .then(async (res) => {
         if (!res.ok) return;
         const body = await res.json();
-        const initial: Record<string, number> = {};
-        for (const line of body.draft?.lines ?? []) {
-          initial[line.productId] = line.qtyRequested;
-        }
-        setQty(initial);
+        setBoughtBeforeIds(new Set(body.productIds ?? []));
       })
       .catch(() => {});
   }, []);
 
-  async function addToDraft(productId: string) {    const requested = qty[productId] ?? 0;
-    if (requested <= 0) return;
+  const visible = useMemo(() => {
+    if (!products) return null;
+    const searched = query.trim() ? products.filter((p) => searchMatches(query, p)) : products;
+    return sortTrendingFirst(applyFilter(searched, filter, boughtBeforeIds));
+  }, [products, query, filter, boughtBeforeIds]);
 
-    const draftRes = await fetch("/api/member/draft-request");
-    const draftBody = draftRes.ok ? await draftRes.json() : { draft: { lines: [], notes: "" } };
-    const existingLines: { productId: string; qtyRequested: number }[] = draftBody.draft?.lines ?? [];
-    const withoutThis = existingLines.filter((l) => l.productId !== productId);
-    const nextLines = [...withoutThis, { productId, qtyRequested: requested }];
-
-    const res = await fetch("/api/member/draft-request", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lines: nextLines, notes: draftBody.draft?.notes ?? "" }),
-    });
-    if (res.ok) {
-      setSavedProductId(productId);
-      setTimeout(() => setSavedProductId((cur) => (cur === productId ? null : cur)), 2000);
-    }
-  }
-
-  // Sticky draft summary, computed client-side from the already-fetched
-  // draft quantities and catalog prices — no extra request.
-  const priceById = new Map((products ?? []).map((p) => [p.id, p]));
-  let draftUnits = 0;
-  let draftSubtotalMinor = 0;
-  let draftCurrency = "USD";
-  for (const [productId, q] of Object.entries(qty)) {
-    const p = priceById.get(productId);
-    if (!p || !(q > 0)) continue;
-    draftUnits += q;
-    draftSubtotalMinor += q * p.priceMinor;
-    draftCurrency = p.currencyCode;
-  }
-  const orderedProducts = products ? sortTrendingFirst(products) : null;
+  const browsing = query.trim() !== "" || Object.values(filter).some(Boolean);
+  const savedLines = lines ?? [];
+  const nameById = new Map((products ?? []).map((p) => [p.id, p.name]));
+  const priceById = useMemo(
+    () => new Map((products ?? []).map((p) => [p.id, { priceMinor: p.priceMinor }])),
+    [products],
+  );
 
   return (
-    <main className="container" style={{ maxWidth: "1100px" }}>
-      <h1>Member catalog</h1>
-      {draftUnits > 0 && (
-        <div className="draft-banner" role="status" style={{ position: "sticky", top: 0, zIndex: 5 }}>
-          Draft: {draftUnits} item{draftUnits === 1 ? "" : "s"} · {formatPrice(draftSubtotalMinor, draftCurrency)}{" "}
-          — <a href="/member/draft-request">Review draft →</a>
+    <main className="container catalog-page" style={{ maxWidth: "1100px" }}>
+      <h1>Catalog</h1>
+
+      {savedLines.length > 0 && !resumeDismissed && (
+        <div className="draft-banner resume-banner" role="status">
+          <span>
+            <strong>Resume your draft</strong> — {draftSummaryNames(savedLines, nameById)}{" "}
+            <a href="/member/draft-request">Continue →</a>
+          </span>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ padding: "0.3rem 0.8rem", flexShrink: 0 }}
+            aria-label="Dismiss resume draft banner"
+            onClick={() => {
+              setResumeDismissed(true);
+              try {
+                sessionStorage.setItem("fz-resume-dismissed", "1");
+              } catch {
+                // storage unavailable — banner simply shows again next load
+              }
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
-      <p>
-        Prices shown are wholesale item prices. Outbound shipping and applicable sales tax are calculated separately
-        at request time — this is not a delivered price.
+
+      <p className="fee-strip">
+        Wholesale orders have a <strong>$500 minimum</strong>. Orders under <strong>$750</strong> include a{" "}
+        <strong>$25 small-order fee</strong> — shown on every screen before you submit, never first at invoice.
       </p>
+
       {!disclosureDismissed && (
         <div className="draft-banner" role="note" style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", fontWeight: 400 }}>
           <span style={{ flex: 1 }}>{COMMERCIAL_DISCLOSURE_SHORT}</span>
@@ -158,89 +132,78 @@ export function MemberCatalog() {
           </button>
         </div>
       )}
+
+      {products && (
+        <SearchAndQuickAdd
+          products={products}
+          query={query}
+          onQueryChange={setQuery}
+          qtyById={qtyById}
+          onQtyChange={setQty}
+        />
+      )}
+
+      {products && (
+        <FilterSheet
+          products={products}
+          filter={filter}
+          onChange={setFilter}
+          boughtBeforeCount={boughtBeforeIds.size}
+        />
+      )}
+
+      {saveError && (
+        <p className="field-error" role="alert">
+          {saveError}
+        </p>
+      )}
       {error && (
         <p className="field-error" role="alert">
           {error}
         </p>
       )}
       {!products && !error && <p aria-live="polite">Loading…</p>}
-      {orderedProducts && orderedProducts.length === 0 && <p>No priced products are available yet.</p>}
-      {orderedProducts && orderedProducts.length > 0 && (
-        <table>
-          <caption className="visually-hidden">Member catalog with wholesale pricing and availability</caption>
-          <thead>
-            <tr>
-              <th scope="col">Product</th>
-              <th scope="col">Price</th>
-              <th scope="col">Your margin</th>
-              <th scope="col">Availability</th>
-              <th scope="col">Qty</th>
-              <th scope="col"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {orderedProducts.map((p) => (
-              <tr key={p.id}>
-                <td>
-                  <strong>{p.name}</strong>{" "}
-                  {p.trending && (
-                    <span className="badge badge-ok" title="Among the most-ordered products in the last 30 days">
-                      🔥 Trending
-                    </span>
-                  )}
-                  <br />
-                  <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>
-                    {p.sku} · {p.editionLanguage} · {p.condition === "sealed" ? "Sealed" : "No shrink"}
-                    {p.marginMinor !== null && p.packsPerUnit > 0 && (
-                      <> · about {formatPrice(p.marginMinor / p.packsPerUnit, p.currencyCode)}/pack margin at MSRP</>
-                    )}
-                  </span>
-                </td>
-                <td>
-                  {formatPrice(p.priceMinor, p.currencyCode)}
-                  <br />
-                  <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>
-                    {p.msrpMinor !== null ? `MSRP ${formatPrice(p.msrpMinor, p.currencyCode)}` : "MSRP unknown"}
-                  </span>
-                </td>
-                <td title={p.marginBps !== null ? "Your potential retail margin per unit vs manufacturer MSRP" : "MSRP unknown — margin not shown rather than guessed"}>
-                  {formatMargin(p)}
-                </td>
-                <td>
-                  {p.availability ? (
-                    <span title={p.availability.confidence}>
-                      {p.availability.statusLabel}
-                      {p.availability.stale ? " (needs refresh)" : ""}
-                    </span>
-                  ) : (
-                    <span style={{ color: "var(--fz-muted)" }}>Not yet checked</span>
-                  )}
-                </td>
-                <td style={{ width: "5.5rem" }}>
-                  <label htmlFor={`qty-${p.id}`} className="visually-hidden">
-                    Quantity for {p.name}
-                  </label>
-                  <input
-                    id={`qty-${p.id}`}
-                    type="number"
-                    min={0}
-                    value={qty[p.id] ?? ""}
-                    onChange={(e) => setQty((cur) => ({ ...cur, [p.id]: Number(e.target.value) }))}
-                  />
-                </td>
-                <td>
-                  <button type="button" className="btn btn-secondary" style={{ padding: "0.3rem 0.8rem" }} onClick={() => addToDraft(p.id)}>
-                    {savedProductId === p.id ? "Saved ✓" : "Save to draft"}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      {products && !browsing && (
+        <CuratedRows products={products} qtyById={qtyById} onQtyChange={setQty} />
       )}
-      <p style={{ marginTop: "1.5rem" }}>
-        <a href="/member/draft-request">Review your draft request →</a>
-      </p>
+
+      {visible && (
+        <>
+          {browsing && (
+            <h2 className="catalog-section-title">
+              {visible.length === 0 ? "No matches" : `${visible.length} result${visible.length === 1 ? "" : "s"}`}
+              {query.trim() && (
+                <>
+                  {" "}
+                  for “{query.trim()}”{" "}
+                  <button type="button" className="link-btn" onClick={() => setQuery("")}>
+                    clear
+                  </button>
+                </>
+              )}
+            </h2>
+          )}
+          {!browsing && <h2 className="catalog-section-title">All products</h2>}
+          {visible.length === 0 && (
+            <p>
+              Nothing matches — try a different set code or clear the filters.{" "}
+              <button type="button" className="link-btn" onClick={() => { setQuery(""); setFilter({ ...EMPTY_FILTER }); }}>
+                Reset catalog
+              </button>
+            </p>
+          )}
+          {visible.length > 0 && (
+            <div className="product-grid">
+              {visible.map((p) => (
+                <ProductCard key={p.id} product={p} qty={qtyById.get(p.id) ?? 0} onQtyChange={setQty} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <StickyDraftBar lines={savedLines} priceById={priceById} />
     </main>
   );
 }

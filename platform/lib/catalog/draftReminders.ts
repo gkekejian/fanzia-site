@@ -131,6 +131,7 @@ export async function runAbandonedDraftSweep(
       marginTotalMinor: number | null;
       resumeUrl: string;
       formatMoney: (minor: number) => string;
+      namedLines?: { name: string; qty: number }[];
     }) => string;
   },
   db: AnyDb = defaultDb,
@@ -149,6 +150,7 @@ export async function runAbandonedDraftSweep(
     let marginTotalMinor = 0;
     let marginKnown = false;
     const products = new Set<string>();
+    const namedByQty: { name: string; qty: number }[] = [];
 
     for (const line of draft.lines) {
       const p = priceById.get(line.productId);
@@ -156,6 +158,7 @@ export async function runAbandonedDraftSweep(
       products.add(line.productId);
       units += line.qtyRequested;
       subtotalMinor += line.qtyRequested * p.priceMinor;
+      namedByQty.push({ name: p.name, qty: line.qtyRequested });
       if (p.marginMinor !== null) {
         marginKnown = true;
         marginTotalMinor += line.qtyRequested * p.marginMinor;
@@ -166,6 +169,11 @@ export async function runAbandonedDraftSweep(
     // meaningful to remind about; skip without logging so a future
     // re-listed product can still trigger a reminder.
     if (products.size === 0) continue;
+
+    // Name the sets in the reminder ("3× Prismatic Evolutions Booster
+    // Box…") — naming contents beats generic "come back" copy.
+    namedByQty.sort((a, b) => b.qty - a.qty);
+    const namedLines = namedByQty.slice(0, 4);
 
     try {
       await input.sendEmail({
@@ -180,6 +188,7 @@ export async function runAbandonedDraftSweep(
           marginTotalMinor: marginKnown ? marginTotalMinor : null,
           resumeUrl: input.resumeUrl,
           formatMoney: input.formatMoney,
+          namedLines,
         }),
       });
       await logDraftReminder(draft.accountId, draft.draftUpdatedAt, db);
