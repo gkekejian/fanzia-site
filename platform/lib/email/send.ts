@@ -41,3 +41,26 @@ export async function sendTransactionalEmail(params: {
   }
   return { delivered: true, loggedOnly: false, id: data?.id };
 }
+
+/**
+ * Best-effort notification sender for emails that accompany an action whose
+ * result must NOT depend on delivery (application confirmations, decision
+ * notices, owner alerts). A failed notification is logged loudly as
+ * [email:notify-failed] but never throws — the caller's action already
+ * succeeded, and failing the request would produce duplicate submissions,
+ * retried approvals, or lost proposals.
+ *
+ * The magic-link request routes are the deliberate exception: there the
+ * email IS the action, so they use sendTransactionalEmail and let failures
+ * surface honestly as 500s.
+ */
+export async function sendNotificationEmail(
+  params: { to: string; subject: string; text: string; html?: string },
+  context: string,
+): Promise<void> {
+  try {
+    await sendTransactionalEmail(params);
+  } catch (err) {
+    console.error("[email:notify-failed]", context, err instanceof Error ? err.message : String(err));
+  }
+}

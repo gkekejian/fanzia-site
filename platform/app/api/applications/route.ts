@@ -4,7 +4,7 @@ import { application, termsAcceptance } from "@/db/schema";
 import { applicationSchema } from "@/lib/validation/application";
 import { scoreApplication } from "@/lib/applications/triage";
 import { generateToken, hashToken } from "@/lib/crypto";
-import { sendTransactionalEmail } from "@/lib/email/send";
+import { sendNotificationEmail } from "@/lib/email/send";
 import { recordAudit } from "@/lib/audit";
 import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
@@ -87,11 +87,13 @@ export async function POST(req: NextRequest) {
   });
 
   const resumeUrl = `${process.env.APP_BASE_URL ?? "http://localhost:3100"}/apply/continue?token=${rawResumeToken}`;
-  await sendTransactionalEmail({
+  // Best-effort: the application is already saved; a failed confirmation
+  // email must not 500 the submission (would cause duplicate applications).
+  await sendNotificationEmail({
     to: input.contactEmail,
     subject: "Your Fanzia wholesale application",
     text: `Thanks for applying to Fanzia wholesale. You can check your application status or add documents any time at:\n\n${resumeUrl}\n\nThis link is valid for ${ttlHours} hours.`,
-  });
+  }, "application.confirmation");
 
   const reviewUrl = `${process.env.APP_BASE_URL ?? "http://localhost:3100"}/admin/applications/${created!.id}`;
   await notifyOwners(

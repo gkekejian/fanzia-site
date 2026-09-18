@@ -2,7 +2,7 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 import { and, eq } from "drizzle-orm";
 import { db as defaultDb } from "@/db/client";
 import { user as userTable } from "@/db/schema";
-import { sendTransactionalEmail } from "@/lib/email/send";
+import { sendNotificationEmail } from "@/lib/email/send";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PgDatabase<any, any, any>;
@@ -22,5 +22,11 @@ export async function notifyOwners(subject: string, text: string, db: AnyDb = de
     .from(userTable)
     .where(and(eq(userTable.role, "owner"), eq(userTable.active, true)));
 
-  await Promise.all(owners.map((owner) => sendTransactionalEmail({ to: owner.email, subject, text })));
+  // Best-effort: a failed owner alert must never fail the action that
+  // triggered it (would produce duplicate applications / lost proposals).
+  await Promise.all(
+    owners.map((owner) =>
+      sendNotificationEmail({ to: owner.email, subject, text }, "notify-owners"),
+    ),
+  );
 }

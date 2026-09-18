@@ -4,7 +4,7 @@ import { db as defaultDb } from "@/db/client";
 import { account, accountContact, application, applicationStatusEvent, termsAcceptance } from "@/db/schema";
 import { performOrPropose } from "@/lib/auth/rbac";
 import type { Actor } from "@/lib/auth/rbac";
-import { sendTransactionalEmail } from "@/lib/email/send";
+import { sendNotificationEmail } from "@/lib/email/send";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PgDatabase<any, any, any>;
@@ -134,11 +134,13 @@ export async function decideApplication(
         input.decision === "approved"
           ? `Good news — your Fanzia wholesale application has been approved. We'll be in touch with next steps.${input.reason ? `\n\nNote: ${input.reason}` : ""}`
           : `Thanks for applying to Fanzia wholesale. We're unable to approve your application at this time.${input.reason ? `\n\nReason: ${input.reason}` : ""}`;
-      await sendTransactionalEmail({
+      // Best-effort: the decision is already saved above; a failed notice
+      // email must not 500 the request (would invite a retried approval).
+      await sendNotificationEmail({
         to: app.contactEmail,
         subject: input.decision === "approved" ? "Your Fanzia wholesale application: approved" : "Your Fanzia wholesale application: update",
         text: emailBody,
-      });
+      }, "application.decision");
 
       return updated;
     },

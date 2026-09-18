@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
+import { linkErrorMessage } from "@/lib/auth/linkErrors";
 
-export default function AdminLoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const linkError = linkErrorMessage(searchParams.get("error"));
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -39,6 +43,11 @@ export default function AdminLoginPage() {
           <p role="status">If that email is registered, a sign-in link has been sent. Check your inbox.</p>
         ) : (
           <form onSubmit={onSubmit}>
+            {linkError && (
+              <p className="field-error" role="alert">
+                {linkError}
+              </p>
+            )}
             {error && (
               <p className="field-error" role="alert">
                 {error}
@@ -53,5 +62,13 @@ export default function AdminLoginPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
