@@ -23,6 +23,19 @@ export const channelType = pgEnum("channel_type", [
 export const taxStatus = pgEnum("tax_status", ["pending", "exempt", "taxable"]);
 
 /**
+ * Fanzia-as-client (design doc 2026-09-18 §1.1): 'internal' marks Fanzia's
+ * own buyer account ("Fanzia Vending — Internal"), used for vending
+ * restock orders. Internal accounts skip the $25 sub-$750 small-order
+ * fee (it's our own money moving between our own pockets) and are
+ * excluded from buyer-facing aggregate stats; they compete in the same
+ * allocation math (quantity, MOQs, case sizes) as everyone else. Every
+ * other buyer is 'external'.
+ */
+export const accountKind = pgEnum("account_kind", ["internal", "external"]);
+
+export type AccountKind = (typeof accountKind.enumValues)[number];
+
+/**
  * Created only when an application is approved (build prompt §8: "Create
  * the account only upon approval, or explicitly clean up abandoned pending
  * accounts"). No EIN column exists here or anywhere in this schema.
@@ -32,6 +45,7 @@ export const account = pgTable("account", {
   legalName: text("legal_name").notNull(),
   channelType: channelType("channel_type").notNull(),
   taxStatus: taxStatus("tax_status").notNull().default("pending"),
+  kind: accountKind("kind").notNull().default("external"),
   addressLine1: text("address_line1").notNull(),
   addressLine2: text("address_line2"),
   city: text("city").notNull(),

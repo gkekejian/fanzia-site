@@ -127,6 +127,13 @@
       "when": 1789757043607,
       "tag": "0015_expiry_nudge",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789758000000,
+      "tag": "0016_internal_buyer",
+      "breakpoints": true
     }
   ]
 }

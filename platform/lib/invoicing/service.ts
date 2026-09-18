@@ -144,7 +144,15 @@ export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity, opts?:
 
   const subtotalMinor = pricedLines.reduce((sum, l) => sum + l.lineTotalMinor, 0);
   if (!meetsMinimum(subtotalMinor)) throw new BelowMinimumError(subtotalMinor);
-  const smallOrderFeeMinor = computeSmallOrderFee(subtotalMinor);
+  // The $25 small-order fee is external-only: Fanzia's own internal buyer
+  // never pays it (Fanzia-as-client design 2026-09-18 §1.1).
+  const [acct] = await db
+    .select({ kind: account.kind })
+    .from(account)
+    .where(eq(account.id, buyer.accountId))
+    .limit(1);
+  const accountKind = acct?.kind === "internal" ? "internal" : "external";
+  const smallOrderFeeMinor = computeSmallOrderFee(subtotalMinor, accountKind);
 
   const [created] = await db
     .insert(orderRequest)

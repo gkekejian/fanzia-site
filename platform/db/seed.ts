@@ -253,6 +253,12 @@ async function main() {
         value: 15,
         description: "Minutes a buyer sign-in magic link stays valid.",
       },
+      {
+        key: "internal_transfer_pricing",
+        value: "same_price",
+        description:
+          "Transfer pricing for Fanzia's own internal vending buyer: 'same_price' invoices internal orders at the published wholesale price book; 'at_cost' is reserved for a future, explicit, audited transfer-pricing policy. Default 'same_price' — George has not decided; nothing in the codebase reads 'at_cost' yet.",
+      },
     ])
     .onConflictDoNothing();
 

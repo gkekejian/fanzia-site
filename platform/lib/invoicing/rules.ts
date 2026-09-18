@@ -18,12 +18,26 @@ export type PaymentMethod = "card" | "ach" | "wire";
 
 export const PAYMENT_METHODS: PaymentMethod[] = ["card", "ach", "wire"];
 
+/**
+ * Buyer kind for fee purposes: 'internal' is Fanzia's own vending buyer
+ * account (Fanzia-as-client design 2026-09-18 §1.1); 'external' is every
+ * other buyer. Mirrors db/schema/account.ts `accountKind`.
+ */
+export type AccountKind = "internal" | "external";
+
 export function isValidPaymentMethod(method: string): method is PaymentMethod {
   return (PAYMENT_METHODS as readonly string[]).includes(method);
 }
 
-/** $25 fee when the subtotal is under $750; $0 otherwise. */
-export function computeSmallOrderFee(subtotalMinor: number): number {
+/**
+ * $25 fee when the subtotal is under $750 AND the buyer is external; $0
+ * otherwise. The internal buyer (Fanzia's own vending account) never
+ * pays the fee — it's our own money moving between our own pockets; the
+ * fee exists to make small external orders economic, not to tax ourselves
+ * (Fanzia-as-client design 2026-09-18 §1.1).
+ */
+export function computeSmallOrderFee(subtotalMinor: number, accountKind: AccountKind): number {
+  if (accountKind === "internal") return 0;
   return subtotalMinor < SMALL_ORDER_THRESHOLD_MINOR ? SMALL_ORDER_FEE_MINOR : 0;
 }
 

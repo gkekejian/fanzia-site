@@ -161,10 +161,10 @@ async function insertInvoice(db: TestDb, accountId: string, totalMinor: number, 
 }
 
 describe("order minimum / small-order fee / first-order cap", () => {
-  it("charges the $25 fee only under $750", () => {
-    expect(computeSmallOrderFee(74999)).toBe(SMALL_ORDER_FEE_MINOR);
-    expect(computeSmallOrderFee(75000)).toBe(0);
-    expect(computeSmallOrderFee(0)).toBe(SMALL_ORDER_FEE_MINOR);
+  it("charges the $25 fee only under $750 for external buyers", () => {
+    expect(computeSmallOrderFee(74999, "external")).toBe(SMALL_ORDER_FEE_MINOR);
+    expect(computeSmallOrderFee(75000, "external")).toBe(0);
+    expect(computeSmallOrderFee(0, "external")).toBe(SMALL_ORDER_FEE_MINOR);
   });
 
   it("enforces the $500 minimum on the subtotal", () => {
