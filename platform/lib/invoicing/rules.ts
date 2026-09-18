@@ -7,6 +7,12 @@ export const SMALL_ORDER_THRESHOLD_MINOR = 75000; // $750 — fee applies below 
 export const SMALL_ORDER_FEE_MINOR = 2500; // $25 small-order fee
 export const FIRST_ORDER_CAP_MINOR = 500000; // $5,000 first-order cap
 export const OFFER_EXPIRY_HOURS = 48;
+/**
+ * Rollover policy: at most ONE silent-free automatic rollover per offer.
+ * The first expiry extends the offer automatically (audit-logged, actor
+ * system); any later expiry requires explicit buyer reacceptance.
+ */
+export const MAX_SILENT_ROLLOVERS = 1;
 
 export type PaymentMethod = "card" | "ach" | "wire";
 
@@ -38,6 +44,21 @@ export function firstOrderCapApplies(priorInvoiceCount: number): boolean {
 /** Offers expire 48 hours after the buyer submits the request. */
 export function isExpired(expiresAt: Date, now: Date = new Date()): boolean {
   return now.getTime() >= expiresAt.getTime();
+}
+
+/**
+ * Hard cap for the state machine: an offer may be silently auto-rolled
+ * over only while it has consumed fewer than MAX_SILENT_ROLLOVERS.
+ * Never implied, never rounded up — once the budget is spent the offer
+ * expires for good and only explicit buyer reacceptance revives it.
+ */
+export function canAutoRollover(rolloverCount: number): boolean {
+  return rolloverCount < MAX_SILENT_ROLLOVERS;
+}
+
+/** The new expiry after a rollover: another full 48-hour window from now. */
+export function rolloverExpiry(from: Date = new Date()): Date {
+  return new Date(from.getTime() + OFFER_EXPIRY_HOURS * 60 * 60 * 1000);
 }
 
 /** Taxable unless the account's tax status was explicitly determined exempt. "pending" counts as taxable. */

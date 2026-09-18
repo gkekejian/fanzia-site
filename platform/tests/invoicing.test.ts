@@ -299,7 +299,7 @@ describe("submitDraftRequest", () => {
 });
 
 describe("approveOrderRequest / declineOrderRequest", () => {
-  it("rejects expired requests and marks them expired", async () => {
+  it("auto-rolls over once on first expiry, then approval proceeds against the renewed offer", async () => {
     const { db } = await createTestDb();
     const ownerId = await seedOwner(db);
     const accountId = await seedAccount(db);
@@ -307,9 +307,28 @@ describe("approveOrderRequest / declineOrderRequest", () => {
     const req = await insertOrderRequest(db, accountId, buyer.accountContactId, {
       expiresAt: new Date(Date.now() - 1000),
     });
+    const { request, invoice: inv } = await approveOrderRequest(db, req.id, ownerId);
+    expect(request.status).toBe("invoiced");
+    expect(inv.status).toBe("draft");
+    const [row] = await db.select().from(orderRequest).where(eq(orderRequest.id, req.id));
+    expect(row!.rolloverCount).toBe(1);
+    expect(row!.lastRolledOverAt).not.toBeNull();
+  });
+
+  it("rejects approval on second expiry (rollover budget spent) and marks the offer expired", async () => {
+    const { db } = await createTestDb();
+    const ownerId = await seedOwner(db);
+    const accountId = await seedAccount(db);
+    const buyer = await seedContact(db, accountId, "primary");
+    const expiredAt = new Date(Date.now() - 1000);
+    const req = await insertOrderRequest(db, accountId, buyer.accountContactId, { expiresAt: expiredAt });
+    await db.update(orderRequest).set({ rolloverCount: 1 }).where(eq(orderRequest.id, req.id));
     await expect(approveOrderRequest(db, req.id, ownerId)).rejects.toBeInstanceOf(ExpiredError);
     const [row] = await db.select().from(orderRequest).where(eq(orderRequest.id, req.id));
     expect(row!.status).toBe("expired");
+    // no second silent rollover: the expiry was NOT extended
+    expect(new Date(row!.expiresAt).getTime()).toBe(expiredAt.getTime());
+    expect(row!.rolloverCount).toBe(1);
   });
 
   it("enforces the $5,000 first-order cap", async () => {
