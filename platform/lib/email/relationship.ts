@@ -56,9 +56,10 @@ export async function sendRelationshipEmail(params: {
 }
 
 /**
- * Abandoned-draft reminder body. Plain and honest: what is in the draft,
- * what it costs, what the buyer stands to make, and a link back. No
- * countdown timers, no fake scarcity, no "your items are almost gone".
+ * Abandoned-draft reminder body. Plain and honest: what is in the draft
+ * (named sets, not generic "your draft"), what it costs, what the buyer
+ * stands to make, and a link back. No countdown timers, no fake scarcity,
+ * no "your items are almost gone".
  */
 export function draftReminderBody(params: {
   contactName: string;
@@ -68,15 +69,24 @@ export function draftReminderBody(params: {
   marginTotalMinor: number | null;
   resumeUrl: string;
   formatMoney: (minor: number) => string;
+  /** Named contents ("3× Prismatic Evolutions Booster Box") — optional for older callers. */
+  namedLines?: { name: string; qty: number }[];
 }): string {
-  const { contactName, units, products, subtotalMinor, marginTotalMinor, resumeUrl, formatMoney } = params;
+  const { contactName, units, products, subtotalMinor, marginTotalMinor, resumeUrl, formatMoney, namedLines } = params;
   const lines = [
     `Hi ${contactName},`,
     ``,
     `You left a draft order request on Fanzia with ${units} unit${units === 1 ? "" : "s"} across ${products} product${products === 1 ? "" : "s"} — subtotal ${formatMoney(subtotalMinor)}.`,
   ];
+  if (namedLines && namedLines.length > 0) {
+    lines.push(``, `What's in it:`);
+    for (const nl of namedLines) {
+      lines.push(`  ${nl.qty}× ${nl.name}`);
+    }
+  }
   if (marginTotalMinor !== null) {
     lines.push(
+      ``,
       `At manufacturer MSRP, the items in your draft represent about ${formatMoney(marginTotalMinor)} of potential retail margin.`,
     );
   }
