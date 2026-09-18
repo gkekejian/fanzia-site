@@ -3,7 +3,6 @@ import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
 import MotionSection from "@/components/MotionSection";
-import WholesaleApplicationForm from "@/components/wholesale/WholesaleApplicationForm";
 
 export const metadata: Metadata = {
   title: "Fanzia Wholesale",
@@ -104,10 +103,20 @@ export default function WholesalePage() {
             <p className="eyebrow">Apply</p>
             <h2 className="h-section">Wholesale Application</h2>
             <p className="mt-6 max-w-xl text-white/70">
-              Mirrors what our own distributors ask for &mdash; it helps us verify and approve accounts faster.
+              Apply through our wholesale portal &mdash; check your application status and upload documents in
+              one place.
             </p>
             <div className="mt-10">
-              <WholesaleApplicationForm />
+              <a href="https://app.fanzia.io/apply" className="btn-primary">
+                Start your application
+              </a>
+              <p className="mt-6 text-white/60">
+                Already approved?{" "}
+                <a href="https://app.fanzia.io/member/login" className="underline hover:text-brand-red">
+                  Sign in to the customer portal
+                </a>
+                .
+              </p>
             </div>
           </div>
         </MotionSection>

@@ -58,6 +58,12 @@ export default function Nav() {
           <Link href="/wholesale" className="btn-primary !py-3 !px-5 text-sm">
             Wholesale Inquiries
           </Link>
+          <a
+            href="https://app.fanzia.io/member/login"
+            className="font-display text-xs uppercase tracking-[0.2em] text-white/70 transition hover:text-brand-red"
+          >
+            Sign In
+          </a>
         </nav>
 
         <button
@@ -104,6 +110,13 @@ export default function Nav() {
             >
               Wholesale Inquiries
             </Link>
+            <a
+              href="https://app.fanzia.io/member/login"
+              onClick={() => setOpen(false)}
+              className="rounded-none border-b border-white/5 px-2 py-3 font-display text-sm uppercase tracking-[0.2em] text-white/90 hover:text-brand-red"
+            >
+              Sign In
+            </a>
           </nav>
         </div>
       )}
