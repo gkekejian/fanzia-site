@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestContactMessage, ingestSchema, IngestAuthError } from "@/lib/contactMessages";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { ensureStartupTasks } from "@/lib/startup";
 
 /**
  * Public ingestion endpoint for the marketing site's contact form. The
@@ -9,6 +10,11 @@ import { checkRateLimit } from "@/lib/rateLimit";
  * defense in depth; the marketing form does its own spam checks first.
  */
 export async function POST(req: NextRequest) {
+  // API routes don't run the root layout, so ensure migrations/bootstrapping
+  // have run — otherwise the first-ever request (this one) could hit a
+  // schema that hasn't been migrated yet.
+  await ensureStartupTasks();
+
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (!checkRateLimit(`contact-ingest:${ip}`, 10, 10 * 60 * 1000)) {
     return NextResponse.json({ error: "Too many submissions. Please try again later." }, { status: 429 });
