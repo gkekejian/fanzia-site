@@ -50,6 +50,13 @@
       "when": 1789664509867,
       "tag": "0006_catalog_immutability_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789713900000,
+      "tag": "0007_user_management",
+      "breakpoints": true
     }
   ]
 }

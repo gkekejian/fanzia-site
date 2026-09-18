@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { idColumn, timestamps } from "./common";
 import { user } from "./user";
 
@@ -81,5 +81,12 @@ export const accountContact = pgTable("account_contact", {
   email: text("email").notNull(),
   phone: text("phone"),
   roleOnAccount: text("role_on_account").notNull().default("primary"),
+  /**
+   * Owner-managed kill switch. Inactive contacts cannot request or consume
+   * magic links and their existing sessions stop resolving — the buyer
+   * equivalent of deactivating a staff user. Never hard-deleted: the audit
+   * trail and past terms acceptances must keep pointing at a real row.
+   */
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

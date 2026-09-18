@@ -4,6 +4,7 @@ import { eq, isNull, gt, and } from "drizzle-orm";
 import { db as defaultDb } from "@/db/client";
 import { buyerSession as buyerSessionTable, accountContact as accountContactTable, account as accountTable } from "@/db/schema";
 import { generateToken, hashToken } from "@/lib/crypto";
+import { normalizeContactRole, type ContactRole } from "@/lib/users/contactRoles";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PgDatabase<any, any, any>;
@@ -16,6 +17,7 @@ export type AuthedBuyer = {
   accountId: string;
   contactName: string;
   contactEmail: string;
+  contactRole: ContactRole;
 };
 
 /**
@@ -67,11 +69,14 @@ export async function getBuyerSessionContact(
 
   const row = rows[0];
   if (!row) return null;
+  // Disabled contacts lose their sessions immediately — no grace period.
+  if (!row.contact.active) return null;
   return {
     accountContactId: row.contact.id,
     accountId: row.account.id,
     contactName: row.contact.name,
     contactEmail: row.contact.email,
+    contactRole: normalizeContactRole(row.contact.roleOnAccount),
   };
 }
 
