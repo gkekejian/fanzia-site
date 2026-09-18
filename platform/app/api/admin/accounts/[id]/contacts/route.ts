@@ -38,7 +38,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const json = await req.json().catch(() => null);
   const name = typeof json?.name === "string" ? json.name.trim() : "";
   const email = typeof json?.email === "string" ? json.email.trim().toLowerCase() : "";
-  const phone = typeof json?.phone === "string" && json.phone.trim() ? json.phone.trim() : null;
   const role = typeof json?.role === "string" ? json.role : "purchaser";
   if (!name) return NextResponse.json({ error: "A name is required." }, { status: 400 });
   if (!email || !email.includes("@")) return NextResponse.json({ error: "A valid email is required." }, { status: 400 });
@@ -49,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const [contact] = await db
     .insert(accountContact)
-    .values({ accountId: acct[0].id, name, email, phone, roleOnAccount: role })
+    .values({ accountId: acct[0].id, name, email, roleOnAccount: role })
     .returning({ id: accountContact.id });
 
   const link = await createBuyerMagicLink(email);

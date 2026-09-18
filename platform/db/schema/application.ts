@@ -33,7 +33,6 @@ export const application = pgTable("application", {
 
   contactName: text("contact_name").notNull(),
   contactEmail: text("contact_email").notNull(),
-  contactPhone: text("contact_phone"),
 
   channelEvidenceUrl: text("channel_evidence_url"),
   sellersPermitNumber: text("sellers_permit_number"),

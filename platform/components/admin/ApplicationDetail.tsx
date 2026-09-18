@@ -25,7 +25,6 @@ type ApplicationData = {
     channelType: string;
     contactName: string;
     contactEmail: string;
-    contactPhone: string | null;
     addressLine1: string;
     city: string;
     state: string;
@@ -171,7 +170,7 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
           <dd>{app.channelType.replace(/_/g, " ")}</dd>
           <dt>Contact</dt>
           <dd>
-            {app.contactName} — {app.contactEmail} {app.contactPhone ? `— ${app.contactPhone}` : ""}
+            {app.contactName} — {app.contactEmail}
           </dd>
           <dt>Address</dt>
           <dd>

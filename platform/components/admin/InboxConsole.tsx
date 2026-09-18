@@ -6,7 +6,6 @@ type ContactMessage = {
   id: string;
   name: string;
   email: string;
-  phone: string | null;
   subject: string | null;
   message: string;
   source: string;
@@ -190,8 +189,7 @@ export function InboxConsole() {
                 {thread.message.subject || "Message"} — {thread.message.name}
               </h2>
               <p style={{ color: "var(--fz-muted)" }}>
-                {thread.message.email}
-                {thread.message.phone ? ` · ${thread.message.phone}` : ""} · {formatDate(thread.message.createdAt)}
+                {thread.message.email} · {formatDate(thread.message.createdAt)}
               </p>
               <blockquote style={{ whiteSpace: "pre-wrap" }}>{thread.message.message}</blockquote>
 

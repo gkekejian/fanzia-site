@@ -25,7 +25,6 @@ export const applicationSchema = z.object({
   country: z.string().min(2).max(2).default("US"),
   contactName: z.string().min(2).max(200),
   contactEmail: z.string().email(),
-  contactPhone: z.string().max(30).optional().default(""),
   channelEvidenceUrl: z.string().url().optional().or(z.literal("")).default(""),
   sellersPermitNumber: z.string().max(60).optional().default(""),
   // Berman-compliant clickwrap: submission is blocked server-side, not

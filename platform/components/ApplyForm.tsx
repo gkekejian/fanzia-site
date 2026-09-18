@@ -50,7 +50,6 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
       country: "US",
       contactName: data.get("contactName"),
       contactEmail: data.get("contactEmail"),
-      contactPhone: data.get("contactPhone"),
       channelEvidenceUrl: data.get("channelEvidenceUrl"),
       sellersPermitNumber: data.get("sellersPermitNumber"),
       termsAccepted: true,
@@ -149,9 +148,6 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
           <label htmlFor="contactEmail">Your email</label>
           <input id="contactEmail" name="contactEmail" type="email" required autoComplete="email" />
           {fieldErrors.contactEmail && <p className="field-error">{fieldErrors.contactEmail[0]}</p>}
-
-          <label htmlFor="contactPhone">Your phone (optional)</label>
-          <input id="contactPhone" name="contactPhone" type="tel" maxLength={30} autoComplete="tel" />
 
           <label htmlFor="sellersPermitNumber">Seller&apos;s permit number (optional, speeds up review)</label>
           <input id="sellersPermitNumber" name="sellersPermitNumber" type="text" maxLength={60} />

@@ -11,7 +11,6 @@ export const contactMessage = pgTable("contact_message", {
   id: idColumn(),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  phone: text("phone"),
   subject: text("subject"),
   message: text("message").notNull(),
   source: text("source").notNull().default("website"),

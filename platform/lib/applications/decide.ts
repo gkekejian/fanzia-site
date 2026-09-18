@@ -95,7 +95,6 @@ export async function decideApplication(
             country: app.country,
             primaryContactName: app.contactName,
             primaryContactEmail: app.contactEmail,
-            primaryContactPhone: app.contactPhone,
             createdFromApplicationId: app.id,
           })
           .returning();
@@ -117,7 +116,6 @@ export async function decideApplication(
           accountId,
           name: app.contactName,
           email: app.contactEmail,
-          phone: app.contactPhone,
           roleOnAccount: "primary",
         });
       }

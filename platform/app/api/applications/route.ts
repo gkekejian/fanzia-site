@@ -52,7 +52,6 @@ export async function POST(req: NextRequest) {
       country: input.country,
       contactName: input.contactName,
       contactEmail: input.contactEmail,
-      contactPhone: input.contactPhone || null,
       channelEvidenceUrl: input.channelEvidenceUrl || null,
       sellersPermitNumber: input.sellersPermitNumber || null,
       resumeTokenHash: hashToken(rawResumeToken),

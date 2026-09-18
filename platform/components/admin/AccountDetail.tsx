@@ -6,7 +6,6 @@ type Contact = {
   id: string;
   name: string;
   email: string;
-  phone: string | null;
   roleOnAccount: string;
   active: boolean;
   createdAt: string;
@@ -25,7 +24,6 @@ type AccountDetail = {
   country: string;
   primaryContactName: string;
   primaryContactEmail: string;
-  primaryContactPhone: string | null;
   createdAt: string;
 };
 
@@ -66,7 +64,7 @@ export function AccountDetail({ accountId }: { accountId: string }) {
     const res = await fetch(`/api/admin/accounts/${accountId}/contacts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: fd.get("name"), email: fd.get("email"), phone: fd.get("phone"), role: fd.get("role") }),
+      body: JSON.stringify({ name: fd.get("name"), email: fd.get("email"), role: fd.get("role") }),
     });
     const body = await res.json().catch(() => ({}));
     setBusy(false);
@@ -213,8 +211,6 @@ export function AccountDetail({ accountId }: { accountId: string }) {
           <input id="c-name" name="name" required maxLength={120} />
           <label htmlFor="c-email">Email</label>
           <input id="c-email" name="email" type="email" required />
-          <label htmlFor="c-phone">Phone (optional)</label>
-          <input id="c-phone" name="phone" type="tel" />
           <label htmlFor="c-role">Role</label>
           <select id="c-role" name="role" defaultValue="purchaser">
             <option value="primary">Primary — full control, manages contacts</option>

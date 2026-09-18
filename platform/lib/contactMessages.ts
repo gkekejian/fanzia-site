@@ -23,7 +23,6 @@ type AnyDb = PgDatabase<any, any, any>;
 export const ingestSchema = z.object({
   name: z.string().trim().min(1).max(200),
   email: z.string().trim().email().max(320),
-  phone: z.string().trim().max(40).optional().default(""),
   subject: z.string().trim().max(200).optional().default(""),
   message: z.string().trim().min(1).max(5000),
   source: z.string().trim().max(40).optional().default("website"),
@@ -56,7 +55,6 @@ export async function ingestContactMessage(
     .values({
       name: parsed.name,
       email: parsed.email,
-      phone: parsed.phone || null,
       subject: parsed.subject || null,
       message: parsed.message,
       source: parsed.source || "website",
