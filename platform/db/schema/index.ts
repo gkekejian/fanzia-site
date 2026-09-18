@@ -15,3 +15,7 @@ export * from "./draftRequest";
 export * from "./invoicing";
 export * from "./cashbook";
 export * from "./contactMessage";
+export * from "./allocation";
+export * from "./distributor";
+export * from "./nayax";
+export * from "./priceIntel";

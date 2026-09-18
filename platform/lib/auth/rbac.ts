@@ -45,6 +45,10 @@ export const RESTRICTED_ACTIONS = new Set([
   // those tables — see lib/catalog/import/service.ts — so only publish
   // needs to be gated here.
   "catalog_import.publish",
+  // W5 price intelligence: anything that writes supplier prices, FX
+  // rates, market prices, or the estimated→real flip. Owner direct edits
+  // execute immediately (audited); the agent path queues a proposal.
+  "price_intel.price_update",
 ]);
 
 /** Absolute — no role, including owner, has a code path for these (build prompt §14.1). */
