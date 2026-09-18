@@ -15,6 +15,7 @@ export function SiteFooter() {
     >
       <div className="container" style={{ maxWidth: "1100px" }}>
         <nav aria-label="Policies" style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem 1.25rem", marginBottom: "1rem" }}>
+          <a href="/faq">FAQ</a>
           <a href="/terms">Terms of Sale</a>
           <a href="/privacy">Privacy Policy</a>
           <a href="/shipping">Shipping Policy</a>

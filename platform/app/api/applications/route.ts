@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { application, termsAcceptance } from "@/db/schema";
 import { applicationSchema } from "@/lib/validation/application";
@@ -8,6 +9,7 @@ import { sendNotificationEmail } from "@/lib/email/send";
 import { recordAudit } from "@/lib/audit";
 import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
+import { findDuplicateApplication } from "@/lib/applications/dedupe";
 import { getLatestPublishedTermsVersion } from "@/lib/terms";
 import { termsClickwrapLabel } from "@/lib/policies/clickwrap";
 import { notifyOwners } from "@/lib/notifications";
@@ -33,6 +35,45 @@ export async function POST(req: NextRequest) {
   const termsVersion = await getLatestPublishedTermsVersion("terms_of_sale");
   if (!termsVersion) {
     return NextResponse.json({ error: "Terms of Sale are not currently available. Try again shortly." }, { status: 503 });
+  }
+
+  // Duplicate guard: a business name or email that already has a live
+  // application in the review queue can't create a second one — the
+  // applicant gets their status link re-emailed instead.
+  const duplicate = await findDuplicateApplication(input.businessLegalName, input.contactEmail);
+  if (duplicate) {
+    const freshResumeToken = generateToken();
+    const duplicateTtlHours = await getSetting<number>(SETTINGS_KEYS.resumeTokenTtlHours, 168);
+    await db
+      .update(application)
+      .set({
+        resumeTokenHash: hashToken(freshResumeToken),
+        resumeTokenExpiresAt: new Date(Date.now() + duplicateTtlHours * 60 * 60 * 1000),
+      })
+      .where(eq(application.id, duplicate.id));
+    const statusUrl = `${process.env.APP_BASE_URL ?? "http://localhost:3100"}/apply/continue?token=${freshResumeToken}`;
+    // Best-effort: the original application is untouched; a failed
+    // re-send just means the applicant uses their earlier link.
+    await sendNotificationEmail({
+      to: duplicate.contactEmail,
+      subject: "Your Fanzia wholesale application is still under review",
+      text: `You already have a wholesale application under review for ${duplicate.businessLegalName} — no need to apply again.\n\nCheck its status or add documents any time at:\n\n${statusUrl}\n\nThis link is valid for ${duplicateTtlHours} hours.`,
+    }, "application.duplicate_resend");
+    await recordAudit({
+      actorType: "applicant",
+      action: "application.duplicate_rejected",
+      entityType: "application",
+      entityId: duplicate.id,
+      ip,
+      userAgent: req.headers.get("user-agent"),
+    });
+    return NextResponse.json(
+      {
+        error: `An application for ${duplicate.businessLegalName} is already under review. We've emailed a fresh status link to ${duplicate.contactEmail} — no need to apply again.`,
+        duplicate: true,
+      },
+      { status: 409 },
+    );
   }
 
   const { score, reasons } = scoreApplication(input);

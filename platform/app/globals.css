@@ -929,3 +929,38 @@ textarea:focus-visible {
     transition: none;
   }
 }
+
+/* Small screens: the admin nav and data tables were desktop-only and
+ * overflowed at 390px. (Bug-sweep track 2026-09-18; buyer pages are styled
+ * by the buyer-UX track above.) */
+@media (max-width: 640px) {
+  nav.admin-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 1rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  nav.admin-nav .btn {
+    flex-shrink: 0;
+  }
+
+  /* Responsive-table pattern: the table becomes a horizontal scroller so
+   * wide admin grids (invoices, order requests, users) never push the
+   * page off-screen. */
+  main table {
+    display: block;
+    overflow-x: auto;
+    width: max-content;
+    min-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  th,
+  td {
+    padding: 0.45rem 0.4rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+}

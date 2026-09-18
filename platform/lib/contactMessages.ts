@@ -125,6 +125,11 @@ const replySchema = z.object({ body: z.string().trim().min(1).max(10000) });
  * source of truth; a failed email send is logged loudly but does not roll
  * back the stored reply (same best-effort pattern as other notifications).
  * Marks the thread "replied".
+ *
+ * Returns the stored reply row plus `emailSent`, so callers can report
+ * honest delivery state instead of claiming "sent" when the email only
+ * got logged. (Spread preserves the row's fields for existing consumers —
+ * e.g. tests reading reply.id.)
  */
 export async function replyToContactMessage(id: string, rawBody: unknown, actor: Actor, db: AnyDb = defaultDb) {
   const { body } = replySchema.parse(rawBody);
@@ -143,6 +148,7 @@ export async function replyToContactMessage(id: string, rawBody: unknown, actor:
   await db.update(contactMessage).set({ status: "replied" }).where(eq(contactMessage.id, id));
 
   const subject = message.subject ? `Re: ${message.subject} — Fanzia` : "Re: your message to Fanzia";
+  let emailSent = true;
   try {
     await sendTransactionalEmail({
       to: message.email,
@@ -150,6 +156,7 @@ export async function replyToContactMessage(id: string, rawBody: unknown, actor:
       text: `Hi ${message.name},\n\n${body}\n\n— The Fanzia team`,
     });
   } catch (err) {
+    emailSent = false;
     console.error("[contact-inbox] reply email failed:", (err as Error).message);
   }
 
@@ -161,9 +168,9 @@ export async function replyToContactMessage(id: string, rawBody: unknown, actor:
       action: "contact_message.replied",
       entityType: "contact_message",
       entityId: id,
-      after: { replyId: reply!.id, to: message.email },
+      after: { replyId: reply!.id, to: message.email, emailSent },
     },
     db,
   );
-  return reply!;
+  return { ...reply!, emailSent };
 }

@@ -40,7 +40,10 @@ function LoginForm() {
       <div className="card">
         <h1>Fanzia platform sign-in</h1>
         {sent ? (
-          <p role="status">If that email is registered, a sign-in link has been sent. Check your inbox.</p>
+          <p role="status">
+            If that email is registered, a sign-in link has been sent. Check your inbox — the link
+            expires in 15 minutes and can only be used once.
+          </p>
         ) : (
           <form onSubmit={onSubmit}>
             {linkError && (
@@ -58,6 +61,9 @@ function LoginForm() {
             <button type="submit" className="btn" disabled={submitting} style={{ marginTop: "1rem" }}>
               {submitting ? "Sending…" : "Send sign-in link"}
             </button>
+            <p style={{ color: "var(--fz-muted)", fontSize: "0.85rem", marginTop: "0.5rem" }}>
+              The link expires in 15 minutes and can only be used once.
+            </p>
           </form>
         )}
       </div>
