@@ -1,6 +1,6 @@
 import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db/client";
-import { termsVersion, user as userTable } from "@/db/schema";
+import { currency, termsVersion, user as userTable } from "@/db/schema";
 import { DRAFT_POLICIES } from "@/lib/policies/content";
 
 /**
@@ -63,6 +63,26 @@ export async function bootstrapTerms(): Promise<string[]> {
     published.push(docType);
   }
   return published;
+}
+
+/**
+ * Seed the ISO 4217 currency reference rows the pricing pipeline depends on.
+ * Idempotent (onConflictDoNothing on the primary key): insert-only, never
+ * modifies an existing row.
+ *
+ * This is the production-safe counterpart to the same block in db/seed.ts
+ * (which refuses to run outside local/dev). Without a USD row, publishing a
+ * catalog import fails on the price_epoch / source_check currency_code
+ * foreign key — discovered during the 2026-09-18 staging transaction test,
+ * where the import publish POST 500'd with no seeded currencies present.
+ */
+export async function bootstrapCurrencies(): Promise<string[]> {
+  const rows = [
+    { code: "USD", exponent: 2, name: "US Dollar" },
+    { code: "JPY", exponent: 0, name: "Japanese Yen" },
+  ];
+  await db.insert(currency).values(rows).onConflictDoNothing();
+  return rows.map((r) => r.code);
 }
 
 /**

@@ -2,7 +2,7 @@ import path from "path";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { bootstrapOwners, bootstrapTerms, parseBootstrapOwnerEmails } from "./bootstrap";
+import { bootstrapCurrencies, bootstrapOwners, bootstrapTerms, parseBootstrapOwnerEmails } from "./bootstrap";
 
 /**
  * Advisory lock key for the migration step, so concurrent server instances
@@ -66,6 +66,11 @@ export async function runStartupTasks(): Promise<void> {
     const published = await bootstrapTerms();
     if (published.length > 0) {
       console.log(`[startup] published terms: ${published.join(", ")}`);
+    }
+
+    const currencies = await bootstrapCurrencies();
+    if (currencies.length > 0) {
+      console.log(`[startup] ensured currencies: ${currencies.join(", ")}`);
     }
   } catch (err) {
     console.error("[startup] startup task failed (see above); continuing without it.", err);
