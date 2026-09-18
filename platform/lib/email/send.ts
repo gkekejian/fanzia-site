@@ -25,12 +25,19 @@ export async function sendTransactionalEmail(params: {
     return { delivered: false, loggedOnly: true };
   }
   const resend = new Resend(apiKey);
-  await resend.emails.send({
+  // NOTE: the Resend SDK resolves (does not throw) on API-level failures,
+  // returning { data: null, error }. Ignoring that shape silently drops
+  // mail while the caller reports success — always check it.
+  const { data, error } = await resend.emails.send({
     from: FROM,
     to: params.to,
     subject: params.subject,
     text: params.text,
     html: params.html,
   });
-  return { delivered: true, loggedOnly: false };
+  if (error) {
+    console.error("[email:resend-error]", error.name, error.message);
+    throw new Error(`Email send failed: ${error.message}`);
+  }
+  return { delivered: true, loggedOnly: false, id: data?.id };
 }
