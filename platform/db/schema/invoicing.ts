@@ -44,6 +44,15 @@ export const orderRequest = pgTable("order_request", {
   /** When the (single) automatic rollover happened; NULL when never rolled over. */
   lastRolledOverAt: timestamp("last_rolled_over_at", { withTimezone: true }),
   /**
+   * When the buyer was sent the "offer expires soon" pre-expiry nudge for
+   * the current expiry window; NULL when never nudged. The ops sweep sets
+   * this only after a successful send, so a failed send leaves it NULL and
+   * the next sweep retries the offer instead of skipping it forever.
+   * A reaccepted offer is a fresh row (new expiry window), so it may be
+   * nudged again — which is the correct behavior.
+   */
+  expiryNudgeSentAt: timestamp("expiry_nudge_sent_at", { withTimezone: true }),
+  /**
    * Set on a fresh offer created by buyer reacceptance: points at the
    * expired offer it replaces (which is marked superseded). The explicit
    * AnyPgColumn return type breaks the self-reference cycle for tsc.

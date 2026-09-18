@@ -3,13 +3,15 @@ import { db } from "@/db/client";
 import { requireActor } from "@/lib/auth/actor";
 import { assertOwner, actorUserId } from "@/lib/auth/rbac";
 import { recordAudit } from "@/lib/audit";
-import { processExpiredOffers } from "@/lib/invoicing/service";
+import { sendNotificationEmail } from "@/lib/email/send";
+import { runOpsSweep } from "@/lib/expiry/sweep";
 
 /**
- * Owner-triggered expiry sweep: runs every stale submitted offer through
- * the rollover policy (first expiry → one automatic silent rollover;
- * later expiry → marked expired, no silent rollover). Audit-logged as one
- * sweep entry plus the per-offer system entries written by the service.
+ * Owner-triggered ops sweep: runs the same shared sweep as the daily cron
+ * (stale-offer expiry through the rollover policy, final-expiry buyer
+ * emails, 24h pre-expiry nudges, and the dunning / resale-doc /
+ * proposal-staleness companion sweeps). Audit-logged as one sweep entry
+ * plus the per-offer system entries written by the service.
  */
 export async function POST(req: NextRequest) {
   const actor = await requireActor(req);
@@ -21,16 +23,37 @@ export async function POST(req: NextRequest) {
   }
 
   const ownerId = actorUserId(actor);
-  const { rolledOver, expired } = await processExpiredOffers(db);
+  const result = await runOpsSweep(db, {
+    sendEmail: (params) => sendNotificationEmail(params, "ops-sweep"),
+    baseUrl: process.env.APP_BASE_URL ?? "https://app.fanzia.io",
+    now: new Date(),
+  });
   await recordAudit({
     actorUserId: ownerId,
     actorRole: "owner",
     actorType: "owner",
     action: "order_request.expiry_sweep",
     entityType: "order_request",
-    after: { rolledOver, expired },
+    after: {
+      rolledOver: result.rolledOver,
+      expired: result.expired,
+      finalExpirySent: result.finalExpirySent,
+      nudgesSent: result.nudgesSent,
+      dunning: result.dunning,
+      resaleDocs: result.resaleDocs,
+      proposalNudges: result.proposalNudges,
+    },
     ip: req.headers.get("x-forwarded-for"),
     userAgent: req.headers.get("user-agent"),
   });
-  return NextResponse.json({ ok: true, rolledOver, expired });
+  return NextResponse.json({
+    ok: true,
+    rolledOver: result.rolledOver,
+    expired: result.expired,
+    finalExpirySent: result.finalExpirySent,
+    nudgesSent: result.nudgesSent,
+    dunning: result.dunning,
+    resaleDocs: result.resaleDocs,
+    proposalNudges: result.proposalNudges,
+  });
 }

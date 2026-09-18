@@ -1,1 +1,1 @@
-{"crons":[{"path":"/api/cron/abandoned-drafts","schedule":"0 14 * * *"}]}
+{"crons":[{"path":"/api/cron/abandoned-drafts","schedule":"0 14 * * *"},{"path":"/api/cron/ops-sweep","schedule":"30 13 * * *"}]}
