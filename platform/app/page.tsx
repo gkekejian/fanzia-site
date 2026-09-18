@@ -12,11 +12,10 @@ export default function HomePage() {
       <p>
         <Link className="btn" href="/apply">
           Apply for a wholesale account
-        </Link>{" "}
-        <Link className="btn btn-secondary" href="/admin/login">
-          Staff login
         </Link>
       </p>
+      {/* Staff sign-in lives at /admin/login directly — it is intentionally
+          not linked from this public page so customers never see it. */}
     </main>
   );
 }
