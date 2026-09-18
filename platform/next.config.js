@@ -24,7 +24,11 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self'",
+      // Next.js app-router hydration depends on inline bootstrap scripts
+      // (self.__next_f); without 'unsafe-inline' no form or client
+      // interaction works at all. Nonce-based CSP is the future hardening
+      // path if this ever becomes a public-facing app.
+      "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",
       "img-src 'self' data: blob:",
