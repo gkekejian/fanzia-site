@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 type ImportRow = {
   id: string;
   rowNumber: number;
-  diffType: "add" | "price_change" | "availability_change" | "missing" | "unchanged" | "invalid";
+  diffType: "add" | "price_change" | "availability_change" | "msrp_change" | "missing" | "unchanged" | "invalid";
   stagedData: Record<string, unknown>;
   validationErrors: unknown;
   included: boolean;
@@ -27,6 +27,7 @@ const DIFF_BADGE: Record<string, string> = {
   add: "badge-ok",
   price_change: "badge-warn",
   availability_change: "badge-warn",
+  msrp_change: "badge-warn",
   missing: "badge-bad",
   unchanged: "badge",
   invalid: "badge-bad",
@@ -42,6 +43,11 @@ export function CatalogImportDetail({ importId }: { importId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Publish is a two-step in-page confirmation: the first click arms the
+  // button ("Confirm publish"), the second click fires. A native
+  // window.confirm is silently auto-dismissed by browser automation, which
+  // made the publish POST never fire with no error — a dead button.
+  const [publishArmed, setPublishArmed] = useState(false);
 
   async function load() {
     const res = await fetch(`/api/admin/catalog-imports/${importId}`);
@@ -49,6 +55,7 @@ export function CatalogImportDetail({ importId }: { importId: string }) {
       setError("Could not load this import.");
       return;
     }
+    setPublishArmed(false);
     setData(await res.json());
   }
 
@@ -74,10 +81,8 @@ export function CatalogImportDetail({ importId }: { importId: string }) {
   }
 
   async function runAction(action: "approve" | "publish" | "reject") {
-    if (action === "publish" && !window.confirm("Publish this import to the live catalog? Prices and availability will update.")) {
-      return;
-    }
     setBusy(true);
+    setPublishArmed(false);
     setMessage(null);
     const res = await fetch(`/api/admin/catalog-imports/${importId}/${action}`, { method: "POST" });
     const body = await res.json().catch(() => ({}));
@@ -148,9 +153,33 @@ export function CatalogImportDetail({ importId }: { importId: string }) {
         <section className="card">
           <h2>Ready to publish</h2>
           <p>This diff is approved. Publishing writes the included rows to the live catalog.</p>
-          <button type="button" className="btn" disabled={busy} onClick={() => runAction("publish")}>
-            Publish to live catalog
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => {
+              if (!publishArmed) {
+                setPublishArmed(true);
+                return;
+              }
+              runAction("publish");
+            }}
+          >
+            {publishArmed ? "Confirm publish" : "Publish to live catalog"}
           </button>
+          {publishArmed && !busy && (
+            <p style={{ marginTop: "0.5rem" }}>
+              This will update prices and availability on the live catalog.{" "}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ padding: "0.3rem 0.8rem" }}
+                onClick={() => setPublishArmed(false)}
+              >
+                Cancel
+              </button>
+            </p>
+          )}
         </section>
       )}
 
@@ -164,6 +193,7 @@ export function CatalogImportDetail({ importId }: { importId: string }) {
               <th scope="col">Product</th>
               <th scope="col">Change</th>
               <th scope="col">Cost</th>
+              <th scope="col">MSRP</th>
               <th scope="col">Stock</th>
               <th scope="col">Include</th>
             </tr>
@@ -194,6 +224,7 @@ export function CatalogImportDetail({ importId }: { importId: string }) {
                     <span className={`badge ${DIFF_BADGE[row.diffType] ?? ""}`}>{row.diffType.replace(/_/g, " ")}</span>
                   </td>
                   <td>{formatMoney(d.cost_minor, d.currency_code)}</td>
+                  <td>{typeof d.msrp === "number" ? formatMoney(d.msrp, d.currency_code) : "—"}</td>
                   <td>{d.stock_observed != null ? String(d.stock_observed) : "—"}</td>
                   <td>
                     <input
