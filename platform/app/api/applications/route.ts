@@ -7,7 +7,8 @@ import { scoreApplication } from "@/lib/applications/triage";
 import { generateToken, hashToken } from "@/lib/crypto";
 import { sendNotificationEmail } from "@/lib/email/send";
 import { recordAudit } from "@/lib/audit";
-import { checkRateLimit, clientIp } from "@/lib/rateLimit";
+import { clientIp, rateLimited, PUBLIC_WRITE_LIMITS } from "@/lib/rateLimit";
+import { verifyTurnstile, turnstileFailureBody } from "@/lib/turnstile";
 import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
 import { findDuplicateApplication } from "@/lib/applications/dedupe";
 import { getLatestPublishedTermsVersion } from "@/lib/terms";
@@ -16,11 +17,21 @@ import { notifyOwnersEvent } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req.headers);
-  if (!checkRateLimit(`apply:${ip}`, 5, 60 * 60 * 1000)) {
-    return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
-  }
+  const limited = rateLimited(`apply:${ip}`, PUBLIC_WRITE_LIMITS.applicationSubmit);
+  if (limited) return limited;
 
   const json = await req.json().catch(() => null);
+
+  // Bot check (Cloudflare Turnstile). Fail-open when the secret key is not
+  // configured; enforced once the owner provisions the keys.
+  const turnstile = await verifyTurnstile(
+    typeof json?.turnstileToken === "string" ? json.turnstileToken : null,
+    ip,
+  );
+  if (!turnstile.ok) {
+    return NextResponse.json(turnstileFailureBody(), { status: 403 });
+  }
+
   const parsed = applicationSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });

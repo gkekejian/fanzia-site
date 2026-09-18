@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { TurnstileWidget } from "./Turnstile";
 
 const CHANNEL_TYPES: { value: string; label: string }[] = [
   { value: "vending", label: "Vending" },
@@ -43,6 +44,11 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
   const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  // When the site key is configured the bot check must be solved before
+  // submit; when unset the widget renders nothing and the server allows
+  // the submission (fail-open — see lib/turnstile.ts).
+  const turnstileConfigured = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -65,6 +71,10 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
       setFormError(`Please fix the following: ${missing.join("; ")}.`);
       return;
     }
+    if (turnstileConfigured && !turnstileToken) {
+      setFormError("Please complete the bot check before submitting.");
+      return;
+    }
 
     const data = new FormData(form);
     const payload = {
@@ -82,6 +92,7 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
       sellersPermitNumber: data.get("sellersPermitNumber"),
       termsAccepted: true,
       website: data.get("website"), // honeypot
+      turnstileToken,
     };
 
     setSubmitting(true);
@@ -232,6 +243,8 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
               (version {versionLabel}).
             </label>
           </div>
+
+          <TurnstileWidget onToken={setTurnstileToken} onExpire={() => setTurnstileToken(null)} />
 
           <button type="submit" className="btn" disabled={submitting} style={{ marginTop: "1.5rem" }}>
             {submitting ? "Submitting…" : "Submit application"}

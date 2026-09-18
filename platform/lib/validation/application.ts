@@ -33,6 +33,10 @@ export const applicationSchema = z.object({
     errorMap: () => ({ message: "You must check the box to accept the Terms of Sale to submit an application." }),
   }),
   website: z.string().max(0).optional().default(""), // honeypot
+  // Cloudflare Turnstile client token. Verified server-side against
+  // Cloudflare's siteverify endpoint; fail-open when the secret key is
+  // not configured (see lib/turnstile.ts).
+  turnstileToken: z.string().max(2048).optional().default(""),
 });
 
 export type ApplicationInput = z.infer<typeof applicationSchema>;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ingestContactMessage, ingestSchema, IngestAuthError } from "@/lib/contactMessages";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { clientIp, rateLimited, PUBLIC_WRITE_LIMITS } from "@/lib/rateLimit";
+import { verifyTurnstile, turnstileFailureBody } from "@/lib/turnstile";
 import { ensureStartupTasks } from "@/lib/startup";
 
 /**
@@ -8,6 +9,11 @@ import { ensureStartupTasks } from "@/lib/startup";
  * marketing site calls this server-side with the shared CONTACT_INGEST_SECRET
  * — the secret never reaches the browser. Light per-IP rate limiting here is
  * defense in depth; the marketing form does its own spam checks first.
+ *
+ * Turnstile: the marketing site may forward its widget's client token as
+ * `turnstileToken`. When a token is present it is verified against
+ * Cloudflare; when absent the request is allowed (fail-open) so the form
+ * keeps working before the marketing site adds the widget.
  */
 export async function POST(req: NextRequest) {
   // API routes don't run the root layout, so ensure migrations/bootstrapping
@@ -15,10 +21,9 @@ export async function POST(req: NextRequest) {
   // schema that hasn't been migrated yet.
   await ensureStartupTasks();
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (!checkRateLimit(`contact-ingest:${ip}`, 10, 10 * 60 * 1000)) {
-    return NextResponse.json({ error: "Too many submissions. Please try again later." }, { status: 429 });
-  }
+  const ip = clientIp(req.headers);
+  const limited = rateLimited(`contact-ingest:${ip}`, PUBLIC_WRITE_LIMITS.contactIngest);
+  if (limited) return limited;
 
   const json = await req.json().catch(() => null);
   if (!json || typeof json !== "object") {
@@ -28,6 +33,14 @@ export async function POST(req: NextRequest) {
   const parsed = ingestSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Please fill in all required fields with valid values." }, { status: 400 });
+  }
+
+  const turnstileToken = typeof json.turnstileToken === "string" ? json.turnstileToken : null;
+  if (turnstileToken) {
+    const turnstile = await verifyTurnstile(turnstileToken, ip);
+    if (!turnstile.ok) {
+      return NextResponse.json(turnstileFailureBody(), { status: 403 });
+    }
   }
 
   try {

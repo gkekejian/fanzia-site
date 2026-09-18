@@ -6,6 +6,8 @@ import { notifyOwnersEvent } from "@/lib/notifications";
 import { formatMoney } from "@/lib/format";
 import { OFFER_EXPIRY_HOURS } from "@/lib/invoicing/rules";
 import { submitDraftRequest, InvoicingError } from "@/lib/invoicing/service";
+import { clientIp, rateLimited, PUBLIC_WRITE_LIMITS } from "@/lib/rateLimit";
+import { verifyTurnstile, turnstileFailureBody } from "@/lib/turnstile";
 
 /**
  * Submit the buyer's draft as an order request: prices are snapshotted,
@@ -17,7 +19,21 @@ export async function POST(req: NextRequest) {
   const buyer = await requireBuyer(req);
   if (buyer instanceof NextResponse) return buyer;
 
+  // Bot/abuse defense: per-buyer-account + IP rate limit (an approved buyer
+  // account could still be scripted), plus Turnstile when configured.
+  const ip = clientIp(req.headers);
+  const limited = rateLimited(`draft-submit:${buyer.accountId}:${ip}`, PUBLIC_WRITE_LIMITS.draftRequestSubmit);
+  if (limited) return limited;
+
   const json = await req.json().catch(() => null);
+
+  const turnstile = await verifyTurnstile(
+    typeof json?.turnstileToken === "string" ? json.turnstileToken : null,
+    ip,
+  );
+  if (!turnstile.ok) {
+    return NextResponse.json(turnstileFailureBody(), { status: 403 });
+  }
 
   try {
     const created = await submitDraftRequest(db, buyer, {

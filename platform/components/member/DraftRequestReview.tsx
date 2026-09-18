@@ -20,6 +20,7 @@ import { useDraft } from "./useDraft";
 import { MilestoneProgress } from "./MilestoneProgress";
 import { AvailabilityChip } from "./AvailabilityChip";
 import { AddToDraftButton } from "./AddToDraftButton";
+import { TurnstileWidget } from "@/components/Turnstile";
 
 type SubmitResult = {
   orderRequestId: string;
@@ -38,6 +39,11 @@ export function DraftRequestReview() {
   const [csvText, setCsvText] = useState("");
   const [csvErrors, setCsvErrors] = useState<{ line: number; raw: string; reason: string }[]>([]);
   const [csvAdded, setCsvAdded] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  // When the site key is configured the bot check must be solved before
+  // submit; when unset the widget renders nothing and the server allows
+  // the submission (fail-open — see lib/turnstile.ts).
+  const turnstileConfigured = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { lines, notes, setNotes, saveNow, qtyById, setQty, replaceAll, saveError } = useDraft();
@@ -117,10 +123,15 @@ export function DraftRequestReview() {
   async function submit() {
     setSubmitting(true);
     setSubmitError(null);
+    if (turnstileConfigured && !turnstileToken) {
+      setSubmitError("Please complete the bot check before submitting.");
+      setSubmitting(false);
+      return;
+    }
     const res = await fetch("/api/member/draft-request/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ importAcknowledged: importAck }),
+      body: JSON.stringify({ importAcknowledged: importAck, turnstileToken }),
     });
     const body = await res.json().catch(() => ({}));
     setSubmitting(false);
@@ -374,6 +385,7 @@ export function DraftRequestReview() {
       )}
 
       <div className="submit-row" style={{ marginTop: "1.5rem" }}>
+        <TurnstileWidget onToken={setTurnstileToken} onExpire={() => setTurnstileToken(null)} />
         <button
           type="button"
           className="btn submit-btn"
