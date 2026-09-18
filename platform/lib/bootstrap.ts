@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db/client";
-import { user as userTable } from "@/db/schema";
+import { termsVersion, user as userTable } from "@/db/schema";
+import { DRAFT_POLICIES } from "@/lib/policies/content";
 
 /**
  * Parse the BOOTSTRAP_OWNER_EMAILS env var (comma-separated emails) into a
@@ -25,6 +26,43 @@ function displayNameFromEmail(email: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
     .trim();
   return titled || email;
+}
+
+/**
+ * Publish the draft policy documents as the current terms_version rows when
+ * none is published for a doc type. Idempotent and insert-only: it never
+ * touches an existing published row, so a future real (lawyer-reviewed)
+ * version published through the admin flow is never overwritten.
+ *
+ * This is the production-safe counterpart to the same block in db/seed.ts
+ * (which refuses to run outside local/dev). Without a published row the
+ * application form's clickwrap has nothing to link to and submissions are
+ * rejected. The DRAFT_POLICIES body text itself is marked DRAFT — PENDING
+ * LEGAL REVIEW; "published" here means "the current version buyers see and
+ * accept," not "final legal document."
+ */
+export async function bootstrapTerms(): Promise<string[]> {
+  const published: string[] = [];
+  for (const [docType, policy] of Object.entries(DRAFT_POLICIES) as [
+    keyof typeof DRAFT_POLICIES,
+    (typeof DRAFT_POLICIES)[keyof typeof DRAFT_POLICIES],
+  ][]) {
+    const existing = await db
+      .select({ id: termsVersion.id })
+      .from(termsVersion)
+      .where(and(eq(termsVersion.docType, docType), isNotNull(termsVersion.publishedAt)))
+      .limit(1);
+    if (existing.length > 0) continue;
+    await db.insert(termsVersion).values({
+      docType,
+      versionLabel: policy.versionLabel,
+      bodyMarkdown: policy.body,
+      isDraft: false,
+      publishedAt: new Date(),
+    });
+    published.push(docType);
+  }
+  return published;
 }
 
 /**

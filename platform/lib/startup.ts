@@ -2,7 +2,7 @@ import path from "path";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { bootstrapOwners, parseBootstrapOwnerEmails } from "./bootstrap";
+import { bootstrapOwners, bootstrapTerms, parseBootstrapOwnerEmails } from "./bootstrap";
 
 /**
  * Advisory lock key for the migration step, so concurrent server instances
@@ -61,6 +61,11 @@ export async function runStartupTasks(): Promise<void> {
       if (created.length > 0) {
         console.log(`[startup] bootstrapped owner accounts: ${created.join(", ")}`);
       }
+    }
+
+    const published = await bootstrapTerms();
+    if (published.length > 0) {
+      console.log(`[startup] published terms: ${published.join(", ")}`);
     }
   } catch (err) {
     console.error("[startup] startup task failed (see above); continuing without it.", err);
