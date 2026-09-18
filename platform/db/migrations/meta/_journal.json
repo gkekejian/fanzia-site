@@ -148,6 +148,13 @@
       "when": 1789759200000,
       "tag": "0018_nayax",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789759800000,
+      "tag": "0019_po_pack",
+      "breakpoints": true
     }
   ]
 }

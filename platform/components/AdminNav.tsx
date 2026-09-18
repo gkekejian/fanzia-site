@@ -19,6 +19,7 @@ export function AdminNav({ userName }: { userName: string }) {
       <a href="/admin/nayax">Vending</a>
       <a href="/admin/invoices">Invoices</a>
       <a href="/admin/accounting">Accounting</a>
+      <a href="/admin/po-packs">PO packs</a>
       <a href="/admin/system-status">System status</a>
       <span style={{ marginLeft: "auto", color: "var(--fz-muted)" }}>{userName}</span>
       <button type="button" className="btn btn-secondary" onClick={logout} style={{ padding: "0.3rem 0.8rem" }}>
