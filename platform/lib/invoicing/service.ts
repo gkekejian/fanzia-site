@@ -29,7 +29,7 @@ import {
 } from "./rules";
 import { nextInvoiceNumber } from "./sequences";
 import { recordAudit } from "@/lib/audit";
-import { notifyOwners } from "@/lib/notifications";
+import { notifyOwners, notifyOwnersEvent } from "@/lib/notifications";
 import { sendNotificationEmail } from "@/lib/email/send";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -379,7 +379,7 @@ function invoiceStatusFor(totalMinor: number, payments: { amountMinor: number; f
 export async function approveOrderRequest(db: AnyDb, requestId: string, ownerId: string) {
   const settled = await processExpiredOffer(db, requestId);
   if (settled.request.status === "expired") throw new ExpiredError();
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const req = await getLiveOrderRequest(tx, requestId);
     if (req.status !== "submitted") throw new AlreadyDecidedError();
     if (isExpired(req.expiresAt)) throw new ExpiredError();
@@ -412,6 +412,19 @@ export async function approveOrderRequest(db: AnyDb, requestId: string, ownerId:
       .returning();
     return { request: updated!, invoice: created! };
   });
+  await notifyOwnersEvent(
+    {
+      type: "invoice_created",
+      title: `Invoice ${result.invoice.invoiceNumber} created — ${formatMoney(result.invoice.totalMinor)}`,
+      body:
+        `Invoice ${result.invoice.invoiceNumber} was created from order request ${result.request.id} ` +
+        `for ${formatMoney(result.invoice.totalMinor)}. It is a draft until sent.`,
+      entityType: "invoice",
+      entityId: result.invoice.id,
+    },
+    db,
+  );
+  return result;
 }
 
 export async function declineOrderRequest(db: AnyDb, requestId: string, ownerId: string, reason: string) {
@@ -645,6 +658,18 @@ export async function sendInvoice(db: AnyDb, invoiceId: string) {
     .set({ status: "sent", sentAt: new Date() })
     .where(eq(invoice.id, invoiceId))
     .returning();
+  await notifyOwnersEvent(
+    {
+      type: "invoice_sent",
+      title: `Invoice ${updated!.invoiceNumber} sent — ${formatMoney(updated!.totalMinor)}`,
+      body:
+        `Invoice ${updated!.invoiceNumber} for ${formatMoney(updated!.totalMinor)} was sent to the buyer. ` +
+        `Payment is due per the invoice terms.`,
+      entityType: "invoice",
+      entityId: updated!.id,
+    },
+    db,
+  );
   return updated!;
 }
 
@@ -702,7 +727,7 @@ export async function recordInvoicePayment(db: AnyDb, invoiceId: string, ownerId
   const paid = paidAt ?? new Date();
   if (paid.getTime() > Date.now() + 60 * 1000) throw new InvoicingError("paid_at cannot be in the future.", 400);
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [inv] = await tx.select().from(invoice).where(eq(invoice.id, invoiceId)).limit(1);
     if (!inv) throw new InvoicingError("Invoice not found.", 404);
     if (inv.status === "void") throw new InvoicingError("Cannot record a payment on a void invoice.", 400);
@@ -739,6 +764,19 @@ export async function recordInvoicePayment(db: AnyDb, invoiceId: string, ownerId
       .returning();
     return { payment: created!, invoice: updated! };
   });
+  await notifyOwnersEvent(
+    {
+      type: "invoice_paid",
+      title: `Payment recorded — ${result.invoice.invoiceNumber} (${formatMoney(result.payment.amountMinor)})`,
+      body:
+        `A ${result.payment.method} payment of ${formatMoney(result.payment.amountMinor)} was recorded ` +
+        `on invoice ${result.invoice.invoiceNumber}. Invoice status is now "${result.invoice.status}".`,
+      entityType: "invoice",
+      entityId: result.invoice.id,
+    },
+    db,
+  );
+  return result;
 }
 
 /**
@@ -746,7 +784,7 @@ export async function recordInvoicePayment(db: AnyDb, invoiceId: string, ownerId
  * that haven't cleared yet.
  */
 export async function confirmWirePayment(db: AnyDb, paymentId: string) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [pay] = await tx.select().from(payment).where(eq(payment.id, paymentId)).limit(1);
     if (!pay) throw new InvoicingError("Payment not found.", 404);
     if (pay.method !== "wire") throw new InvoicingError("Only wire payments need confirmation.", 400);
@@ -768,6 +806,20 @@ export async function confirmWirePayment(db: AnyDb, paymentId: string) {
       .returning();
     return { payment: updated!, invoice: invUpdated! };
   });
+  await notifyOwnersEvent(
+    {
+      type: "invoice_paid",
+      title: `Wire confirmed — ${result.invoice.invoiceNumber} (${formatMoney(result.payment.amountMinor)})`,
+      body:
+        `The wire payment of ${formatMoney(result.payment.amountMinor)} on invoice ` +
+        `${result.invoice.invoiceNumber} was confirmed received. Invoice status is now ` +
+        `"${result.invoice.status}".`,
+      entityType: "invoice",
+      entityId: result.invoice.id,
+    },
+    db,
+  );
+  return result;
 }
 
 /** Detail payload for the admin invoice page: payments plus cleared-funds math. */

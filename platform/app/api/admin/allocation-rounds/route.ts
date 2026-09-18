@@ -7,6 +7,7 @@ import { requireActor } from "@/lib/auth/actor";
 import { assertOwner, actorUserId } from "@/lib/auth/rbac";
 import { recordAudit } from "@/lib/audit";
 import { getSetting } from "@/lib/settings";
+import { notifyOwnersEvent } from "@/lib/notifications";
 import { ALLOCATION_POLICY_OPTIONS, ALLOCATION_POLICY_SNAPSHOT } from "@/lib/allocation/engine";
 
 /**
@@ -167,6 +168,22 @@ export async function POST(req: NextRequest) {
     entityId: round.id,
     after: { name, supplierId, policy: policySnapshot, lineCount: lineInputs.length },
   });
+
+  // Allocation rounds are owner-created, but both owners still get the
+  // in-app + email record so either of them can pick up the review.
+  await notifyOwnersEvent(
+    {
+      type: "allocation_requested",
+      title: `Allocation round created — ${name}`,
+      body:
+        `A new allocation round "${name}" was created with ${lineInputs.length} ` +
+        `request line${lineInputs.length === 1 ? "" : "s"} ` +
+        `(policy: ${policySnapshot.mode}). Review and run it from the allocation console.`,
+      entityType: "allocation_round",
+      entityId: round.id,
+    },
+    db,
+  );
 
   return NextResponse.json({ ok: true, allocationRound: round }, { status: 201 });
 }

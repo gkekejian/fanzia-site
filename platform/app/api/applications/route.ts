@@ -12,7 +12,7 @@ import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
 import { findDuplicateApplication } from "@/lib/applications/dedupe";
 import { getLatestPublishedTermsVersion } from "@/lib/terms";
 import { termsClickwrapLabel } from "@/lib/policies/clickwrap";
-import { notifyOwners } from "@/lib/notifications";
+import { notifyOwnersEvent } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req.headers);
@@ -136,12 +136,18 @@ export async function POST(req: NextRequest) {
   }, "application.confirmation");
 
   const reviewUrl = `${process.env.APP_BASE_URL ?? "http://localhost:3100"}/admin/applications/${created!.id}`;
-  await notifyOwners(
-    "New Fanzia wholesale application",
-    `${input.businessLegalName} submitted a wholesale application (triage score ${score}).${
-      reasons.length ? `\n\nFlags for review:\n- ${reasons.join("\n- ")}` : ""
-    }\n\nReview: ${reviewUrl}`,
-  );
+  await notifyOwnersEvent({
+    type: "application_submitted",
+    title: `New wholesale application — ${input.businessLegalName}`,
+    body:
+      `${input.businessLegalName} (${input.contactEmail}) submitted a wholesale application ` +
+      `(triage score ${score}).` +
+      (reasons.length ? `\n\nFlags for review:\n- ${reasons.join("\n- ")}` : "") +
+      `\n\nReview: ${reviewUrl}`,
+    actorEmail: input.contactEmail,
+    entityType: "application",
+    entityId: created!.id,
+  });
 
   return NextResponse.json({ ok: true });
 }

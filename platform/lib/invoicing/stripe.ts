@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/audit";
 import { formatMoney } from "@/lib/format";
 import { balanceDue, invoiceCleared } from "./rules";
 import { InvoicingError, type BuyerIdentity } from "./service";
+import { notifyOwnersEvent } from "@/lib/notifications";
 
 export { InvoicingError };
 
@@ -122,6 +123,23 @@ function factsFromEvent(event: Stripe.Event): StripePaymentFacts | null {
   return null;
 }
 
+type StripeFailureFacts = {
+  invoiceId: string;
+  amountMinor: number;
+  paymentIntentId: string;
+  failureMessage: string | null;
+};
+
+/** Extract the facts for a failed card payment attempt, if it references one of our invoices. */
+function failureFactsFromEvent(event: Stripe.Event): StripeFailureFacts | null {
+  if (event.type !== "payment_intent.payment_failed") return null;
+  const pi = event.data.object as Stripe.PaymentIntent;
+  const invoiceId = pi.metadata?.invoiceId;
+  if (!invoiceId || !pi.id) return null;
+  const failureMessage = pi.last_payment_error?.message ?? null;
+  return { invoiceId, amountMinor: pi.amount ?? 0, paymentIntentId: pi.id, failureMessage };
+}
+
 /**
  * Idempotently record a card payment from a Stripe webhook event. The
  * payment_intent id is the idempotency key: a repeated event (Stripe
@@ -215,8 +233,46 @@ export async function processStripeWebhook(
   }
 
   const facts = factsFromEvent(event);
-  if (!facts) return { handled: false }; // unknown event type, or card event without our metadata
+  if (!facts) {
+    // A failed card attempt is not a payment — but the owners need to know
+    // it happened (severity warning) so they can follow up with the buyer.
+    const failure = failureFactsFromEvent(event);
+    if (failure) {
+      const [inv] = await db.select().from(invoice).where(eq(invoice.id, failure.invoiceId)).limit(1);
+      await notifyOwnersEvent(
+        {
+          type: "payment_failed",
+          title: `Card payment failed — ${inv ? inv.invoiceNumber : failure.invoiceId}`,
+          body:
+            `A card payment attempt of ${formatMoney(failure.amountMinor)} failed ` +
+            (inv ? `on invoice ${inv.invoiceNumber}` : `for invoice ${failure.invoiceId}`) +
+            (failure.failureMessage ? `: ${failure.failureMessage}` : ".") +
+            ` No payment was recorded.`,
+          entityType: inv ? "invoice" : null,
+          entityId: inv ? inv.id : null,
+          severity: "warning",
+        },
+        db,
+      );
+      return { handled: true };
+    }
+    return { handled: false }; // unknown event type, or card event without our metadata
+  }
   const result = await recordCardPaymentFromStripe(db, facts);
+  if (!result.duplicate) {
+    await notifyOwnersEvent(
+      {
+        type: "invoice_paid",
+        title: `Card payment received — ${result.invoice.invoiceNumber} (${formatMoney(facts.amountMinor)})`,
+        body:
+          `A card payment of ${formatMoney(facts.amountMinor)} was received via Stripe ` +
+          `on invoice ${result.invoice.invoiceNumber}. Invoice status is now "${result.invoice.status}".`,
+        entityType: "invoice",
+        entityId: result.invoice.id,
+      },
+      db,
+    );
+  }
   return { handled: true, duplicate: result.duplicate };
 }
 

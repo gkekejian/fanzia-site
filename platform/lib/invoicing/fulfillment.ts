@@ -3,6 +3,7 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { account, invoice, shipment } from "@/db/schema";
 import { recordAudit } from "@/lib/audit";
 import { sendNotificationEmail } from "@/lib/email/send";
+import { notifyOwnersEvent } from "@/lib/notifications";
 import { getInvoiceDetail, InvoicingError } from "./service";
 
 export { InvoicingError };
@@ -141,6 +142,18 @@ export async function markShipmentShipped(db: AnyDb, shipmentId: string, ownerId
       "shipment.shipped",
     );
   }
+  await notifyOwnersEvent(
+    {
+      type: "shipment_shipped",
+      title: `Order shipped${inv ? ` — ${inv.invoiceNumber}` : ""}`,
+      body:
+        `Shipment for${inv ? ` invoice ${inv.invoiceNumber}` : " the order"} was marked shipped.\n\n` +
+        `Carrier: ${row.carrier}\nTracking: ${row.trackingNumber}`,
+      entityType: inv ? "invoice" : null,
+      entityId: inv ? inv.id : null,
+    },
+    db,
+  );
   return updated!;
 }
 
@@ -184,6 +197,18 @@ export async function markShipmentDelivered(db: AnyDb, shipmentId: string, owner
       "shipment.delivered",
     );
   }
+  await notifyOwnersEvent(
+    {
+      type: "shipment_delivered",
+      title: `Order delivered${inv ? ` — ${inv.invoiceNumber}` : ""}`,
+      body:
+        `Shipment for${inv ? ` invoice ${inv.invoiceNumber}` : " the order"} was marked delivered ` +
+        `by ${row.carrier}.\n\nTracking: ${row.trackingNumber}`,
+      entityType: inv ? "invoice" : null,
+      entityId: inv ? inv.id : null,
+    },
+    db,
+  );
   return updated!;
 }
 

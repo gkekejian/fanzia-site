@@ -19,3 +19,4 @@ export * from "./allocation";
 export * from "./distributor";
 export * from "./nayax";
 export * from "./priceIntel";
+export * from "./notification";

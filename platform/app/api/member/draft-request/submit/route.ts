@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { requireBuyer } from "@/lib/auth/buyerActor";
 import { recordAudit } from "@/lib/audit";
-import { notifyOwners } from "@/lib/notifications";
+import { notifyOwnersEvent } from "@/lib/notifications";
 import { formatMoney } from "@/lib/format";
 import { OFFER_EXPIRY_HOURS } from "@/lib/invoicing/rules";
 import { submitDraftRequest, InvoicingError } from "@/lib/invoicing/service";
@@ -40,13 +40,21 @@ export async function POST(req: NextRequest) {
       userAgent: req.headers.get("user-agent"),
     });
 
-    await notifyOwners(
-      "New order request submitted",
-      `${buyer.contactName} (${buyer.contactEmail}) submitted an order request: ` +
-        `${formatMoney(created.subtotalMinor)} subtotal` +
-        (created.smallOrderFeeMinor ? ` + ${formatMoney(created.smallOrderFeeMinor)} small-order fee` : "") +
-        `. The offer expires in ${OFFER_EXPIRY_HOURS} hours.\n\n` +
-        `Review: ${process.env.APP_BASE_URL ?? "http://localhost:3100"}/admin/order-requests/${created.id}`,
+    await notifyOwnersEvent(
+      {
+        type: "order_placed",
+        title: `New order request — ${buyer.contactName}`,
+        body:
+          `${buyer.contactName} (${buyer.contactEmail}) submitted an order request: ` +
+          `${formatMoney(created.subtotalMinor)} subtotal` +
+          (created.smallOrderFeeMinor ? ` + ${formatMoney(created.smallOrderFeeMinor)} small-order fee` : "") +
+          `. The offer expires in ${OFFER_EXPIRY_HOURS} hours.\n\n` +
+          `Review: ${process.env.APP_BASE_URL ?? "http://localhost:3100"}/admin/order-requests/${created.id}`,
+        actorEmail: buyer.contactEmail,
+        entityType: "order_request",
+        entityId: created.id,
+      },
+      db,
     );
 
     return NextResponse.json({
