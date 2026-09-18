@@ -22,6 +22,9 @@ type Detail = {
     smallOrderFeeMinor: number;
     status: string;
     expiresAt: string;
+    rolloverCount: number;
+    lastRolledOverAt: string | null;
+    supersedesId: string | null;
     declineReason: string | null;
     decidedAt: string | null;
     createdAt: string;
@@ -72,6 +75,23 @@ export function OrderRequestDetail({ requestId }: { requestId: string }) {
     await load();
   }
 
+  async function cancel() {
+    setBusy(true);
+    setMessage(null);
+    const res = await fetch(`/api/admin/order-requests/${requestId}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: declineReason || "Cancelled by owner" }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setMessage(body.error ?? "Cancel failed.");
+      return;
+    }
+    await load();
+  }
+
   if (error) {
     return (
       <main className="container">
@@ -106,6 +126,16 @@ export function OrderRequestDetail({ requestId }: { requestId: string }) {
         </p>
         <p>
           Status: <span className="badge">{r.status}</span> · Expires: {new Date(r.expiresAt).toLocaleString()}
+          <br />
+          <span style={{ color: "var(--fz-muted)" }}>
+            Auto-rollover: {(r.rolloverCount ?? 0) > 0 ? `used (${r.rolloverCount}/1)` : "available (1 of 1)"}
+            {r.lastRolledOverAt && <> · rolled over {new Date(r.lastRolledOverAt).toLocaleString()}</>}
+            {r.supersedesId && (
+              <>
+                {" "}· reaccepted from <a href={`/admin/order-requests/${r.supersedesId}`}>expired offer</a>
+              </>
+            )}
+          </span>
           <br />
           <span style={{ color: "var(--fz-muted)" }}>
             Tax status: {detail.account?.taxStatus === "exempt" ? "exempt" : "taxable (pending counts as taxable)"}
@@ -160,6 +190,29 @@ export function OrderRequestDetail({ requestId }: { requestId: string }) {
         <p className="field-error" role="alert">
           {message}
         </p>
+      )}
+
+      {r.status === "expired" && (
+        <section className="card">
+          <h2>Expired offer</h2>
+          <p style={{ color: "var(--fz-muted)" }}>
+            This offer&apos;s one automatic extension was already used, so it was not extended. The buyer must
+            explicitly reaccept the terms (creates a fresh offer) — or you can cancel it below. No payment was
+            taken for this offer, so nothing is owed back.
+          </p>
+          <button type="button" className="btn btn-secondary" disabled={busy} onClick={cancel}>
+            {busy ? "Working…" : "Cancel offer (no refund due)"}
+          </button>
+        </section>
+      )}
+
+      {r.status === "cancelled" && (
+        <section className="card">
+          <p style={{ color: "var(--fz-muted)" }}>
+            This offer was cancelled{ r.decidedAt && <> on {new Date(r.decidedAt).toLocaleString()}</>}. No payment
+            was taken, so no refund was due. Cancelled offers cannot be rolled over or reaccepted.
+          </p>
+        </section>
       )}
 
       {!decided && (
