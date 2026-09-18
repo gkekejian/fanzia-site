@@ -134,6 +134,13 @@
       "when": 1789758000000,
       "tag": "0016_internal_buyer",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789758600000,
+      "tag": "0017_allocation_rounds",
+      "breakpoints": true
     }
   ]
 }
