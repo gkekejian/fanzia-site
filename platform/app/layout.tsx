@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ensureStartupTasks } from "@/lib/startup";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Fanzia Wholesale Platform",
@@ -20,7 +21,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await ensureStartupTasks();
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <SiteFooter />
+      </body>
     </html>
   );
 }

@@ -5,7 +5,7 @@ import { auditLog } from "@/db/schema";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PgDatabase<any, any, any>;
 
-export type ActorType = "owner" | "ai_operator" | "system" | "applicant";
+export type ActorType = "owner" | "ai_operator" | "system" | "applicant" | "buyer";
 
 /**
  * Accepts an injectable db handle (default: the real one) purely so unit

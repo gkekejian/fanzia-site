@@ -46,4 +46,6 @@ export const SETTINGS_KEYS = {
   sourceCheckStalenessQuotedDays: "source_check_staleness_quoted_days",
   sourceCheckStalenessConfirmedDays: "source_check_staleness_confirmed_days",
   buyerMagicLinkTtlMinutes: "buyer_magic_link_ttl_minutes",
+  // Phase 3 — invoicing (build prompt §1, §9).
+  invoiceSequence: "invoice.sequence",
 } as const;

@@ -1,6 +1,6 @@
 import { PolicyPage } from "@/components/PolicyPage";
-import { DRAFT_POLICIES } from "@/lib/policies/content";
+import { getPolicyPageProps } from "@/lib/policies/published";
 
-export default function ReturnsPage() {
-  return <PolicyPage {...DRAFT_POLICIES.returns_policy} />;
+export default async function ReturnsPage() {
+  return <PolicyPage {...(await getPolicyPageProps("returns_policy"))} />;
 }

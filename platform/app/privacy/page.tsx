@@ -1,6 +1,6 @@
 import { PolicyPage } from "@/components/PolicyPage";
-import { DRAFT_POLICIES } from "@/lib/policies/content";
+import { getPolicyPageProps } from "@/lib/policies/published";
 
-export default function PrivacyPage() {
-  return <PolicyPage {...DRAFT_POLICIES.privacy_policy} />;
+export default async function PrivacyPage() {
+  return <PolicyPage {...(await getPolicyPageProps("privacy_policy"))} />;
 }

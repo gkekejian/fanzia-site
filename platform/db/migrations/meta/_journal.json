@@ -57,6 +57,20 @@
       "when": 1789713900000,
       "tag": "0007_user_management",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "8",
+      "when": 1789713900000,
+      "tag": "0008_invoicing",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "9",
+      "when": 1789715100000,
+      "tag": "0009_cashbook",
+      "breakpoints": true
     }
   ]
 }

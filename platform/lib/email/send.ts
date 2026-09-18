@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { EMAIL_FOOTER } from "@/lib/disclaimers";
 
 const FROM = process.env.RESEND_FROM_EMAIL ?? "no-reply@fanzia.io";
 
@@ -20,8 +21,11 @@ export async function sendTransactionalEmail(params: {
   html?: string;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
+  // Entity/wholesale-only footer on every transactional email (pending
+  // attorney review of the full disclaimer set — see lib/disclaimers.ts).
+  const textWithFooter = `${params.text}\n\n---\n${EMAIL_FOOTER}`;
   if (!apiKey) {
-    console.log("[email:dev-fallback]", JSON.stringify(params, null, 2));
+    console.log("[email:dev-fallback]", JSON.stringify({ ...params, text: textWithFooter }, null, 2));
     return { delivered: false, loggedOnly: true };
   }
   const resend = new Resend(apiKey);
@@ -32,7 +36,7 @@ export async function sendTransactionalEmail(params: {
     from: FROM,
     to: params.to,
     subject: params.subject,
-    text: params.text,
+    text: textWithFooter,
     html: params.html,
   });
   if (error) {

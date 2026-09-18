@@ -1,6 +1,6 @@
 import { PolicyPage } from "@/components/PolicyPage";
-import { DRAFT_POLICIES } from "@/lib/policies/content";
+import { getPolicyPageProps } from "@/lib/policies/published";
 
-export default function ImportPolicyPage() {
-  return <PolicyPage {...DRAFT_POLICIES.import_edition_acknowledgment} />;
+export default async function ImportPolicyPage() {
+  return <PolicyPage {...(await getPolicyPageProps("import_edition_acknowledgment"))} />;
 }

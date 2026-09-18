@@ -47,3 +47,8 @@ export async function getDraftRequest(accountId: string, db: AnyDb = defaultDb) 
   const [row] = await db.select().from(draftRequest).where(eq(draftRequest.accountId, accountId)).limit(1);
   return row ?? null;
 }
+
+/** Remove the draft entirely (used after a successful submit). */
+export async function clearDraftRequest(accountId: string, db: AnyDb = defaultDb) {
+  await db.delete(draftRequest).where(eq(draftRequest.accountId, accountId));
+}

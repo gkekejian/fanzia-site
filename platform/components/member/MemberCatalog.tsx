@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { COMMERCIAL_DISCLOSURE_SHORT } from "@/lib/disclaimers";
 
 type MemberProduct = {
   id: string;
@@ -33,6 +34,17 @@ export function MemberCatalog() {
   const [error, setError] = useState<string | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
   const [savedProductId, setSavedProductId] = useState<string | null>(null);
+  const [disclosureDismissed, setDisclosureDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("fz-commercial-disclosure-dismissed") === "1") {
+        setDisclosureDismissed(true);
+      }
+    } catch {
+      // storage unavailable — banner simply shows again next load
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/member/catalog")
@@ -84,6 +96,27 @@ export function MemberCatalog() {
         Prices shown are wholesale item prices. Outbound shipping and applicable sales tax are calculated separately
         at request time — this is not a delivered price.
       </p>
+      {!disclosureDismissed && (
+        <div className="draft-banner" role="note" style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", fontWeight: 400 }}>
+          <span style={{ flex: 1 }}>{COMMERCIAL_DISCLOSURE_SHORT}</span>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ padding: "0.3rem 0.8rem", flexShrink: 0 }}
+            aria-label="Dismiss ordering terms notice"
+            onClick={() => {
+              setDisclosureDismissed(true);
+              try {
+                sessionStorage.setItem("fz-commercial-disclosure-dismissed", "1");
+              } catch {
+                // storage unavailable — nothing to persist
+              }
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {error && (
         <p className="field-error" role="alert">
           {error}

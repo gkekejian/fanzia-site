@@ -1,6 +1,6 @@
 import { PolicyPage } from "@/components/PolicyPage";
-import { DRAFT_POLICIES } from "@/lib/policies/content";
+import { getPolicyPageProps } from "@/lib/policies/published";
 
-export default function ShippingPage() {
-  return <PolicyPage {...DRAFT_POLICIES.shipping_policy} />;
+export default async function ShippingPage() {
+  return <PolicyPage {...(await getPolicyPageProps("shipping_policy"))} />;
 }
