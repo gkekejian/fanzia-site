@@ -16,6 +16,7 @@ export function AdminNav({ userName }: { userName: string }) {
       <a href="/admin/api-keys">API keys</a>
       <a href="/admin/users">Users</a>
       <a href="/admin/order-requests">Order requests</a>
+      <a href="/admin/nayax">Vending</a>
       <a href="/admin/invoices">Invoices</a>
       <a href="/admin/accounting">Accounting</a>
       <a href="/admin/system-status">System status</a>

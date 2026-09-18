@@ -48,4 +48,6 @@ export const SETTINGS_KEYS = {
   buyerMagicLinkTtlMinutes: "buyer_magic_link_ttl_minutes",
   // Phase 3 — invoicing (build prompt §1, §9).
   invoiceSequence: "invoice.sequence",
+  // Nayax vending connector — weekly restock suggestion cadence (migration 0018).
+  suggestionDay: "suggestion_day",
 } as const;
