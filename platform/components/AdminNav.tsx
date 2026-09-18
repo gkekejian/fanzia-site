@@ -9,6 +9,7 @@ export function AdminNav({ userName }: { userName: string }) {
   return (
     <nav className="admin-nav" aria-label="Admin navigation">
       <a href="/admin/applications">Applications</a>
+      <a href="/admin/inbox">Inbox</a>
       <a href="/admin/accounts">Accounts</a>
       <a href="/admin/catalog-imports">Catalog imports</a>
       <a href="/admin/agent-proposals">Agent proposals</a>

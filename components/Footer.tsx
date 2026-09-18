@@ -19,10 +19,6 @@ export default function Footer() {
               320 North Verdugo Road, Glendale, CA 91206
             </p>
             <p className="mt-1 max-w-sm text-sm text-white/60">
-              <a href="tel:+18187963388" className="hover:text-brand-red">
-                (818) 796-3388
-              </a>{" "}
-              &middot;{" "}
               <a href="mailto:contact@fanzia.io" className="hover:text-brand-red">
                 contact@fanzia.io
               </a>

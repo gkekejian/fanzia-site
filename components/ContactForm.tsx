@@ -53,7 +53,6 @@ export default function ContactForm() {
         <div className="grid gap-5">
           <TextField label="Name" name="name" required autoComplete="name" />
           <TextField label="Email" name="email" type="email" required autoComplete="email" />
-          <TextField label="Phone" name="phone" type="tel" autoComplete="tel" />
           <TextAreaField label="Message" name="message" required rows={5} placeholder="How can we help?" />
         </div>
         <SubmitButton pending={status === "sending"}>Send Message</SubmitButton>

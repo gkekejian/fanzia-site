@@ -9,7 +9,6 @@ export const runtime = "nodejs";
 const schema = z.object({
   name: z.string().trim().min(1).max(200),
   email: z.string().trim().email().max(320),
-  phone: z.string().trim().max(40).optional().or(z.literal("")),
   message: z.string().trim().min(1).max(5000),
   website: z.string().max(0).optional().or(z.literal("")),
   _start: z.number().optional(),
@@ -37,8 +36,65 @@ function rateLimit(ip: string): { ok: boolean; retryAfter?: number } {
 }
 
 function stripControls(s: string) {
-  // Remove control chars that shouldn't appear in name/email/phone/message.
-  return s.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 5000);
+  // Remove control chars that shouldn't appear in name/email/message.
+  return s.replace(/[\\u0000-\\u001f\\u007f]/g, "").slice(0, 5000);
+}
+
+/**
+ * Deliver to the Fanzia platform's website inbox (server-side, authenticated
+ * with the shared ingest secret). Returns true when the message landed.
+ */
+async function deliverToInbox(name: string, email: string, message: string): Promise<boolean> {
+  const url = process.env.CONTACT_INGEST_URL;
+  const secret = process.env.CONTACT_INGEST_SECRET;
+  if (!url || !secret) return false;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-ingest-secret": secret },
+      body: JSON.stringify({ name, email, message, source: "website" }),
+    });
+    if (!res.ok) {
+      console.error("[contact] inbox delivery failed:", res.status);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[contact] inbox delivery error:", err);
+    return false;
+  }
+}
+
+/** Legacy fallback: email the submission via Resend when inbox delivery isn't available. */
+async function deliverByEmail(name: string, email: string, message: string, ip: string) {
+  const to = process.env.CONTACT_TO_EMAIL || "george@fanzia.io";
+  const from = process.env.CONTACT_FROM_EMAIL || "no-reply@fanzia.io";
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    console.log("[contact] (no RESEND_API_KEY set) submission:", { ip, name, email, message });
+    return NextResponse.json({ ok: true, delivery: "logged" });
+  }
+
+  const { Resend } = await import("resend");
+  const resend = new Resend(apiKey);
+  const result = await resend.emails.send({
+    from,
+    to,
+    replyTo: email,
+    subject: `New Fanzia inquiry from ${name}`,
+    text: [`Name: ${name}`, `Email: ${email}`, `IP: ${ip}`, "", message].join("\n"),
+  });
+
+  if (result.error) {
+    console.error("[contact] resend error:", result.error);
+    return NextResponse.json(
+      { error: "Could not send. Please email contact@fanzia.io directly." },
+      { status: 502 },
+    );
+  }
+
+  return NextResponse.json({ ok: true, delivery: "email" });
 }
 
 export async function POST(req: Request) {
@@ -89,53 +145,16 @@ export async function POST(req: Request) {
 
   const name = stripControls(parsed.data.name);
   const email = stripControls(parsed.data.email);
-  const phone = stripControls(parsed.data.phone || "");
   const message = stripControls(parsed.data.message);
 
-  const to = process.env.CONTACT_TO_EMAIL || "george@fanzia.io";
-  const from = process.env.CONTACT_FROM_EMAIL || "no-reply@fanzia.io";
-  const apiKey = process.env.RESEND_API_KEY;
-
-  // Fallback: if Resend is not configured, log the submission so it's
-  // visible in Vercel logs and return success.
-  if (!apiKey) {
-    console.log("[contact] (no RESEND_API_KEY set) submission:", {
-      ip,
-      name,
-      email,
-      phone,
-      message,
-    });
-    return NextResponse.json({ ok: true, delivery: "logged" });
-  }
-
+  // Primary path: the website inbox in the Fanzia admin portal, where the
+  // team reads and replies. Fallback: email, so no message is ever lost.
   try {
-    const { Resend } = await import("resend");
-    const resend = new Resend(apiKey);
-    const result = await resend.emails.send({
-      from,
-      to,
-      replyTo: email,
-      subject: `New Fanzia inquiry from ${name}`,
-      text: [
-        `Name: ${name}`,
-        `Email: ${email}`,
-        `Phone: ${phone || "(none)"}`,
-        `IP: ${ip}`,
-        "",
-        message,
-      ].join("\n"),
-    });
-
-    if (result.error) {
-      console.error("[contact] resend error:", result.error);
-      return NextResponse.json(
-        { error: "Could not send. Please email contact@fanzia.io directly." },
-        { status: 502 },
-      );
+    if (await deliverToInbox(name, email, message)) {
+      return NextResponse.json({ ok: true, delivery: "inbox" });
     }
-
-    return NextResponse.json({ ok: true, delivery: "email" });
+    console.warn("[contact] inbox unavailable, falling back to email");
+    return await deliverByEmail(name, email, message, ip);
   } catch (err) {
     console.error("[contact] unexpected error:", err);
     return NextResponse.json(

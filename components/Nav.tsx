@@ -55,9 +55,12 @@ export default function Nav() {
               {l.label}
             </Link>
           ))}
-          <Link href="/wholesale" className="btn-primary !py-3 !px-5 text-sm">
-            Wholesale Inquiries
-          </Link>
+          <a
+            href="https://app.fanzia.io/apply"
+            className="btn-primary !py-3 !px-5 text-sm"
+          >
+            Apply for Wholesale
+          </a>
           <a
             href="https://app.fanzia.io/member/login"
             className="font-display text-xs uppercase tracking-[0.2em] text-white/70 transition hover:text-brand-red"
@@ -103,13 +106,13 @@ export default function Nav() {
                 {l.label}
               </Link>
             ))}
-            <Link
-              href="/wholesale"
+            <a
+              href="https://app.fanzia.io/apply"
               onClick={() => setOpen(false)}
               className="btn-primary mt-3 w-full"
             >
-              Wholesale Inquiries
-            </Link>
+              Apply for Wholesale
+            </a>
             <a
               href="https://app.fanzia.io/member/login"
               onClick={() => setOpen(false)}

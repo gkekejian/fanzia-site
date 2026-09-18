@@ -63,10 +63,6 @@ export default function StorePage() {
                     Contact
                   </dt>
                   <dd className="mt-1 text-lg text-white/85">
-                    <a href="tel:+18187963388" className="hover:text-brand-red">
-                      (818) 796-3388
-                    </a>
-                    <br />
                     <a href="mailto:contact@fanzia.io" className="hover:text-brand-red">
                       contact@fanzia.io
                     </a>

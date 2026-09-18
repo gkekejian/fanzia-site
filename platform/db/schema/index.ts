@@ -14,3 +14,4 @@ export * from "./buyerAuth";
 export * from "./draftRequest";
 export * from "./invoicing";
 export * from "./cashbook";
+export * from "./contactMessage";

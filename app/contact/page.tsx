@@ -32,7 +32,6 @@ export default function ContactPage() {
 
               <div className="mt-10 space-y-5">
                 <ContactFact label="Address" value="320 N Verdugo Rd, Glendale, CA 91206" />
-                <ContactFact label="Phone" value="(818) 796-3388" href="tel:+18187963388" />
                 <ContactFact label="Email" value="contact@fanzia.io" href="mailto:contact@fanzia.io" />
                 <ContactFact label="Hours" value="Tue–Sat, 11:00 AM – 6:00 PM · By appointment" />
               </div>

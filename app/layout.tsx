@@ -71,7 +71,6 @@ export default function RootLayout({
     url: SITE_URL,
     logo: `${SITE_URL}/brand/logo-black.png`,
     email: "contact@fanzia.io",
-    telephone: "+1-818-796-3388",
     foundingDate: "2021",
     sameAs: [
       "https://www.instagram.com/fanzia",
@@ -86,7 +85,6 @@ export default function RootLayout({
     name: "Fanzia Glendale",
     url: SITE_URL,
     email: "contact@fanzia.io",
-    telephone: "+1-818-796-3388",
     // {{TODO: og image}} — replace with real storefront photography once shot
     image: `${SITE_URL}/brand/logo-black.png`,
     priceRange: "$$",
