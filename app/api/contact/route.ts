@@ -37,18 +37,17 @@ function rateLimit(ip: string): { ok: boolean; retryAfter?: number } {
 
 function stripControls(s: string) {
   // Remove control chars that shouldn't appear in name/email/message.
-  return s.replace(/[\\u0000-\\u001f\\u007f]/g, "").slice(0, 5000);
+  return s.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 5000);
 }
 
 /**
  * Deliver to the Fanzia platform's website inbox (server-side, authenticated
  * with the shared ingest secret). Returns true when the message landed.
  */
-async function deliverToInbox(name: string, email: string, message: string): Promise<{ ok: boolean; reason: string }> {
+async function deliverToInbox(name: string, email: string, message: string): Promise<boolean> {
   const url = process.env.CONTACT_INGEST_URL;
   const secret = process.env.CONTACT_INGEST_SECRET;
-  if (!url) return { ok: false, reason: "missing-CONTACT_INGEST_URL" };
-  if (!secret) return { ok: false, reason: "missing-CONTACT_INGEST_SECRET" };
+  if (!url || !secret) return false;
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -56,14 +55,13 @@ async function deliverToInbox(name: string, email: string, message: string): Pro
       body: JSON.stringify({ name, email, message, source: "website" }),
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.error("[contact] inbox delivery failed:", res.status, body.slice(0, 200));
-      return { ok: false, reason: `platform-${res.status}` };
+      console.error("[contact] inbox delivery failed:", res.status);
+      return false;
     }
-    return { ok: true, reason: "ok" };
+    return true;
   } catch (err) {
     console.error("[contact] inbox delivery error:", err);
-    return { ok: false, reason: `fetch-error:${(err as Error).message?.slice(0, 100)}` };
+    return false;
   }
 }
 
@@ -152,19 +150,11 @@ export async function POST(req: Request) {
   // Primary path: the website inbox in the Fanzia admin portal, where the
   // team reads and replies. Fallback: email, so no message is ever lost.
   try {
-    const inbox = await deliverToInbox(name, email, message);
-    if (inbox.ok) {
+    if (await deliverToInbox(name, email, message)) {
       return NextResponse.json({ ok: true, delivery: "inbox" });
     }
-    console.warn("[contact] inbox unavailable, falling back to email. reason:", inbox.reason);
-    const fallback = await deliverByEmail(name, email, message, ip);
-    // Temporary debug: surface the inbox failure reason so we can diagnose
-    // the forwarding path. Remove once verified.
-    if (fallback.ok) {
-      const fb = await fallback.json().catch(() => ({}));
-      return NextResponse.json({ ...fb, inbox_debug: inbox.reason });
-    }
-    return fallback;
+    console.warn("[contact] inbox unavailable, falling back to email");
+    return await deliverByEmail(name, email, message, ip);
   } catch (err) {
     console.error("[contact] unexpected error:", err);
     return NextResponse.json(
