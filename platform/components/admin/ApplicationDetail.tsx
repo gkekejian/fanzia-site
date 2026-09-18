@@ -6,6 +6,7 @@ import {
   defaultReasonCode,
   type ApplicationDecision,
 } from "@/lib/applications/decisionReasons";
+import { ConfirmAction } from "./ConfirmAction";
 
 type Document = {
   id: string;
@@ -25,7 +26,6 @@ type ApplicationData = {
     channelType: string;
     contactName: string;
     contactEmail: string;
-    contactPhone: string | null;
     addressLine1: string;
     city: string;
     state: string;
@@ -87,8 +87,12 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applicationId]);
 
-  async function onDecide(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  /**
+   * Recording a decision is one-way (applicant gets emailed, an approval
+   * creates a buyer account) — it fires only through ConfirmAction's
+   * second click, never on plain form submit.
+   */
+  async function fireDecision() {
     setBusy(true);
     setActionMessage(null);
     const res = await fetch(`/api/admin/applications/${applicationId}/decision`, {
@@ -171,7 +175,7 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
           <dd>{app.channelType.replace(/_/g, " ")}</dd>
           <dt>Contact</dt>
           <dd>
-            {app.contactName} — {app.contactEmail} {app.contactPhone ? `— ${app.contactPhone}` : ""}
+            {app.contactName} — {app.contactEmail}
           </dd>
           <dt>Address</dt>
           <dd>
@@ -213,7 +217,13 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
             )}
           </p>
         ) : (
-          <form onSubmit={onDecide}>
+          <form
+            onSubmit={(e) => {
+              // Never fire on plain submit (e.g. Enter in a field) — the
+              // ConfirmAction button below is the only firing path.
+              e.preventDefault();
+            }}
+          >
             <label htmlFor="decision">Decision</label>
             <select id="decision" value={decision} onChange={(e) => onDecisionChange(e.target.value as ApplicationDecision)}>
               <option value="approved">Approve</option>
@@ -243,9 +253,22 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
               maxLength={500}
             />
 
-            <button type="submit" className="btn" disabled={busy} style={{ marginTop: "1rem" }}>
-              {busy ? "Recording…" : "Record decision"}
-            </button>
+            <div style={{ marginTop: "1rem" }}>
+              <ConfirmAction
+                label={busy ? "Recording…" : "Record decision"}
+                confirmLabel="Confirm — record decision"
+                onConfirm={fireDecision}
+                disabled={busy}
+                danger={decision === "declined"}
+                detail={
+                  decision === "approved"
+                    ? "This will approve the application, create a buyer account, and email the applicant."
+                    : decision === "declined"
+                      ? "This will decline the application and email the applicant. This cannot be undone here."
+                      : "This will flag the application for further review."
+                }
+              />
+            </div>
           </form>
         )}
       </section>

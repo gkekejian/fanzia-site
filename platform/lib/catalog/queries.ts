@@ -188,3 +188,25 @@ export async function getAdminCatalog(actor: Actor, db: AnyDb = defaultDb): Prom
     return toAdminProductDTO(canSeeCost, p, price, route, supplierName, markupFloorBps, check);
   });
 }
+
+/**
+ * Product ids this buyer account has actually bought: distinct productIds
+ * from order_request lines on requests that reached at least "submitted"
+ * (declined/expired/cancelled/superseded never count as a purchase).
+ * Powers the catalog's "Bought before" filter — the account's own order
+ * history, which the buyer is entitled to see.
+ */
+export async function getPurchasedProductIds(accountId: string, db: AnyDb = defaultDb): Promise<string[]> {
+  const rows = await db
+    .select({ lines: orderRequest.lines })
+    .from(orderRequest)
+    .where(and(eq(orderRequest.accountId, accountId), inArray(orderRequest.status, ["submitted", "approved", "invoiced"])));
+  const ids = new Set<string>();
+  for (const row of rows) {
+    const lines = (row.lines ?? []) as { productId?: string }[];
+    for (const line of lines) {
+      if (line.productId) ids.add(line.productId);
+    }
+  }
+  return [...ids];
+}

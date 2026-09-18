@@ -1,22 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMoney } from "@/lib/format";
-import { computeSmallOrderFee } from "@/lib/invoicing/rules";
 import { IMPORT_CLICKWRAP_TEXT } from "@/lib/disclaimers";
-
-type DraftLine = { productId: string; qtyRequested: number };
-
-type CatalogProduct = {
-  id: string;
-  name: string;
-  sku: string;
-  priceMinor: number;
-  currencyCode: string;
-  marginMinor: number | null;
-  marginBps: number | null;
-  requiresImportAcknowledgment?: boolean;
-};
+import {
+  ORDER_MINIMUM_MINOR,
+  SMALL_ORDER_FEE_MINOR,
+  SMALL_ORDER_THRESHOLD_MINOR,
+} from "@/lib/invoicing/rules";
+import {
+  draftTotals,
+  estimateShippingRange,
+  milestoneProgress,
+  parseQuickOrderLines,
+  sellableUnitLabel,
+  type ShoppingProduct,
+} from "@/lib/member/shopping";
+import { useDraft } from "./useDraft";
+import { MilestoneProgress } from "./MilestoneProgress";
+import { AvailabilityChip } from "./AvailabilityChip";
+import { AddToDraftButton } from "./AddToDraftButton";
 
 type SubmitResult = {
   orderRequestId: string;
@@ -26,78 +29,89 @@ type SubmitResult = {
 };
 
 export function DraftRequestReview() {
-  const [lines, setLines] = useState<DraftLine[] | null>(null);
-  const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
-  const [importProductIds, setImportProductIds] = useState<Set<string>>(new Set());
+  const [catalog, setCatalog] = useState<ShoppingProduct[]>([]);
   const [importAck, setImportAck] = useState(false);
-  const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<SubmitResult | null>(null);
+  const [autosave, setAutosave] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [csvText, setCsvText] = useState("");
+  const [csvErrors, setCsvErrors] = useState<{ line: number; raw: string; reason: string }[]>([]);
+  const [csvAdded, setCsvAdded] = useState(0);
+  const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { lines, notes, setNotes, saveNow, qtyById, setQty, replaceAll, saveError } = useDraft();
 
   useEffect(() => {
-    fetch("/api/member/draft-request")
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const body = await res.json();
-        setLines(body.draft?.lines ?? []);
-        setNotes(body.draft?.notes ?? "");
-      })
-      .catch(() => setLines([]));
     fetch("/api/member/catalog")
       .then(async (res) => {
         if (!res.ok) throw new Error();
         const body = await res.json();
-        const items = (body.products ?? []) as CatalogProduct[];
-        setCatalog(items);
-        setImportProductIds(new Set(items.filter((p) => p.requiresImportAcknowledgment).map((p) => p.id)));
+        setCatalog(body.products ?? []);
       })
       .catch(() => {});
   }, []);
 
-  const hasImportProduct = (lines ?? []).some((l) => importProductIds.has(l.productId));
+  const productById = useMemo(() => new Map(catalog.map((p) => [p.id, p])), [catalog]);
+  const priceById = useMemo(
+    () => new Map(catalog.map((p) => [p.id, { priceMinor: p.priceMinor }])),
+    [catalog],
+  );
 
-  // Line details + totals, computed from the already-fetched catalog so the
-  // buyer sees names, prices, and margins instead of raw product UUIDs.
-  const productById = new Map(catalog.map((p) => [p.id, p]));
-  let subtotalMinor = 0;
+  const lineDetails = useMemo(() => {
+    const details = (lines ?? []).map((line) => {
+      const product = productById.get(line.productId) ?? null;
+      const lineTotal = product ? product.priceMinor * line.qtyRequested : 0;
+      const lineMargin = product && product.marginMinor !== null ? product.marginMinor * line.qtyRequested : null;
+      return { line, product, lineTotal, lineMargin };
+    });
+    return details.sort((a, b) => (a.product?.name ?? "").localeCompare(b.product?.name ?? ""));
+  }, [lines, productById]);
+
+  const totals = useMemo(() => draftTotals(lines ?? [], priceById), [lines, priceById]);
+  const progress = useMemo(() => milestoneProgress(totals.subtotalMinor), [totals.subtotalMinor]);
+  const shipping = useMemo(() => estimateShippingRange(totals.units), [totals.units]);
+
   let marginTotalMinor = 0;
   let marginKnown = false;
-  const lineDetails = (lines ?? []).map((line) => {
-    const product = productById.get(line.productId) ?? null;
-    const lineTotal = product ? product.priceMinor * line.qtyRequested : 0;
-    if (product) subtotalMinor += lineTotal;
-    const lineMargin = product && product.marginMinor !== null ? product.marginMinor * line.qtyRequested : null;
-    if (lineMargin !== null) {
+  for (const d of lineDetails) {
+    if (d.lineMargin !== null) {
       marginKnown = true;
-      marginTotalMinor += lineMargin;
+      marginTotalMinor += d.lineMargin;
     }
-    return { line, product, lineTotal, lineMargin };
-  });
-  const feeEstimate = computeSmallOrderFee(subtotalMinor);
-  // Buyer's retail margin rate: margin ÷ MSRP-based revenue.
+  }
   const marginPct =
-    marginKnown && subtotalMinor + marginTotalMinor > 0
-      ? (marginTotalMinor / (subtotalMinor + marginTotalMinor)) * 100
+    marginKnown && totals.subtotalMinor + marginTotalMinor > 0
+      ? (marginTotalMinor / (totals.subtotalMinor + marginTotalMinor)) * 100
       : null;
 
-  async function save() {
-    setStatus("saving");
-    const res = await fetch("/api/member/draft-request", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lines: lines ?? [], notes }),
-    });
-    setStatus(res.ok ? "saved" : "error");
+  const hasImportProduct = (lines ?? []).some((l) => productById.get(l.productId)?.requiresImportAcknowledgment);
+  const requestTotalMinor = totals.subtotalMinor + totals.feeMinor;
+
+  function onNotesChange(value: string) {
+    setNotes(value);
+    setAutosave("saving");
+    if (notesTimer.current) clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => {
+      saveNow();
+      setAutosave("saved");
+    }, 800);
   }
 
-  function removeLine(productId: string) {
-    setLines((cur) => (cur ?? []).filter((l) => l.productId !== productId));
-  }
-
-  function updateQty(productId: string, qty: number) {
-    setLines((cur) => (cur ?? []).map((l) => (l.productId === productId ? { ...l, qtyRequested: qty } : l)));
+  function addCsvLines() {
+    const { ok, errors } = parseQuickOrderLines(csvText, catalog);
+    setCsvErrors(errors);
+    if (ok.length > 0) {
+      const merged = new Map((lines ?? []).map((l) => [l.productId, l.qtyRequested]));
+      for (const line of ok) {
+        merged.set(line.productId, (merged.get(line.productId) ?? 0) + line.qty);
+      }
+      replaceAll([...merged.entries()].map(([productId, qtyRequested]) => ({ productId, qtyRequested })));
+      setCsvAdded(ok.length);
+      setCsvText("");
+    } else {
+      setCsvAdded(0);
+    }
   }
 
   async function submit() {
@@ -120,7 +134,6 @@ export function DraftRequestReview() {
       smallOrderFeeMinor: body.smallOrderFeeMinor,
       expiresAt: body.expiresAt,
     });
-    setLines([]);
   }
 
   if (submitted) {
@@ -137,7 +150,7 @@ export function DraftRequestReview() {
               <>
                 <br />
                 Small-order fee: {formatMoney(submitted.smallOrderFeeMinor)} (orders under{" "}
-                {formatMoney(75000)} include a {formatMoney(2500)} fee)
+                {formatMoney(SMALL_ORDER_THRESHOLD_MINOR)} include a {formatMoney(SMALL_ORDER_FEE_MINOR)} fee)
               </>
             )}
           </p>
@@ -153,70 +166,87 @@ export function DraftRequestReview() {
     );
   }
 
+  const loading = lines === null;
+
   return (
-    <main className="container">
+    <main className="container" style={{ maxWidth: "900px" }}>
       <h1>Draft request</h1>
       <div className="draft-banner">
         This is a draft only. Saving it does not submit a request, notify Fanzia, or reserve anything.
       </div>
-      <div className="card" style={{ marginTop: "1rem" }}>
-        <strong>Before you submit:</strong> wholesale orders have a {formatMoney(50000)} minimum. Orders under{" "}
-        {formatMoney(75000)} include a {formatMoney(2500)} small-order fee, shown before you confirm. Every request
-        is reviewed by our team and expires 48 hours after submission.
-      </div>
-      {lines === null && <p aria-live="polite">Loading…</p>}
-      {lines && lines.length === 0 && (
+
+      {!loading && totals.units > 0 && (
+        <div className="card milestone-card" style={{ marginBottom: "1rem" }}>
+          <MilestoneProgress subtotalMinor={totals.subtotalMinor} />
+        </div>
+      )}
+
+      {loading && <p aria-live="polite">Loading…</p>}
+
+      {!loading && totals.units === 0 && (
         <p>
           Your draft is empty. <a href="/member/catalog">Browse the catalog</a> to add items.
         </p>
       )}
-      {lines && lines.length > 0 && (
+
+      {!loading && totals.units > 0 && (
         <>
-          <table>
+          <table className="draft-table">
             <caption className="visually-hidden">Draft request lines</caption>
             <thead>
               <tr>
                 <th scope="col">Product</th>
                 <th scope="col">Unit price</th>
-                <th scope="col">Quantity</th>
+                <th scope="col">Qty</th>
                 <th scope="col">Line total</th>
-                <th scope="col">Margin at MSRP</th>
+                <th scope="col">Availability</th>
                 <th scope="col"></th>
               </tr>
             </thead>
             <tbody>
-              {lineDetails.map(({ line, product, lineTotal, lineMargin }) => (
+              {lineDetails.map(({ line, product, lineTotal }) => (
                 <tr key={line.productId}>
-                  <td>
+                  <td data-label="Product">
                     {product ? (
                       <>
-                        <strong>{product.name}</strong>
+                        <strong>{sellableUnitLabel(product.name, product.packsPerUnit)}</strong>
+                        <br />
+                        <span style={{ fontSize: "0.9rem" }}>{product.name}</span>
                         <br />
                         <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>{product.sku}</span>
                       </>
                     ) : (
-                      <span className="field-error">No longer in the catalog — remove this line before submitting.</span>
+                      <span className="field-error">
+                        No longer in the catalog — remove this line before submitting.
+                      </span>
                     )}
                   </td>
-                  <td>{product ? formatMoney(product.priceMinor) : "—"}</td>
-                  <td style={{ width: "6rem" }}>
-                    <label htmlFor={`qty-${line.productId}`} className="visually-hidden">
-                      Quantity for {product?.name ?? line.productId}
-                    </label>
-                    <input
-                      id={`qty-${line.productId}`}
-                      type="number"
-                      min={1}
-                      value={line.qtyRequested}
-                      onChange={(e) => updateQty(line.productId, Number(e.target.value))}
-                    />
+                  <td data-label="Unit price">{product ? formatMoney(product.priceMinor) : "—"}</td>
+                  <td data-label="Qty">
+                    {product ? (
+                      <AddToDraftButton
+                        productId={line.productId}
+                        productName={product.name}
+                        qty={qtyById.get(line.productId) ?? 0}
+                        onChange={setQty}
+                        compact
+                      />
+                    ) : (
+                      line.qtyRequested
+                    )}
                   </td>
-                  <td>{product ? formatMoney(lineTotal) : "—"}</td>
-                  <td title="Your potential retail margin on this line vs manufacturer MSRP">
-                    {lineMargin !== null ? formatMoney(lineMargin) : "—"}
+                  <td data-label="Line total">{product ? formatMoney(lineTotal) : "—"}</td>
+                  <td data-label="Availability">
+                    {product ? <AvailabilityChip product={product} /> : "—"}
                   </td>
                   <td>
-                    <button type="button" className="btn btn-secondary" style={{ padding: "0.3rem 0.8rem" }} onClick={() => removeLine(line.productId)}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: "0.3rem 0.8rem" }}
+                      onClick={() => setQty(line.productId, 0)}
+                      aria-label={`Remove ${product?.name ?? "line"} from draft`}
+                    >
                       Remove
                     </button>
                   </td>
@@ -224,32 +254,110 @@ export function DraftRequestReview() {
               ))}
             </tbody>
           </table>
-          <div className="card" style={{ marginTop: "1rem" }} aria-live="polite">
-            <strong>Estimated totals</strong>
-            <br />
-            Subtotal: {formatMoney(subtotalMinor)}
-            <br />
-            Small-order fee:{" "}
-            {feeEstimate > 0
-              ? `${formatMoney(feeEstimate)} (orders under ${formatMoney(75000)} include a ${formatMoney(2500)} fee)`
-              : `None — this order is over ${formatMoney(75000)}`}
-            {marginKnown && (
-              <>
-                <br />
-                Estimated retail margin at MSRP: {formatMoney(marginTotalMinor)}
-                {marginPct !== null && <> ({marginPct.toFixed(1)}%)</>}
-              </>
-            )}
-            <br />
-            <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>
-              Estimates use current catalog prices. Submitting snapshots the prices at that moment; shipping and tax
-              are calculated separately.
-            </span>
+
+          <div className="card totals-block" style={{ marginTop: "1rem" }} aria-live="polite">
+            <h2 style={{ fontSize: "1rem", marginTop: 0 }}>Estimated totals</h2>
+            <dl className="totals-list">
+              <div>
+                <dt>
+                  Subtotal ({totals.units} unit{totals.units === 1 ? "" : "s"})
+                </dt>
+                <dd>{formatMoney(totals.subtotalMinor)}</dd>
+              </div>
+              <div>
+                <dt>
+                  Small-order fee
+                  <span className="totals-hint">orders under {formatMoney(SMALL_ORDER_THRESHOLD_MINOR)}</span>
+                </dt>
+                <dd>
+                  {progress.feeApplies ? (
+                    formatMoney(SMALL_ORDER_FEE_MINOR)
+                  ) : (
+                    <>
+                      <s>{formatMoney(SMALL_ORDER_FEE_MINOR)}</s>{" "}
+                      <span className="badge badge-ok">Fee dropped — you passed {formatMoney(SMALL_ORDER_THRESHOLD_MINOR)}</span>
+                    </>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>
+                  Estimated shipping
+                  <span className="totals-hint">quoted at allocation — this is a planning estimate</span>
+                </dt>
+                <dd>
+                  {shipping.lowMinor === 0 ? "—" : `${formatMoney(shipping.lowMinor)}–${formatMoney(shipping.highMinor)}`}
+                </dd>
+              </div>
+              {marginKnown && (
+                <div>
+                  <dt>
+                    Estimated retail margin at MSRP
+                    <span className="totals-hint">vs manufacturer MSRP — an estimate, not a promise</span>
+                  </dt>
+                  <dd>
+                    {formatMoney(marginTotalMinor)}
+                    {marginPct !== null && <> ({marginPct.toFixed(1)}%)</>}
+                  </dd>
+                </div>
+              )}
+              <div className="totals-grand">
+                <dt>Request total (excl. shipping)</dt>
+                <dd>{formatMoney(requestTotalMinor)}</dd>
+              </div>
+            </dl>
+            <p style={{ color: "var(--fz-muted)", fontSize: "0.85rem", marginBottom: 0 }}>
+              Estimates use current catalog prices. Submitting snapshots the prices at that moment; shipping and
+              tax are calculated separately. The {formatMoney(ORDER_MINIMUM_MINOR)} minimum applies to the
+              subtotal before fees.
+            </p>
           </div>
         </>
       )}
+
       <label htmlFor="notes">Notes (optional)</label>
-      <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <textarea id="notes" rows={3} value={notes} onChange={(e) => onNotesChange(e.target.value)} />
+      <p role="status" style={{ fontSize: "0.85rem", color: "var(--fz-muted)", marginTop: "0.25rem" }}>
+        {autosave === "saving" && "Saving…"}
+        {autosave === "saved" && "Draft saved ✓"}
+        {autosave === "error" && "Could not save — try again."}
+      </p>
+
+      <details className="csv-upload" style={{ marginTop: "1rem" }}>
+        <summary>Quick order: paste SKUs</summary>
+        <p style={{ color: "var(--fz-muted)", fontSize: "0.9rem" }}>
+          One <code>SKU, qty</code> per line — matched against the catalog, with per-line errors if anything
+          doesn&apos;t resolve.
+        </p>
+        <label htmlFor="csv-input" className="visually-hidden">
+          SKU and quantity lines
+        </label>
+        <textarea
+          id="csv-input"
+          rows={4}
+          value={csvText}
+          onChange={(e) => setCsvText(e.target.value)}
+          placeholder={"PRIS-EVO-BB, 3\nSTEL-CRY-BB, 2"}
+        />
+        <button type="button" className="btn btn-secondary" onClick={addCsvLines} disabled={!csvText.trim()}>
+          Add lines to draft
+        </button>
+        {csvAdded > 0 && (
+          <p role="status" style={{ marginTop: "0.5rem" }}>
+            Added {csvAdded} line{csvAdded === 1 ? "" : "s"} to your draft.
+          </p>
+        )}
+        {csvErrors.length > 0 && (
+          <ul role="alert" style={{ marginTop: "0.5rem" }}>
+            {csvErrors.map((e, i) => (
+              <li key={i} className="field-error">
+                Line {e.line} (“{e.raw}”): {e.reason}
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+
       {hasImportProduct && (
         <div className="card" style={{ marginTop: "1rem" }} role="group" aria-labelledby="import-ack-label">
           <label htmlFor="import-ack" style={{ display: "flex", gap: "0.6rem", alignItems: "flex-start" }}>
@@ -264,36 +372,37 @@ export function DraftRequestReview() {
           </label>
         </div>
       )}
-      <button type="button" className="btn" style={{ marginTop: "1rem" }} onClick={save} disabled={status === "saving"}>
-        {status === "saving" ? "Saving…" : "Save draft"}
-      </button>{" "}
-      <button
-        type="button"
-        className="btn btn-secondary"
-        style={{ marginTop: "1rem" }}
-        onClick={submit}
-        disabled={submitting || !lines || lines.length === 0 || (hasImportProduct && !importAck)}
-      >
-        {submitting ? "Submitting…" : "Submit order request"}
-      </button>
+
+      <div className="submit-row" style={{ marginTop: "1.5rem" }}>
+        <button
+          type="button"
+          className="btn submit-btn"
+          onClick={submit}
+          disabled={submitting || totals.units === 0 || !progress.minMet || (hasImportProduct && !importAck)}
+        >
+          {submitting ? "Submitting…" : `Submit request — ${formatMoney(requestTotalMinor)}`}
+        </button>
+        {!loading && totals.units > 0 && !progress.minMet && (
+          <p className="field-error" role="alert" style={{ marginTop: "0.5rem" }}>
+            Your draft is {formatMoney(progress.toMinimumMinor)} under the {formatMoney(ORDER_MINIMUM_MINOR)}{" "}
+            minimum — add more to submit.
+          </p>
+        )}
+      </div>
       {hasImportProduct && !importAck && (
         <p className="field-error" role="alert" style={{ marginTop: "0.5rem" }}>
-          Your draft includes imported product — check the box above to acknowledge the import notice before submitting.
+          Your draft includes imported product — check the box above to acknowledge the import notice before
+          submitting.
+        </p>
+      )}
+      {saveError && (
+        <p className="field-error" role="alert" style={{ marginTop: "0.5rem" }}>
+          {saveError}
         </p>
       )}
       {submitError && (
         <p className="field-error" role="alert" style={{ marginTop: "0.5rem" }}>
           {submitError}
-        </p>
-      )}
-      {status === "saved" && (
-        <p role="status" style={{ marginTop: "0.5rem" }}>
-          Draft saved.
-        </p>
-      )}
-      {status === "error" && (
-        <p className="field-error" role="alert">
-          Could not save the draft. Try again.
         </p>
       )}
     </main>

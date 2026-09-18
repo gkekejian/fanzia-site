@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { formatMoney, parseMoneyToMinor } from "@/lib/format";
 import { INVOICE_PAYMENT_TERMS } from "@/lib/disclaimers";
+import { ConfirmAction } from "./ConfirmAction";
 
 type Line = {
   productId: string;
@@ -328,24 +329,25 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
       <section className="card">
         <h2>Invoice actions</h2>
         {isDraft && (
-          <button type="button" className="btn" disabled={busy} onClick={() => patch({ action: "send" })}>
-            Mark as sent
-          </button>
+          <ConfirmAction
+            label="Mark as sent"
+            confirmLabel="Confirm — mark as sent"
+            onConfirm={() => patch({ action: "send" })}
+            disabled={busy}
+            detail="The buyer will see this invoice as sent."
+          />
         )}
         {canVoid && (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={busy}
-            style={{ marginLeft: "0.75rem" }}
-            onClick={() => {
-              if (window.confirm("Void this invoice? Only invoices with no payments can be voided.")) {
-                patch({ action: "void" });
-              }
-            }}
-          >
-            Void invoice
-          </button>
+          <span style={{ marginLeft: "0.75rem" }}>
+            <ConfirmAction
+              label="Void invoice"
+              confirmLabel="Confirm — void invoice"
+              onConfirm={() => patch({ action: "void" })}
+              disabled={busy}
+              danger
+              detail="Only invoices with no payments can be voided. This cannot be undone here."
+            />
+          </span>
         )}
         {!isDraft && !canVoid && <p style={{ color: "var(--fz-muted)" }}>No actions available in status “{inv.status}”.</p>}
       </section>
@@ -388,15 +390,13 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
                   </td>
                   <td>
                     {p.method === "wire" && !p.fundsClearedAt && (
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
+                      <ConfirmAction
+                        label="Confirm receipt"
+                        confirmLabel="Confirm — wire received"
+                        onConfirm={() => onConfirmWire(p.id)}
                         disabled={busy}
-                        style={{ padding: "0.3rem 0.8rem" }}
-                        onClick={() => onConfirmWire(p.id)}
-                      >
-                        Confirm receipt
-                      </button>
+                        detail="Marks these funds as cleared. Confirm only after the wire is in the account."
+                      />
                     )}
                   </td>
                 </tr>
@@ -490,15 +490,14 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
                   >
                     Mark shipped
                   </button>{" "}
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
+                  <ConfirmAction
+                    label="Cancel"
+                    confirmLabel="Confirm — cancel shipment"
+                    onConfirm={() => onShipmentAction(s.id, "cancel")}
                     disabled={busy}
-                    style={{ padding: "0.3rem 0.8rem" }}
-                    onClick={() => onShipmentAction(s.id, "cancel")}
-                  >
-                    Cancel
-                  </button>
+                    danger
+                    detail="Cancels this shipment. The carrier label cannot be recovered here."
+                  />
                 </>
               )}
               {s.status === "shipped" && (

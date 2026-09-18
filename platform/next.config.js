@@ -64,6 +64,12 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // Old URL still circulating; the policy now lives at /import-policy.
+      { source: "/import-edition", destination: "/import-policy", permanent: true },
+    ];
+  },
 };
 
 module.exports = nextConfig;

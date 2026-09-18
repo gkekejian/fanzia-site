@@ -1,4 +1,4 @@
-import { integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, text, timestamp, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { idColumn } from "./common";
 import { account, accountContact } from "./account";
 import { user } from "./user";
@@ -9,8 +9,16 @@ import { user } from "./user";
  * changes can't rewrite history). An offer, not a sale: it expires 48 hours
  * after submission and only becomes an invoice when an owner approves it.
  *
- * Status lifecycle: submitted → approved/declined/expired → invoiced
- * (invoiced is set on the request once approve() creates the invoice).
+ * Rollover policy (platform rule): the FIRST expiry triggers one automatic
+ * silent-free rollover (expires_at extended 48h, rollover_count 1,
+ * actor=system in the audit log). Any later expiry marks the offer expired
+ * with NO silent rollover — the buyer must explicitly reaccept, which
+ * creates a fresh order_request row (supersedes_id) and marks the old one
+ * superseded. Cancel is always available from submitted/expired.
+ *
+ * Status lifecycle: submitted → approved/declined/expired/invoiced;
+ * expired → (buyer reaccepts) superseded + new submitted row;
+ * submitted|expired → cancelled (terminal, buyer- or owner-initiated).
  */
 export const orderRequest = pgTable("order_request", {
   id: idColumn(),
@@ -26,6 +34,21 @@ export const orderRequest = pgTable("order_request", {
   smallOrderFeeMinor: integer("small_order_fee_minor").notNull().default(0),
   status: text("status").notNull().default("submitted"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  /**
+   * Silent auto-rollovers consumed by this offer. Hard cap of 1 (see
+   * MAX_SILENT_ROLLOVERS in lib/invoicing/rules.ts): the state machine
+   * never rolls over an offer with rollover_count >= 1 — that expiry
+   * requires explicit buyer reacceptance instead.
+   */
+  rolloverCount: integer("rollover_count").notNull().default(0),
+  /** When the (single) automatic rollover happened; NULL when never rolled over. */
+  lastRolledOverAt: timestamp("last_rolled_over_at", { withTimezone: true }),
+  /**
+   * Set on a fresh offer created by buyer reacceptance: points at the
+   * expired offer it replaces (which is marked superseded). The explicit
+   * AnyPgColumn return type breaks the self-reference cycle for tsc.
+   */
+  supersedesId: uuid("supersedes_id").references((): AnyPgColumn => orderRequest.id),
   decidedBy: uuid("decided_by").references(() => user.id),
   decidedAt: timestamp("decided_at", { withTimezone: true }),
   declineReason: text("decline_reason"),

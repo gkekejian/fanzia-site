@@ -40,7 +40,6 @@ export const account = pgTable("account", {
   country: text("country").notNull().default("US"),
   primaryContactName: text("primary_contact_name").notNull(),
   primaryContactEmail: text("primary_contact_email").notNull().unique(),
-  primaryContactPhone: text("primary_contact_phone"),
   createdFromApplicationId: uuid("created_from_application_id"),
   ...timestamps,
 });
@@ -79,7 +78,6 @@ export const accountContact = pgTable("account_contact", {
     .references(() => account.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  phone: text("phone"),
   roleOnAccount: text("role_on_account").notNull().default("primary"),
   /**
    * Owner-managed kill switch. Inactive contacts cannot request or consume

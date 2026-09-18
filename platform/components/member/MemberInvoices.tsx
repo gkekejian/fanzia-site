@@ -110,7 +110,7 @@ export function MemberInvoices() {
       {!invoices && !error && <p aria-live="polite">Loading…</p>}
       {invoices && invoices.length === 0 && <p>No invoices yet. Approved order requests appear here.</p>}
       {invoices && invoices.length > 0 && (
-        <table>
+        <table className="responsive-table">
           <caption className="visually-hidden">Your invoices</caption>
           <thead>
             <tr>
@@ -124,9 +124,10 @@ export function MemberInvoices() {
           <tbody>
             {invoices.map((inv) => {
               const payable = (inv.status === "sent" || inv.status === "partial") && inv.balanceMinor > 0;
+              const paid = inv.status === "paid";
               return (
                 <tr key={inv.id}>
-                  <td>
+                  <td data-label="Invoice">
                     <strong>{inv.invoiceNumber}</strong>
                     <br />
                     <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>
@@ -149,12 +150,12 @@ export function MemberInvoices() {
                       </>
                     )}
                   </td>
-                  <td>{formatMoney(inv.totalMinor)}</td>
-                  <td>{formatMoney(inv.balanceMinor)}</td>
-                  <td>
+                  <td data-label="Total">{formatMoney(inv.totalMinor)}</td>
+                  <td data-label="Balance due">{formatMoney(inv.balanceMinor)}</td>
+                  <td data-label="Status">
                     <span className={`badge ${STATUS_BADGE[inv.status] ?? ""}`}>{inv.status}</span>
                   </td>
-                  <td>
+                  <td className="invoice-actions">
                     {payable && (
                       <button
                         type="button"
@@ -169,7 +170,7 @@ export function MemberInvoices() {
                     <br />
                     <button
                       type="button"
-                      className="btn btn-secondary"
+                      className={`btn ${paid ? "" : "btn-secondary"}`}
                       style={{ padding: "0.3rem 0.8rem", marginTop: "0.4rem" }}
                       disabled={reorderingId === inv.id}
                       onClick={() => reorder(inv.id)}

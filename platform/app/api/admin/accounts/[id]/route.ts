@@ -23,7 +23,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       id: accountContact.id,
       name: accountContact.name,
       email: accountContact.email,
-      phone: accountContact.phone,
       roleOnAccount: accountContact.roleOnAccount,
       active: accountContact.active,
       createdAt: accountContact.createdAt,

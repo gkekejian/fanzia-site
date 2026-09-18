@@ -5,7 +5,7 @@ import { account, orderRequest } from "@/db/schema";
 import { requireActor } from "@/lib/auth/actor";
 import { assertOwner } from "@/lib/auth/rbac";
 
-const VALID_STATUSES = ["submitted", "approved", "declined", "expired", "invoiced"];
+const VALID_STATUSES = ["submitted", "approved", "declined", "expired", "invoiced", "cancelled", "superseded"];
 
 export async function GET(req: NextRequest) {
   const actor = await requireActor(req);
@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
       smallOrderFeeMinor: orderRequest.smallOrderFeeMinor,
       status: orderRequest.status,
       expiresAt: orderRequest.expiresAt,
+      rolloverCount: orderRequest.rolloverCount,
       createdAt: orderRequest.createdAt,
     })
     .from(orderRequest)

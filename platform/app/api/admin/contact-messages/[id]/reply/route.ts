@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const json = await req.json().catch(() => null);
   try {
     const reply = await replyToContactMessage(params.id, json, actor);
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply, emailSent: reply.emailSent });
   } catch (err) {
     if (err instanceof NotFoundError) {
       return NextResponse.json({ error: "Message not found." }, { status: 404 });

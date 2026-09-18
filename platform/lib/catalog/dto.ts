@@ -46,6 +46,14 @@ export type MemberAvailability = {
   confidence: string;
   statusLabel: string;
   stale: boolean;
+  /**
+   * Units the source check observed, or null when the check recorded none.
+   * This is an observed, unreserved figure (never a promise of stock) —
+   * it powers the honest "Only N left" chip and is deliberately
+   * supplier-anonymous: no supplier, terms, cost, or markup travels with
+   * it (test gate #1).
+   */
+  stockObserved: number | null;
 };
 
 /**
@@ -93,7 +101,7 @@ export type MemberProductDTO = PublicProductDTO & {
 export function toMemberProductDTO(
   p: ProductRow,
   price: Pick<PriceEpochRow, "priceMinor" | "currencyCode">,
-  latestCheck: { checkedAt: Date; confidence: string; validUntil: Date } | null,
+  latestCheck: { checkedAt: Date; confidence: string; validUntil: Date; stockObserved: number | null } | null,
   requiresImportAcknowledgment: boolean = false,
   extras: { trending?: boolean; trendingRank?: number | null } = {},
 ): MemberProductDTO {
@@ -111,6 +119,7 @@ export function toMemberProductDTO(
           confidence: latestCheck.confidence,
           statusLabel: `${CONFIDENCE_LABEL[latestCheck.confidence] ?? "Checked with our source"} on ${latestCheck.checkedAt.toLocaleDateString("en-US")}.`,
           stale: isExpired(latestCheck.validUntil),
+          stockObserved: latestCheck.stockObserved,
         }
       : null,
     msrpMinor: p.msrpMinor ?? null,
@@ -155,7 +164,7 @@ export function toAdminProductDTO(
   route: SourcingRouteRow | null,
   supplierName: string | null,
   markupFloorBps: number,
-  latestCheck: { checkedAt: Date; confidence: string; validUntil: Date } | null,
+  latestCheck: { checkedAt: Date; confidence: string; validUntil: Date; stockObserved: number | null } | null,
 ): AdminProductDTO {
   const base: AdminProductDTO = price
     ? { ...toMemberProductDTO(p, price, latestCheck, route?.routeType === "import"), status: p.status, publiclyVisible: p.publiclyVisible }
