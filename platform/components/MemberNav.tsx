@@ -10,6 +10,7 @@ export function MemberNav({ contactName }: { contactName: string }) {
     <nav className="admin-nav" aria-label="Buyer navigation">
       <a href="/member/catalog">Catalog</a>
       <a href="/member/draft-request">Draft request</a>
+      <a href="/member/order-requests">Order requests</a>
       <a href="/member/invoices">Invoices</a>
       <span style={{ marginLeft: "auto", color: "var(--fz-muted)" }}>{contactName}</span>
       <button type="button" className="btn btn-secondary" onClick={logout} style={{ padding: "0.3rem 0.8rem" }}>

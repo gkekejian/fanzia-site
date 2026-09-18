@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ConfirmAction } from "./ConfirmAction";
 
 type ImportRow = {
   id: string;
@@ -139,12 +140,21 @@ export function CatalogImportDetail({ importId }: { importId: string }) {
             Approving locks the row selection; publishing writes it to the live catalog.
           </p>
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-            <button type="button" className="btn" disabled={busy} onClick={() => runAction("approve")}>
-              Approve diff
-            </button>
-            <button type="button" className="btn btn-danger" disabled={busy} onClick={() => runAction("reject")}>
-              Reject import
-            </button>
+            <ConfirmAction
+              label="Approve diff"
+              confirmLabel="Confirm — approve diff"
+              onConfirm={() => runAction("approve")}
+              disabled={busy}
+              detail="Approving locks the row selection. Publishing is a separate step."
+            />
+            <ConfirmAction
+              label="Reject import"
+              confirmLabel="Confirm — reject import"
+              onConfirm={() => runAction("reject")}
+              disabled={busy}
+              danger
+              detail="Rejecting ends this import. It cannot be undone here."
+            />
           </div>
         </section>
       )}

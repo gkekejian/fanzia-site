@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ConfirmAction } from "./ConfirmAction";
 
 type ContactMessage = {
   id: string;
@@ -44,6 +45,7 @@ export function InboxConsole() {
   const [replyBody, setReplyBody] = useState("");
   const [replyState, setReplyState] = useState<"idle" | "sending" | "error">("idle");
   const [replyError, setReplyError] = useState<string | null>(null);
+  const [replyNotice, setReplyNotice] = useState<string | null>(null);
 
   const loadList = useCallback(() => {
     const qs = filter ? `?status=${encodeURIComponent(filter)}` : "";
@@ -83,18 +85,27 @@ export function InboxConsole() {
     if (!selectedId || !replyBody.trim()) return;
     setReplyState("sending");
     setReplyError(null);
+    setReplyNotice(null);
     try {
       const res = await fetch(`/api/admin/contact-messages/${selectedId}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: replyBody }),
       });
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "Could not send the reply.");
       }
       setReplyBody("");
       setReplyState("idle");
+      if (body.emailSent === false) {
+        // The reply is stored (and the thread marked "replied"), but the
+        // email to the visitor did not go out — say so plainly instead of
+        // leaving staff to assume it was delivered.
+        setReplyNotice(
+          "Reply stored, but the email to the visitor was not delivered. Follow up another way and check the server logs.",
+        );
+      }
       openThread(selectedId);
       loadList();
     } catch (err) {
@@ -197,7 +208,12 @@ export function InboxConsole() {
 
               {thread.replies.length > 0 && (
                 <>
-                  <h3>Replies sent</h3>
+                  <h3>Replies</h3>
+                  <p style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>
+                    Replies are stored here and emailed to the visitor. Email delivery is
+                    best-effort — a failed send is logged on the server, and the reply below
+                    does not prove it was delivered.
+                  </p>
                   {thread.replies.map((r) => (
                     <div key={r.id} style={{ marginBottom: "1rem" }}>
                       <p style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>{formatDate(r.createdAt)}</p>
@@ -213,6 +229,11 @@ export function InboxConsole() {
                   {replyError}
                 </p>
               )}
+              {replyNotice && (
+                <p role="alert" style={{ color: "var(--fz-warn, #7a4a00)" }}>
+                  {replyNotice}
+                </p>
+              )}
               <label>
                 Your reply (emailed to {thread.message.email})
                 <textarea
@@ -223,14 +244,13 @@ export function InboxConsole() {
                 />
               </label>
               <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
+                <ConfirmAction
+                  label={replyState === "sending" ? "Sending…" : "Send reply"}
+                  confirmLabel="Confirm — send reply"
+                  onConfirm={sendReply}
                   disabled={replyState === "sending" || !replyBody.trim()}
-                  onClick={sendReply}
-                >
-                  {replyState === "sending" ? "Sending…" : "Send reply"}
-                </button>
+                  detail={`This emails the visitor at ${thread.message.email}.`}
+                />
                 {STATUSES.filter((s) => s !== thread.message.status).map((s) => (
                   <button key={s} type="button" className="btn btn-secondary" onClick={() => changeStatus(s)}>
                     Mark {s}

@@ -14,6 +14,22 @@ const CHANNEL_TYPES: { value: string; label: string }[] = [
 type FieldErrors = Record<string, string[]>;
 
 /**
+ * Fields the applicant must fill in (mirrors the zod schema in
+ * lib/validation/application.ts). Used so the error banner names every
+ * missing field instead of only mentioning Terms acceptance.
+ */
+const REQUIRED_FIELDS: { id: string; label: string }[] = [
+  { id: "businessLegalName", label: "Business legal name" },
+  { id: "channelType", label: "How you sell" },
+  { id: "addressLine1", label: "Business address" },
+  { id: "city", label: "City" },
+  { id: "state", label: "State" },
+  { id: "postalCode", label: "ZIP" },
+  { id: "contactName", label: "Your name" },
+  { id: "contactEmail", label: "Your email" },
+];
+
+/**
  * The interactive application form. `versionLabel` is the published terms
  * version the applicant is accepting; the checkbox label renders the exact
  * visible sentence captured in terms_acceptance (see
@@ -24,20 +40,32 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [duplicateNotice, setDuplicateNotice] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
+    setDuplicateNotice(null);
     setFieldErrors({});
 
-    if (!termsAccepted) {
-      setFormError("You must check the box to accept the Terms of Sale to submit an application.");
+    // Name every missing field in the banner (not just Terms): the form
+    // uses noValidate, so an empty submit otherwise reaches the server and
+    // comes back with a generic "Invalid input".
+    const form = e.currentTarget;
+    const missing: string[] = [];
+    for (const field of REQUIRED_FIELDS) {
+      const value = form.elements.namedItem(field.id);
+      const text = value instanceof HTMLInputElement || value instanceof HTMLSelectElement ? value.value : "";
+      if (!text.trim()) missing.push(field.label);
+    }
+    if (!termsAccepted) missing.push("Terms of Sale acceptance");
+    if (missing.length > 0) {
+      setFormError(`Please fix the following: ${missing.join("; ")}.`);
       return;
     }
 
-    const form = e.currentTarget;
     const data = new FormData(form);
     const payload = {
       businessLegalName: data.get("businessLegalName"),
@@ -66,8 +94,26 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
       });
       const body = await res.json();
       if (!res.ok) {
-        setFormError(body.error ?? "Something went wrong. Please try again.");
-        if (body.details?.fieldErrors) setFieldErrors(body.details.fieldErrors);
+        if (body.duplicate) {
+          // A live application already exists for this business/email — the
+          // server re-emailed the status link; show that as information,
+          // not an error.
+          setDuplicateNotice(body.error ?? "An application for this business is already under review.");
+          setSubmitting(false);
+          return;
+        }
+        // Belt and suspenders: if the server still reports field-level
+        // problems, name them in the banner too.
+        const serverFields = body.details?.fieldErrors as FieldErrors | undefined;
+        if (serverFields) {
+          setFieldErrors(serverFields);
+          const labels = Object.keys(serverFields).map(
+            (key) => REQUIRED_FIELDS.find((f) => f.id === key)?.label ?? key,
+          );
+          setFormError(`Please fix the following: ${labels.join("; ")}.`);
+        } else {
+          setFormError(body.error ?? "Something went wrong. Please try again.");
+        }
         setSubmitting(false);
         return;
       }
@@ -103,6 +149,12 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
           <p className="field-error" role="alert">
             {formError}
           </p>
+        )}
+        {duplicateNotice && (
+          <div className="card" role="status" style={{ marginBottom: "1rem" }}>
+            <h2 style={{ marginTop: 0 }}>Already in the queue</h2>
+            <p>{duplicateNotice}</p>
+          </div>
         )}
 
         <form onSubmit={onSubmit} noValidate>

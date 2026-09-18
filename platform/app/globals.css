@@ -172,3 +172,46 @@ textarea:focus-visible {
   outline: 3px solid var(--fz-red);
   outline-offset: 2px;
 }
+
+/* Small screens: the admin nav (now 11 links) and data tables were
+ * desktop-only and overflowed at 390px. Buyer pages are out of scope for
+ * this track — these rules keep admin pages usable on phones. */
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem 0.75rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  nav.admin-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 1rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  nav.admin-nav .btn {
+    flex-shrink: 0;
+  }
+
+  /* Responsive-table pattern: the table becomes a horizontal scroller so
+   * wide admin grids (invoices, order requests, users) never push the
+   * page off-screen. */
+  main table {
+    display: block;
+    overflow-x: auto;
+    width: max-content;
+    min-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  th,
+  td {
+    padding: 0.45rem 0.4rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+}
