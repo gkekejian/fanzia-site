@@ -1,6 +1,7 @@
 import type { product, sourcingRoute } from "@/db/schema";
 import type { priceEpoch } from "@/db/schema";
 import { CONFIDENCE_LABEL, isExpired } from "./staleness";
+import { buyerMargin } from "./pricingMath";
 
 type ProductRow = typeof product.$inferSelect;
 type PriceEpochRow = typeof priceEpoch.$inferSelect;
@@ -50,15 +51,37 @@ export type MemberAvailability = {
 /**
  * Adds price and availability — the fields build prompt §18 says are
  * member-only and must never reach an unauthenticated response. Never
- * includes supplier identity, route, cost, markup, or margin — those stay
- * server-only regardless of buyer auth (build prompt §9/§10); see
- * toAdminProductDTO for the owner/ai_operator-only superset.
+ * includes supplier identity, route, cost, markup, or Fanzia's realized
+ * gross margin — those stay server-only regardless of buyer auth (build
+ * prompt §9/§10); see toAdminProductDTO for the owner/ai_operator-only
+ * superset.
+ *
+ * The one "margin" this DTO does carry is `marginBps`/`marginMinor`: the
+ * BUYER's potential retail margin computed from the manufacturer-published
+ * MSRP (lib/catalog/pricingMath.ts `buyerMargin`). It never touches
+ * Fanzia's cost, so it reveals nothing about our markup — test gate #1's
+ * FORBIDDEN_KEYS ("cost", "markup", "costMinor", "markupBps") still pass
+ * because those exact keys are absent.
  */
 export type MemberProductDTO = PublicProductDTO & {
   id: string;
   priceMinor: number;
   currencyCode: string;
   availability: MemberAvailability | null;
+  /**
+   * Manufacturer's suggested retail price per wholesale unit, in minor
+   * units. Null when unknown — margins are never computed from an
+   * invented MSRP.
+   */
+  msrpMinor: number | null;
+  /** Buyer's per-unit retail margin in minor units (msrp - price); null when MSRP unknown. */
+  marginMinor: number | null;
+  /** Buyer's retail margin in basis points ((msrp - price) / msrp); null when MSRP unknown. */
+  marginBps: number | null;
+  /** True when this product is in the trailing-30-day trending set (see lib/catalog/queries.ts). */
+  trending: boolean;
+  /** 1-based rank within the trending set; null when not trending. */
+  trendingRank: number | null;
   /**
    * Terms-relevant flag: this product is sourced through an import route, so
    * the buyer must acknowledge the import notice before ordering. Not
@@ -72,7 +95,11 @@ export function toMemberProductDTO(
   price: Pick<PriceEpochRow, "priceMinor" | "currencyCode">,
   latestCheck: { checkedAt: Date; confidence: string; validUntil: Date } | null,
   requiresImportAcknowledgment: boolean = false,
+  extras: { trending?: boolean; trendingRank?: number | null } = {},
 ): MemberProductDTO {
+  // No price, no margin: the admin DTO reuses this builder for unpriced
+  // products with priceMinor 0, and a margin off a $0 price would be fiction.
+  const margin = price.priceMinor > 0 ? buyerMargin(price.priceMinor, p.msrpMinor ?? null) : null;
   return {
     ...toPublicProductDTO(p),
     id: p.id, // needed to reference the product in a draft_request line (lib/catalog/draftRequest.ts); not sensitive on its own
@@ -86,6 +113,11 @@ export function toMemberProductDTO(
           stale: isExpired(latestCheck.validUntil),
         }
       : null,
+    msrpMinor: p.msrpMinor ?? null,
+    marginMinor: margin?.marginMinor ?? null,
+    marginBps: margin?.marginBps ?? null,
+    trending: extras.trending ?? false,
+    trendingRank: extras.trendingRank ?? null,
     requiresImportAcknowledgment,
   };
 }
@@ -127,7 +159,7 @@ export function toAdminProductDTO(
 ): AdminProductDTO {
   const base: AdminProductDTO = price
     ? { ...toMemberProductDTO(p, price, latestCheck, route?.routeType === "import"), status: p.status, publiclyVisible: p.publiclyVisible }
-    : { ...toPublicProductDTO(p), id: p.id, priceMinor: 0, currencyCode: "", availability: null, requiresImportAcknowledgment: false, status: p.status, publiclyVisible: p.publiclyVisible };
+    : { ...toMemberProductDTO(p, { priceMinor: 0, currencyCode: "" }, latestCheck, false), status: p.status, publiclyVisible: p.publiclyVisible };
 
   if (!canSeeCostStack || !price || !route) return base;
 

@@ -34,6 +34,22 @@ export async function GET(req: NextRequest) {
         status: inv.status,
         sentAt: inv.sentAt,
         createdAt: inv.createdAt,
+        // Lines are included so the buyer can one-click reorder them into
+        // a fresh draft (POST /api/member/draft-request/reorder). Snapshot
+        // fields only — name/sku/qty/price; never cost or supplier.
+        lines: ((inv.lines ?? []) as {
+          productId: string;
+          sku: string;
+          name: string;
+          qtyRequested: number;
+          unitPriceMinor: number;
+        }[]).map((l) => ({
+          productId: l.productId,
+          sku: l.sku,
+          name: l.name,
+          qtyRequested: l.qtyRequested,
+          unitPriceMinor: l.unitPriceMinor,
+        })),
         shipment: latestShipment
           ? {
               status: latestShipment.status,

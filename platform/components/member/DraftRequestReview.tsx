@@ -2,9 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { formatMoney } from "@/lib/format";
+import { computeSmallOrderFee } from "@/lib/invoicing/rules";
 import { IMPORT_CLICKWRAP_TEXT } from "@/lib/disclaimers";
 
 type DraftLine = { productId: string; qtyRequested: number };
+
+type CatalogProduct = {
+  id: string;
+  name: string;
+  sku: string;
+  priceMinor: number;
+  currencyCode: string;
+  marginMinor: number | null;
+  marginBps: number | null;
+  requiresImportAcknowledgment?: boolean;
+};
 
 type SubmitResult = {
   orderRequestId: string;
@@ -15,6 +27,7 @@ type SubmitResult = {
 
 export function DraftRequestReview() {
   const [lines, setLines] = useState<DraftLine[] | null>(null);
+  const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [importProductIds, setImportProductIds] = useState<Set<string>>(new Set());
   const [importAck, setImportAck] = useState(false);
   const [notes, setNotes] = useState("");
@@ -36,13 +49,38 @@ export function DraftRequestReview() {
       .then(async (res) => {
         if (!res.ok) throw new Error();
         const body = await res.json();
-        const items = (body.products ?? []) as { id: string; requiresImportAcknowledgment?: boolean }[];
+        const items = (body.products ?? []) as CatalogProduct[];
+        setCatalog(items);
         setImportProductIds(new Set(items.filter((p) => p.requiresImportAcknowledgment).map((p) => p.id)));
       })
       .catch(() => {});
   }, []);
 
   const hasImportProduct = (lines ?? []).some((l) => importProductIds.has(l.productId));
+
+  // Line details + totals, computed from the already-fetched catalog so the
+  // buyer sees names, prices, and margins instead of raw product UUIDs.
+  const productById = new Map(catalog.map((p) => [p.id, p]));
+  let subtotalMinor = 0;
+  let marginTotalMinor = 0;
+  let marginKnown = false;
+  const lineDetails = (lines ?? []).map((line) => {
+    const product = productById.get(line.productId) ?? null;
+    const lineTotal = product ? product.priceMinor * line.qtyRequested : 0;
+    if (product) subtotalMinor += lineTotal;
+    const lineMargin = product && product.marginMinor !== null ? product.marginMinor * line.qtyRequested : null;
+    if (lineMargin !== null) {
+      marginKnown = true;
+      marginTotalMinor += lineMargin;
+    }
+    return { line, product, lineTotal, lineMargin };
+  });
+  const feeEstimate = computeSmallOrderFee(subtotalMinor);
+  // Buyer's retail margin rate: margin ÷ MSRP-based revenue.
+  const marginPct =
+    marginKnown && subtotalMinor + marginTotalMinor > 0
+      ? (marginTotalMinor / (subtotalMinor + marginTotalMinor)) * 100
+      : null;
 
   async function save() {
     setStatus("saving");
@@ -133,40 +171,82 @@ export function DraftRequestReview() {
         </p>
       )}
       {lines && lines.length > 0 && (
-        <table>
-          <caption className="visually-hidden">Draft request lines</caption>
-          <thead>
-            <tr>
-              <th scope="col">Product ID</th>
-              <th scope="col">Quantity</th>
-              <th scope="col"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line) => (
-              <tr key={line.productId}>
-                <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{line.productId}</td>
-                <td style={{ width: "6rem" }}>
-                  <label htmlFor={`qty-${line.productId}`} className="visually-hidden">
-                    Quantity
-                  </label>
-                  <input
-                    id={`qty-${line.productId}`}
-                    type="number"
-                    min={1}
-                    value={line.qtyRequested}
-                    onChange={(e) => updateQty(line.productId, Number(e.target.value))}
-                  />
-                </td>
-                <td>
-                  <button type="button" className="btn btn-secondary" style={{ padding: "0.3rem 0.8rem" }} onClick={() => removeLine(line.productId)}>
-                    Remove
-                  </button>
-                </td>
+        <>
+          <table>
+            <caption className="visually-hidden">Draft request lines</caption>
+            <thead>
+              <tr>
+                <th scope="col">Product</th>
+                <th scope="col">Unit price</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">Line total</th>
+                <th scope="col">Margin at MSRP</th>
+                <th scope="col"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {lineDetails.map(({ line, product, lineTotal, lineMargin }) => (
+                <tr key={line.productId}>
+                  <td>
+                    {product ? (
+                      <>
+                        <strong>{product.name}</strong>
+                        <br />
+                        <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>{product.sku}</span>
+                      </>
+                    ) : (
+                      <span className="field-error">No longer in the catalog — remove this line before submitting.</span>
+                    )}
+                  </td>
+                  <td>{product ? formatMoney(product.priceMinor) : "—"}</td>
+                  <td style={{ width: "6rem" }}>
+                    <label htmlFor={`qty-${line.productId}`} className="visually-hidden">
+                      Quantity for {product?.name ?? line.productId}
+                    </label>
+                    <input
+                      id={`qty-${line.productId}`}
+                      type="number"
+                      min={1}
+                      value={line.qtyRequested}
+                      onChange={(e) => updateQty(line.productId, Number(e.target.value))}
+                    />
+                  </td>
+                  <td>{product ? formatMoney(lineTotal) : "—"}</td>
+                  <td title="Your potential retail margin on this line vs manufacturer MSRP">
+                    {lineMargin !== null ? formatMoney(lineMargin) : "—"}
+                  </td>
+                  <td>
+                    <button type="button" className="btn btn-secondary" style={{ padding: "0.3rem 0.8rem" }} onClick={() => removeLine(line.productId)}>
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="card" style={{ marginTop: "1rem" }} aria-live="polite">
+            <strong>Estimated totals</strong>
+            <br />
+            Subtotal: {formatMoney(subtotalMinor)}
+            <br />
+            Small-order fee:{" "}
+            {feeEstimate > 0
+              ? `${formatMoney(feeEstimate)} (orders under ${formatMoney(75000)} include a ${formatMoney(2500)} fee)`
+              : `None — this order is over ${formatMoney(75000)}`}
+            {marginKnown && (
+              <>
+                <br />
+                Estimated retail margin at MSRP: {formatMoney(marginTotalMinor)}
+                {marginPct !== null && <> ({marginPct.toFixed(1)}%)</>}
+              </>
+            )}
+            <br />
+            <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>
+              Estimates use current catalog prices. Submitting snapshots the prices at that moment; shipping and tax
+              are calculated separately.
+            </span>
+          </div>
+        </>
       )}
       <label htmlFor="notes">Notes (optional)</label>
       <textarea id="notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />

@@ -255,12 +255,21 @@ export async function publishCatalogImport(input: { importId: string; actor: Act
                 cardsPerPack: staged.cards_per_pack ?? null,
                 releaseStatus: staged.release_status,
                 descriptionOriginal: staged.description,
+                msrpMinor: staged.msrp ?? null,
                 status: "active",
                 publiclyVisible: true,
               })
               .returning();
             productId = newProduct!.id;
           }
+        }
+
+        // MSRP is product-level reference data: apply it on any included row
+        // that proposes one (add, price_change, availability_change, or
+        // msrp_change). Blank in the file means "no change proposed", so
+        // staged.msrp === undefined never clears an existing MSRP.
+        if (staged.msrp !== undefined) {
+          await db.update(product).set({ msrpMinor: staged.msrp }).where(eq(product.id, productId));
         }
 
         let supplierId = staged.matchedSupplierId ?? undefined;

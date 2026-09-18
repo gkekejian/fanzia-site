@@ -1,7 +1,7 @@
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { db as defaultDb } from "@/db/client";
-import { product, priceEpoch, sourcingRoute, sourceCheck, supplier } from "@/db/schema";
+import { product, priceEpoch, sourcingRoute, sourceCheck, supplier, orderRequest } from "@/db/schema";
 import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
 import type { Actor } from "@/lib/auth/rbac";
 import { canSeeCostStack } from "@/lib/auth/rbac";
@@ -66,10 +66,63 @@ export async function getPublicCatalog(db: AnyDb = defaultDb): Promise<PublicPro
 }
 
 /**
+ * Trending products: aggregate order_request lines from the trailing 30
+ * days, counting only requests that represent real buyer intent
+ * (submitted / approved / invoiced — declined and expired are excluded).
+ * A product is "trending" when it is in the top 5 by units ordered AND at
+ * least 2 distinct accounts ordered it, so one big single-buyer order can
+ * never manufacture a badge. Cold start (no qualifying data) returns an
+ * empty map — badges are never faked.
+ *
+ * Returns a map of productId → 1-based rank.
+ */
+export async function getTrendingProductRanks(
+  db: AnyDb = defaultDb,
+  now: Date = new Date(),
+): Promise<Map<string, number>> {
+  const since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({ accountId: orderRequest.accountId, lines: orderRequest.lines })
+    .from(orderRequest)
+    .where(
+      and(
+        gte(orderRequest.createdAt, since),
+        inArray(orderRequest.status, ["submitted", "approved", "invoiced"]),
+      ),
+    );
+
+  const unitsByProduct = new Map<string, number>();
+  const accountsByProduct = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const lines = (row.lines ?? []) as { productId?: string; qtyRequested?: number }[];
+    for (const line of lines) {
+      const qty = line.qtyRequested ?? 0;
+      if (!line.productId || qty <= 0) continue;
+      unitsByProduct.set(line.productId, (unitsByProduct.get(line.productId) ?? 0) + qty);
+      let accounts = accountsByProduct.get(line.productId);
+      if (!accounts) {
+        accounts = new Set();
+        accountsByProduct.set(line.productId, accounts);
+      }
+      accounts.add(row.accountId);
+    }
+  }
+
+  const ranked = [...unitsByProduct.entries()]
+    .filter(([productId]) => (accountsByProduct.get(productId)?.size ?? 0) >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  const ranks = new Map<string, number>();
+  ranked.forEach(([productId], i) => ranks.set(productId, i + 1));
+  return ranks;
+}
+/**
  * Member catalog: only products that are active, publicly listed, and
  * actually priced (nothing to request otherwise). Requires an
  * authenticated buyer account id — callers must resolve that via
  * lib/auth/buyerActor.ts before calling this, never from client input.
+ * Trending ranks are attached per product (getTrendingProductRanks).
  */
 export async function getMemberCatalog(db: AnyDb = defaultDb): Promise<MemberProductDTO[]> {
   const rows = await db
@@ -88,12 +141,17 @@ export async function getMemberCatalog(db: AnyDb = defaultDb): Promise<MemberPro
     ? await db.select().from(sourcingRoute).where(inArray(sourcingRoute.id, routeIds))
     : [];
   const routeTypeById = new Map(routeRows.map((r) => [r.id, r.routeType]));
+  const trendingRanks = await getTrendingProductRanks(db);
 
   return priced.map((p) => {
     const price = priceByProduct.get(p.id)!;
     const check = price.sourcingRouteId ? checkByRoute.get(price.sourcingRouteId) ?? null : null;
     const routeType = price.sourcingRouteId ? routeTypeById.get(price.sourcingRouteId) ?? null : null;
-    return toMemberProductDTO(p, price, check, routeType === "import");
+    const trendingRank = trendingRanks.get(p.id) ?? null;
+    return toMemberProductDTO(p, price, check, routeType === "import", {
+      trending: trendingRank !== null,
+      trendingRank,
+    });
   });
 }
 

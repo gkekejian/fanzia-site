@@ -17,6 +17,11 @@ type MemberProduct = {
   priceMinor: number;
   currencyCode: string;
   availability: { checkedAt: string; confidence: string; statusLabel: string; stale: boolean } | null;
+  msrpMinor: number | null;
+  marginMinor: number | null;
+  marginBps: number | null;
+  trending: boolean;
+  trendingRank: number | null;
 };
 
 // Client-side display only — the currency table is the source of truth
@@ -27,6 +32,22 @@ function formatPrice(minor: number, currencyCode: string): string {
   const exponent = EXPONENT[currencyCode] ?? 2;
   const amount = minor / 10 ** exponent;
   return new Intl.NumberFormat("en-US", { style: "currency", currency: currencyCode || "USD" }).format(amount);
+}
+
+/** Buyer's per-unit retail margin vs MSRP, e.g. "$4.50 (18.0%)" — "—" when MSRP is unknown. */
+function formatMargin(p: MemberProduct): string {
+  if (p.marginMinor === null || p.marginBps === null) return "—";
+  const pct = (p.marginBps / 100).toFixed(1);
+  return `${formatPrice(p.marginMinor, p.currencyCode)} (${pct}%)`;
+}
+
+/** Trending products first (by rank), then everything else in catalog order. */
+function sortTrendingFirst(products: MemberProduct[]): MemberProduct[] {
+  return [...products].sort((a, b) => {
+    const ra = a.trendingRank ?? Number.MAX_SAFE_INTEGER;
+    const rb = b.trendingRank ?? Number.MAX_SAFE_INTEGER;
+    return ra - rb;
+  });
 }
 
 export function MemberCatalog() {
@@ -68,8 +89,7 @@ export function MemberCatalog() {
       .catch(() => {});
   }, []);
 
-  async function addToDraft(productId: string) {
-    const requested = qty[productId] ?? 0;
+  async function addToDraft(productId: string) {    const requested = qty[productId] ?? 0;
     if (requested <= 0) return;
 
     const draftRes = await fetch("/api/member/draft-request");
@@ -89,9 +109,30 @@ export function MemberCatalog() {
     }
   }
 
+  // Sticky draft summary, computed client-side from the already-fetched
+  // draft quantities and catalog prices — no extra request.
+  const priceById = new Map((products ?? []).map((p) => [p.id, p]));
+  let draftUnits = 0;
+  let draftSubtotalMinor = 0;
+  let draftCurrency = "USD";
+  for (const [productId, q] of Object.entries(qty)) {
+    const p = priceById.get(productId);
+    if (!p || !(q > 0)) continue;
+    draftUnits += q;
+    draftSubtotalMinor += q * p.priceMinor;
+    draftCurrency = p.currencyCode;
+  }
+  const orderedProducts = products ? sortTrendingFirst(products) : null;
+
   return (
     <main className="container" style={{ maxWidth: "1100px" }}>
       <h1>Member catalog</h1>
+      {draftUnits > 0 && (
+        <div className="draft-banner" role="status" style={{ position: "sticky", top: 0, zIndex: 5 }}>
+          Draft: {draftUnits} item{draftUnits === 1 ? "" : "s"} · {formatPrice(draftSubtotalMinor, draftCurrency)}{" "}
+          — <a href="/member/draft-request">Review draft →</a>
+        </div>
+      )}
       <p>
         Prices shown are wholesale item prices. Outbound shipping and applicable sales tax are calculated separately
         at request time — this is not a delivered price.
@@ -123,30 +164,48 @@ export function MemberCatalog() {
         </p>
       )}
       {!products && !error && <p aria-live="polite">Loading…</p>}
-      {products && products.length === 0 && <p>No priced products are available yet.</p>}
-      {products && products.length > 0 && (
+      {orderedProducts && orderedProducts.length === 0 && <p>No priced products are available yet.</p>}
+      {orderedProducts && orderedProducts.length > 0 && (
         <table>
           <caption className="visually-hidden">Member catalog with wholesale pricing and availability</caption>
           <thead>
             <tr>
               <th scope="col">Product</th>
               <th scope="col">Price</th>
+              <th scope="col">Your margin</th>
               <th scope="col">Availability</th>
               <th scope="col">Qty</th>
               <th scope="col"></th>
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
+            {orderedProducts.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <strong>{p.name}</strong>
+                  <strong>{p.name}</strong>{" "}
+                  {p.trending && (
+                    <span className="badge badge-ok" title="Among the most-ordered products in the last 30 days">
+                      🔥 Trending
+                    </span>
+                  )}
                   <br />
                   <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>
                     {p.sku} · {p.editionLanguage} · {p.condition === "sealed" ? "Sealed" : "No shrink"}
+                    {p.marginMinor !== null && p.packsPerUnit > 0 && (
+                      <> · about {formatPrice(p.marginMinor / p.packsPerUnit, p.currencyCode)}/pack margin at MSRP</>
+                    )}
                   </span>
                 </td>
-                <td>{formatPrice(p.priceMinor, p.currencyCode)}</td>
+                <td>
+                  {formatPrice(p.priceMinor, p.currencyCode)}
+                  <br />
+                  <span style={{ color: "var(--fz-muted)", fontSize: "0.85rem" }}>
+                    {p.msrpMinor !== null ? `MSRP ${formatPrice(p.msrpMinor, p.currencyCode)}` : "MSRP unknown"}
+                  </span>
+                </td>
+                <td title={p.marginBps !== null ? "Your potential retail margin per unit vs manufacturer MSRP" : "MSRP unknown — margin not shown rather than guessed"}>
+                  {formatMargin(p)}
+                </td>
                 <td>
                   {p.availability ? (
                     <span title={p.availability.confidence}>

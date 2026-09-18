@@ -65,6 +65,13 @@ export const product = pgTable("product", {
   descriptionOriginal: text("description_original").notNull(),
   status: productStatus("status").notNull().default("draft"),
   publiclyVisible: boolean("publicly_visible").notNull().default(false),
+  /**
+   * Manufacturer's suggested retail price per wholesale unit, in minor
+   * currency units. NULL = unknown and is never invented. Buyer-facing
+   * reference for buyer margin math only — this is not Fanzia cost data
+   * and must never be confused with the cost stack (price_epoch).
+   */
+  msrpMinor: bigint("msrp_minor", { mode: "number" }),
   imageStatus: text("image_status").notNull().default("none"), // none | fanzia_owned | licensed
   ...timestamps,
 });

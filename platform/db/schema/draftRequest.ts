@@ -23,3 +23,17 @@ export const draftRequest = pgTable("draft_request", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Dedupe log for abandoned-draft reminders. One row per account, keyed to
+ * the draft version (its `updated_at` at send time) the reminder was sent
+ * for — a draft edited after a reminder gets a new `updated_at` and becomes
+ * eligible again, but the same version is never reminded twice.
+ */
+export const draftReminderLog = pgTable("draft_reminder_log", {
+  accountId: uuid("account_id")
+    .primaryKey()
+    .references(() => account.id, { onDelete: "cascade" }),
+  draftUpdatedAt: timestamp("draft_updated_at", { withTimezone: true }).notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -14,6 +14,7 @@ export const catalogImportRowDiffType = pgEnum("catalog_import_row_diff_type", [
   "add",
   "price_change",
   "availability_change",
+  "msrp_change",
   "missing",
   "unchanged",
   "invalid",

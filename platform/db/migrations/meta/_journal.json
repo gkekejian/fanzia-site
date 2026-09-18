@@ -85,6 +85,27 @@
       "when": 1789719155013,
       "tag": "0011_contact_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789724100727,
+      "tag": "0012a_product_msrp",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789724100728,
+      "tag": "0012b_draft_reminder_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789724261021,
+      "tag": "0012c_import_diff_type_msrp",
+      "breakpoints": true
     }
   ]
 }

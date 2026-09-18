@@ -1,0 +1,1 @@
+{"crons":[{"path":"/api/cron/abandoned-drafts","schedule":"0 14 * * *"}]}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { formatMoney } from "@/lib/format";
 
 type MemberShipment = {
@@ -32,11 +32,15 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export function MemberInvoices() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [invoices, setInvoices] = useState<MemberInvoice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [reorderError, setReorderError] = useState<string | null>(null);
+  const [reorderSkipped, setReorderSkipped] = useState<{ name: string; reason: string }[] | null>(null);
 
   useEffect(() => {
     fetch("/api/member/invoices")
@@ -48,6 +52,30 @@ export function MemberInvoices() {
       .catch(() => setError("Could not load your invoices."));
   }, []);
 
+  async function reorder(id: string) {
+    setReorderingId(id);
+    setReorderError(null);
+    setReorderSkipped(null);
+    const res = await fetch("/api/member/draft-request/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId: id }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setReorderingId(null);
+    if (!res.ok) {
+      setReorderError(body.error ?? "Could not reorder these items. Try again.");
+      return;
+    }
+    const skipped = (body.skipped ?? []) as { name: string; reason: string }[];
+    if (skipped.length === 0) {
+      router.push("/member/draft-request");
+    } else {
+      // Some items couldn't come along — say so honestly and let the buyer
+      // decide whether to continue with the rest.
+      setReorderSkipped(skipped);
+    }
+  }
   async function payByCard(id: string) {
     setPayingId(id);
     setPayError(null);
@@ -138,6 +166,17 @@ export function MemberInvoices() {
                         {payingId === inv.id ? "Starting…" : "Pay by card"}
                       </button>
                     )}
+                    <br />
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: "0.3rem 0.8rem", marginTop: "0.4rem" }}
+                      disabled={reorderingId === inv.id}
+                      onClick={() => reorder(inv.id)}
+                      title="Copy this invoice's items into a new draft request"
+                    >
+                      {reorderingId === inv.id ? "Adding…" : "Reorder these items"}
+                    </button>
                   </td>
                 </tr>
               );
@@ -149,6 +188,26 @@ export function MemberInvoices() {
         <p className="field-error" role="alert" style={{ marginTop: "0.5rem" }}>
           {payError}
         </p>
+      )}
+      {reorderError && (
+        <p className="field-error" role="alert" style={{ marginTop: "0.5rem" }}>
+          {reorderError}
+        </p>
+      )}
+      {reorderSkipped && reorderSkipped.length > 0 && (
+        <div className="card" role="status" style={{ marginTop: "0.5rem" }}>
+          <strong>Added what we could — but some items couldn&apos;t come along:</strong>
+          <ul>
+            {reorderSkipped.map((s, i) => (
+              <li key={i}>
+                <strong>{s.name}</strong> — {s.reason}
+              </li>
+            ))}
+          </ul>
+          <p>
+            <a href="/member/draft-request">Continue to your draft →</a>
+          </p>
+        </div>
       )}
       <p style={{ color: "var(--fz-muted)", marginTop: "1rem" }}>
         Card payments clear immediately. For ACH or wire, contact Fanzia and we&apos;ll record it on your invoice.

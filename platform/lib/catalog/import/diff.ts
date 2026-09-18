@@ -10,7 +10,7 @@ import type { RawImportRow } from "./parse";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PgDatabase<any, any, any>;
 
-export type DiffType = "add" | "price_change" | "availability_change" | "missing" | "unchanged" | "invalid";
+export type DiffType = "add" | "price_change" | "availability_change" | "msrp_change" | "missing" | "unchanged" | "invalid";
 
 export type ComputedRow = {
   rowNumber: number;
@@ -150,6 +150,11 @@ export async function computeDiff(db: AnyDb, rawRows: RawImportRow[]): Promise<C
     const availabilityChanged =
       row.stock_observed !== undefined && (!latestCheck || latestCheck.stockObserved !== row.stock_observed);
 
+    // MSRP is product-level reference data, not a price: an MSRP-only
+    // change never touches price_epoch. Blank (undefined) means "no change
+    // proposed", matching every other optional column.
+    const msrpChanged = row.msrp !== undefined && row.msrp !== (existingProduct.msrpMinor ?? undefined);
+
     // The floor only gates rows that would set a NEW price. A row that
     // leaves the price untouched (availability-only change, or no change at
     // all) is never invalidated by the floor — the price it proposes is the
@@ -162,7 +167,13 @@ export async function computeDiff(db: AnyDb, rawRows: RawImportRow[]): Promise<C
       }
     }
 
-    const diffType: DiffType = priceChanged ? "price_change" : availabilityChanged ? "availability_change" : "unchanged";
+    const diffType: DiffType = priceChanged
+      ? "price_change"
+      : availabilityChanged
+        ? "availability_change"
+        : msrpChanged
+          ? "msrp_change"
+          : "unchanged";
 
     results.push({
       rowNumber,
