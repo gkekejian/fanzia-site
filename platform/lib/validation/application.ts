@@ -35,8 +35,10 @@ export const applicationSchema = z.object({
   website: z.string().max(0).optional().default(""), // honeypot
   // Cloudflare Turnstile client token. Verified server-side against
   // Cloudflare's siteverify endpoint; fail-open when the secret key is
-  // not configured (see lib/turnstile.ts).
-  turnstileToken: z.string().max(2048).optional().default(""),
+  // not configured (see lib/turnstile.ts). nullish because the client
+  // sends null when the widget is absent or unsolved — rejecting null
+  // here would block legitimate applicants while Turnstile is off.
+  turnstileToken: z.string().max(2048).nullish().default(""),
 });
 
 export type ApplicationInput = z.infer<typeof applicationSchema>;
