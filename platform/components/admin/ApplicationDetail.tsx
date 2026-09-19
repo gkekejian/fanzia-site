@@ -32,6 +32,7 @@ type ApplicationData = {
     postalCode: string;
     sellersPermitNumber: string | null;
     channelEvidenceUrl: string | null;
+    productInterests: unknown;
     triageScore: number;
     needsReviewReasons: string[];
     decisionReason: string | null;
@@ -185,6 +186,12 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
           <dd>{app.sellersPermitNumber || "Not provided"}</dd>
           <dt>Channel evidence</dt>
           <dd>{app.channelEvidenceUrl || "Not provided"}</dd>
+          <dt>Product interests</dt>
+          <dd>
+            {Array.isArray(app.productInterests) && app.productInterests.length > 0
+              ? (app.productInterests as string[]).join(", ")
+              : "Not specified"}
+          </dd>
         </dl>
       </section>
 

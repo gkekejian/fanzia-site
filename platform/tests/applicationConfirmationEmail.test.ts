@@ -3,8 +3,11 @@ import { buildApplicationConfirmationEmail } from "@/lib/applications/confirmati
 
 /**
  * Owner requirement (2026-09-19): asking the applicant for missing
- * documents and channel evidence must be automatic, never a manual
- * follow-up. The submission confirmation email carries the checklist.
+ * documents must be automatic, never a manual follow-up. The submission
+ * confirmation email carries the ask: the seller's permit copy is always
+ * required, while the channel ask is optional — smoke shops and
+ * convenience stores don't need a channel, but online sellers should
+ * share where they sell.
  */
 describe("application confirmation email", () => {
   const base = {
@@ -21,20 +24,21 @@ describe("application confirmation email", () => {
     expect(subject).toContain("a few things needed");
     expect(text).toContain("K & Jassy Shop LLC");
     expect(text).toContain("seller's permit");
-    expect(text).toContain("can't approve your application until this is on file");
+    expect(text).toContain("can't approve your application until it's on file");
     expect(text).toContain(base.resumeUrl);
     expect(text).toContain("168 hours");
   });
 
-  it("asks for channel evidence only when none was provided", () => {
+  it("asks for online-selling links only when no channel evidence was provided", () => {
     const missing = buildApplicationConfirmationEmail({ ...base, channelEvidenceUrl: null });
-    expect(missing.text).toContain("Channel evidence");
+    expect(missing.text).toContain("If you sell online");
+    expect(missing.text).toContain("Whatnot");
 
     const provided = buildApplicationConfirmationEmail({
       ...base,
       channelEvidenceUrl: "https://example.com/store",
     });
-    expect(provided.text).not.toContain("Channel evidence");
+    expect(provided.text).not.toContain("If you sell online");
     // The permit ask is still there either way.
     expect(provided.text).toContain("seller's permit");
   });

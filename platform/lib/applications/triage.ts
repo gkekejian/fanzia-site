@@ -19,8 +19,12 @@ export function scoreApplication(input: ApplicationInput): {
     reasons.push("No seller's permit number provided yet.");
     score += 2;
   }
-  if (!input.channelEvidenceUrl) {
-    reasons.push("No channel evidence link provided (storefront, marketplace listing, or similar).");
+  // A missing channel link is not a deficiency for brick-and-mortar style
+  // buyers (smoke shops, convenience stores, etc.) — it only matters when
+  // the applicant claims to sell live and shows nowhere to find them
+  // (owner direction 2026-09-19).
+  if (input.channelType === "live_seller" && !input.channelEvidenceUrl) {
+    reasons.push("Live seller with no channel link provided — worth verifying where they sell.");
     score += 1;
   }
   if (input.state.toUpperCase() !== "CA" && input.channelType !== "live_seller") {

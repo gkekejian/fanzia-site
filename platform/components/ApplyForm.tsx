@@ -12,6 +12,19 @@ const CHANNEL_TYPES: { value: string; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
+// What the applicant wants to buy (owner request 2026-09-19: know their
+// product interests, not just Pokémon). Checkbox values are the
+// human-readable labels shown on the admin review screen.
+const PRODUCT_INTERESTS: string[] = [
+  "Pokémon",
+  "Yu-Gi-Oh!",
+  "Magic: The Gathering",
+  "One Piece",
+  "Disney Lorcana",
+  "Sports cards",
+  "Other TCG / collectibles",
+];
+
 type FieldErrors = Record<string, string[]>;
 
 /**
@@ -90,6 +103,7 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
       contactEmail: data.get("contactEmail"),
       channelEvidenceUrl: data.get("channelEvidenceUrl"),
       sellersPermitNumber: data.get("sellersPermitNumber"),
+      productInterests: data.getAll("productInterests").map(String),
       termsAccepted: true,
       website: data.get("website"), // honeypot
       turnstileToken,
@@ -217,6 +231,16 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
 
           <label htmlFor="channelEvidenceUrl">Link to your storefront or marketplace listing (optional)</label>
           <input id="channelEvidenceUrl" name="channelEvidenceUrl" type="url" placeholder="https://" />
+
+          <fieldset style={{ marginTop: "1rem", border: "1px solid var(--fz-border)", borderRadius: "6px", padding: "0.75rem 1rem" }}>
+            <legend style={{ padding: "0 0.4rem", fontWeight: 600 }}>What products are you interested in? (optional)</legend>
+            {PRODUCT_INTERESTS.map((p) => (
+              <label key={p} style={{ display: "block", fontWeight: 400, margin: "0.3rem 0" }}>
+                <input type="checkbox" name="productInterests" value={p} style={{ width: "auto", marginRight: "0.5rem" }} />
+                {p}
+              </label>
+            ))}
+          </fieldset>
 
           {/* Honeypot: hidden from sighted and screen-reader users alike, but still
               tab-reachable-free so it never interferes with real keyboard navigation. */}

@@ -37,6 +37,10 @@ export const application = pgTable("application", {
   channelEvidenceUrl: text("channel_evidence_url"),
   sellersPermitNumber: text("sellers_permit_number"),
 
+  // What the applicant wants to buy (multi-select on the apply form, e.g.
+  // Pokémon, Yu-Gi-Oh!, sports cards). Optional; JSON string array.
+  productInterests: jsonb("product_interests").notNull().default([]),
+
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   resumeTokenHash: text("resume_token_hash").notNull().unique(),
   resumeTokenExpiresAt: timestamp("resume_token_expires_at", { withTimezone: true }).notNull(),

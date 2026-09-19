@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
       contactEmail: input.contactEmail,
       channelEvidenceUrl: input.channelEvidenceUrl || null,
       sellersPermitNumber: input.sellersPermitNumber || null,
+      productInterests: input.productInterests ?? [],
       resumeTokenHash: hashToken(rawResumeToken),
       resumeTokenExpiresAt: new Date(Date.now() + ttlHours * 60 * 60 * 1000),
       triageScore: score,

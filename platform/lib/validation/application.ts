@@ -3,9 +3,9 @@ import { z } from "zod";
 /**
  * Deliberately does not collect an EIN anywhere (build prompt §8). Fields
  * mirror exactly what §8 says is sufficient: business identity, address,
- * seller's permit number, and channel evidence. A honeypot field
- * ("website") is included and must be empty — same pattern as the
- * marketing site's existing contact-form protection.
+ * seller's permit number, and channel evidence — plus product interests
+ * (owner request 2026-09-19: know what applicants want to buy, not just
+ * Pokémon). A honeypot field ("website") is included and must be empty.
  */
 export const applicationSchema = z.object({
   businessLegalName: z.string().min(2).max(200),
@@ -27,6 +27,9 @@ export const applicationSchema = z.object({
   contactEmail: z.string().email(),
   channelEvidenceUrl: z.string().url().optional().or(z.literal("")).default(""),
   sellersPermitNumber: z.string().max(60).optional().default(""),
+  // What the applicant wants to buy. Optional multi-select on the form;
+  // checkbox values are the human-readable labels shown in admin.
+  productInterests: z.array(z.string().max(60)).max(20).optional().default([]),
   // Berman-compliant clickwrap: submission is blocked server-side, not
   // just client-side, unless this is explicitly true (build prompt §12).
   termsAccepted: z.literal(true, {
