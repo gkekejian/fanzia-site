@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb } from "./testDb";
-import { user as userTable, application as applicationTable } from "@/db/schema";
+import { user as userTable, application as applicationTable, applicationDocument } from "@/db/schema";
 import { decideApplication, AlreadyDecidedError } from "@/lib/applications/decide";
 import {
   DECISION_REASONS,
@@ -111,6 +111,17 @@ describe("decideApplication terminal-state guard", () => {
       db,
     );
     expect(r1.executed).toBe(true);
+
+    // Owner policy (2026-09-19): approval needs a seller's permit copy on
+    // file — the applicant uploads it, then the approval can proceed.
+    await db.insert(applicationDocument).values({
+      applicationId: app.id,
+      docType: "sellers_permit",
+      storageKey: "fake-permit-key",
+      originalFilename: "permit.pdf",
+      mimeVerified: "application/pdf",
+      sizeBytes: 100,
+    });
 
     const r2 = await decideApplication(
       { applicationId: app.id, decision: "approved", reason: "Meets all wholesale criteria", actor: ownerActor },

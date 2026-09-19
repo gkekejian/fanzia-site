@@ -1,1 +1,20 @@
-{"crons": [{"path": "/api/cron/abandoned-drafts", "schedule": "0 14 * * *"}, {"path": "/api/cron/ops-sweep", "schedule": "30 13 * * *"}, {"path": "/api/cron/price-refresh", "schedule": "0 10 * * 1"}]}
+{
+  "crons": [
+    {
+      "path": "/api/cron/abandoned-drafts",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/ops-sweep",
+      "schedule": "30 13 * * *"
+    },
+    {
+      "path": "/api/cron/price-refresh",
+      "schedule": "0 10 * * 1"
+    },
+    {
+      "path": "/api/cron/agent-suggestions",
+      "schedule": "0 13 * * *"
+    }
+  ]
+}

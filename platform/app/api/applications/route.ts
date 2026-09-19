@@ -12,6 +12,7 @@ import { clientIp, rateLimited, PUBLIC_WRITE_LIMITS } from "@/lib/rateLimit";
 import { verifyTurnstile, turnstileFailureBody } from "@/lib/turnstile";
 import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
 import { findDuplicateApplication } from "@/lib/applications/dedupe";
+import { buildBusinessSummary, formatSummaryEmail, runApplicationChecks } from "@/lib/applications/summary";
 import { getLatestPublishedTermsVersion } from "@/lib/terms";
 import { termsClickwrapLabel } from "@/lib/policies/clickwrap";
 import { notifyOwnersEvent } from "@/lib/notifications";
@@ -157,13 +158,18 @@ export async function POST(req: NextRequest) {
   }, "application.confirmation");
 
   const reviewUrl = `${process.env.APP_BASE_URL ?? "http://localhost:3100"}/admin/applications/${created!.id}`;
+  // Business summary + deterministic checks for the admin notification —
+  // the automated version of the manual approve/decline brief. No documents
+  // can exist yet at submit time (uploads happen via the continue page), so
+  // the checks reflect the application fields as submitted.
+  const summary = buildBusinessSummary(created!, []);
+  const checks = runApplicationChecks(created!, []);
   await notifyOwnersEvent({
     type: "application_submitted",
     title: `New wholesale application — ${input.businessLegalName}`,
     body:
-      `${input.businessLegalName} (${input.contactEmail}) submitted a wholesale application ` +
-      `(triage score ${score}).` +
-      (reasons.length ? `\n\nFlags for review:\n- ${reasons.join("\n- ")}` : "") +
+      `${input.businessLegalName} (${input.contactEmail}) submitted a wholesale application.\n\n` +
+      formatSummaryEmail(summary, checks, score, reasons) +
       `\n\nReview: ${reviewUrl}`,
     actorEmail: input.contactEmail,
     entityType: "application",

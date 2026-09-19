@@ -1,0 +1,231 @@
+/* Dashboard AI operator slide-over panel. Same design language as the
+   rest of the admin portal: --fz-* tokens, .btn / .btn-secondary. */
+
+.fz-agent-fab {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--fz-black);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
+.fz-agent-fab:hover {
+  opacity: 0.92;
+}
+
+.fz-agent-fab .dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--fz-red);
+}
+
+.fz-agent-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 950;
+  width: min(430px, 94vw);
+  background: #fff;
+  border-left: 1px solid var(--fz-border);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.fz-agent-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--fz-border);
+}
+
+.fz-agent-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.fz-agent-header .spacer {
+  margin-left: auto;
+}
+
+.fz-agent-close {
+  background: none;
+  border: 1px solid var(--fz-border);
+  border-radius: 6px;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--fz-black);
+}
+
+.fz-agent-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--fz-bg);
+}
+
+.fz-agent-msg {
+  max-width: 92%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.fz-agent-msg.user {
+  align-self: flex-end;
+  background: var(--fz-black);
+  color: #fff;
+}
+
+.fz-agent-msg.assistant {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid var(--fz-border);
+}
+
+.fz-agent-tool {
+  align-self: flex-start;
+  max-width: 92%;
+  font-size: 0.82rem;
+  color: var(--fz-muted);
+}
+
+.fz-agent-approval {
+  align-self: stretch;
+  background: #fff;
+  border: 2px solid var(--fz-red);
+  border-radius: 10px;
+  padding: 0.9rem;
+  font-size: 0.9rem;
+}
+
+.fz-agent-approval h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  color: var(--fz-red);
+}
+
+.fz-agent-approval pre {
+  background: var(--fz-bg);
+  border: 1px solid var(--fz-border);
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.78rem;
+  overflow-x: auto;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.fz-agent-approval .actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fz-agent-approval .btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.88rem;
+}
+
+.fz-agent-suggestion {
+  background: #fff;
+  border: 1px solid var(--fz-border);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.88rem;
+}
+
+.fz-agent-suggestion h4 {
+  margin: 0.35rem 0 0.25rem;
+  font-size: 0.9rem;
+}
+
+.fz-agent-suggestion p {
+  margin: 0 0 0.5rem;
+  color: var(--fz-black);
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.fz-agent-suggestion .linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--fz-red);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.fz-agent-input {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--fz-border);
+  background: #fff;
+}
+
+.fz-agent-input input {
+  flex: 1;
+  margin: 0;
+}
+
+.fz-agent-input .btn {
+  white-space: nowrap;
+}
+
+.fz-agent-status {
+  font-size: 0.8rem;
+  color: var(--fz-muted);
+  padding: 0 1rem 0.4rem;
+  background: #fff;
+}
+
+.fz-agent-error {
+  background: #fde5e5;
+  border: 1px solid var(--fz-red);
+  color: #9c1c1c;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.fz-agent-notice {
+  background: #fff4e5;
+  border: 1px solid #f2c078;
+  color: #7a4a00;
+  border-radius: 10px;
+  padding: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.fz-agent-notice code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}

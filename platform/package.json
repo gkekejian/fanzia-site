@@ -20,8 +20,11 @@
     "scan:claims": "bash scripts/scan-prohibited-claims.sh"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.102",
+    "@ai-sdk/react": "^4.0.110",
     "@aws-sdk/client-s3": "3.716.0",
     "@aws-sdk/s3-request-presigner": "3.716.0",
+    "ai": "^6.0.286",
     "drizzle-orm": "0.36.4",
     "next": "14.2.35",
     "otpauth": "9.3.6",
@@ -32,7 +35,7 @@
     "resend": "4.0.0",
     "stripe": "^22.6.2",
     "xlsx": "^0.18.5",
-    "zod": "3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.0",

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { eq, isNull } from "drizzle-orm";
 import { createTestDb } from "./testDb";
-import { application as applicationTable, termsVersion, termsAcceptance, user as userTable } from "@/db/schema";
+import { application as applicationTable, applicationDocument, termsVersion, termsAcceptance, user as userTable } from "@/db/schema";
 import { decideApplication } from "@/lib/applications/decide";
 import { termsClickwrapLabel } from "@/lib/policies/clickwrap";
 import { hashToken } from "@/lib/crypto";
@@ -70,6 +70,16 @@ describe("terms clickwrap capture", () => {
       .values({ email: "owner@fanzia.io", name: "Owner", role: "owner" })
       .returning();
     const ownerActor: Actor = { kind: "owner", user: { id: owner!.id, email: owner!.email, name: owner!.name, role: "owner" } };
+
+    // Owner policy (2026-09-19): approval needs a seller's permit copy on file.
+    await db.insert(applicationDocument).values({
+      applicationId: app!.id,
+      docType: "sellers_permit",
+      storageKey: "fake-permit-key",
+      originalFilename: "permit.pdf",
+      mimeVerified: "application/pdf",
+      sizeBytes: 100,
+    });
 
     const outcome = await decideApplication({ applicationId: app!.id, decision: "approved", actor: ownerActor }, db);
     if (!outcome.executed) throw new Error("expected direct execution");

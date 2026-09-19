@@ -6,6 +6,11 @@ import {
   defaultReasonCode,
   type ApplicationDecision,
 } from "@/lib/applications/decisionReasons";
+import {
+  buildBusinessSummary,
+  runApplicationChecks,
+  type CheckStatus,
+} from "@/lib/applications/summary";
 import { ConfirmAction } from "./ConfirmAction";
 
 type Document = {
@@ -149,6 +154,19 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
   }
 
   const app = data.application;
+  const summary = buildBusinessSummary(app, data.documents);
+  const checks = runApplicationChecks(app, data.documents);
+
+  const CHECK_BADGE: Record<CheckStatus, string> = {
+    pass: "badge badge-ok",
+    fail: "badge badge-bad",
+    unknown: "badge badge-warn",
+  };
+  const CHECK_LABEL: Record<CheckStatus, string> = {
+    pass: "Pass",
+    fail: "Fail",
+    unknown: "Unknown",
+  };
 
   return (
     <main className="container" style={{ maxWidth: "900px" }}>
@@ -164,6 +182,26 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
         </ul>
       )}
 
+      <section className="card" aria-label="Business summary">
+        <h2>Business summary</h2>
+        <dl>
+          {summary.map((row) => (
+            <div key={row.label}>
+              <dt>{row.label}</dt>
+              <dd>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+        <h3>Checks</h3>
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          {checks.map((c) => (
+            <li key={c.id} style={{ marginBottom: "0.4rem" }}>
+              <span className={CHECK_BADGE[c.status]}>{CHECK_LABEL[c.status]}</span>{" "}
+              <strong>{c.label}</strong> — {c.detail}
+            </li>
+          ))}
+        </ul>
+      </section>
       {actionMessage && (
         <p role="status" className="card">
           {actionMessage}

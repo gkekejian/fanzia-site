@@ -6,6 +6,7 @@ export * from "./account";
 export * from "./application";
 export * from "./terms";
 export * from "./agentProposal";
+export * from "./agentOperator";
 export * from "./complianceTask";
 export * from "./catalog";
 export * from "./pricing";

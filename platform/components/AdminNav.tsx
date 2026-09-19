@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AgentChatPanel } from "./admin/AgentChatPanel";
 
 export function AdminNav({ userName }: { userName: string }) {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -54,6 +55,7 @@ export function AdminNav({ userName }: { userName: string }) {
       <button type="button" className="btn btn-secondary" onClick={logout} style={{ padding: "0.3rem 0.8rem" }}>
         Log out
       </button>
+      <AgentChatPanel />
     </nav>
   );
 }
