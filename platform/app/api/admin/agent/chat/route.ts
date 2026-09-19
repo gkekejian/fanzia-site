@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { convertToModelMessages, stepCountIs, streamText, validateUIMessages } from "ai";
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { agentAuditLog } from "@/db/schema";
@@ -17,9 +17,14 @@ const CHAT_RATE_LIMIT = { limit: 60, windowMs: 60 * 60 * 1000 };
 
 /**
  * Dashboard AI operator chat. Owner-only (cookie session + TOTP, same as
- * every other /api/admin route); never public. The Anthropic key is read
- * from env at request time — when it's missing the route answers 503 and
- * the panel shows a "not configured" notice instead of erroring.
+ * every other /api/admin route); never public. The agent key is read from
+ * env at request time — when it's missing the route answers 503 and the
+ * panel shows a "not configured" notice instead of erroring.
+ *
+ * Provider-agnostic by design: FANZIA_AGENT_BASE_URL +
+ * FANZIA_AGENT_API_KEY + FANZIA_AGENT_MODEL. Defaults point at Groq's free
+ * tier (open-weights Llama 3.3 70B); pointing BASE_URL at a local Ollama
+ * endpoint later needs zero code changes.
  */
 export async function POST(req: NextRequest) {
   const actor = await requireActor(req);
@@ -34,9 +39,9 @@ export async function POST(req: NextRequest) {
   const limited = rateLimited(`agent-chat:${owner.id}`, CHAT_RATE_LIMIT);
   if (limited) return limited;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.FANZIA_AGENT_API_KEY) {
     return NextResponse.json(
-      { error: "agent_not_configured", message: "Add ANTHROPIC_API_KEY to the project's environment variables to enable the AI operator." },
+      { error: "agent_not_configured", message: "Add FANZIA_AGENT_API_KEY to the project's environment variables to enable the AI operator." },
       { status: 503 },
     );
   }
@@ -94,11 +99,19 @@ export async function POST(req: NextRequest) {
     // Denial logging is best-effort; never block the chat on it.
   }
 
-  const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const modelId = process.env.FANZIA_AGENT_MODEL?.trim() || "claude-sonnet-5";
+  // Provider-agnostic: any OpenAI-compatible endpoint. Default is Groq's
+  // free tier serving open-weights Llama 3.3 70B (solid parallel tool
+  // calling, 128K context). Override all three env vars to use another
+  // provider — or a local Ollama endpoint — with no code changes.
+  const agentProvider = createOpenAI({
+    name: "fanzia-agent",
+    apiKey: process.env.FANZIA_AGENT_API_KEY,
+    baseURL: process.env.FANZIA_AGENT_BASE_URL?.trim() || "https://api.groq.com/openai/v1",
+  });
+  const modelId = process.env.FANZIA_AGENT_MODEL?.trim() || "llama-3.3-70b-versatile";
 
   const result = streamText({
-    model: anthropic(modelId),
+    model: agentProvider(modelId),
     system: AGENT_SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     tools: createAgentTools({ owner }),

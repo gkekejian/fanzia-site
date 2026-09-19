@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return NextResponse.json({
-    configured: !!process.env.ANTHROPIC_API_KEY,
-    model: process.env.FANZIA_AGENT_MODEL?.trim() || "claude-sonnet-5",
+    configured: !!process.env.FANZIA_AGENT_API_KEY,
+    model: process.env.FANZIA_AGENT_MODEL?.trim() || "llama-3.3-70b-versatile",
   });
 }

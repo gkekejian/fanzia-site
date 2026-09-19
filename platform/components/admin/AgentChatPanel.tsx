@@ -130,8 +130,9 @@ export function AgentChatPanel() {
               <div className="fz-agent-notice">
                 <strong>AI operator isn&apos;t configured yet.</strong>
                 <br />
-                Add <code>ANTHROPIC_API_KEY</code> in Vercel → fanzia-platform-staging → Environment Variables, then
-                redeploy. The chat will start working immediately — nothing else to change.
+                Add <code>FANZIA_AGENT_API_KEY</code> in Vercel → fanzia-platform-staging → Environment Variables, then
+                redeploy. Get a free key at console.groq.com (no credit card). The chat will start working
+                immediately — nothing else to change.
               </div>
             ) : (
               <>
