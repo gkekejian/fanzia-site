@@ -58,6 +58,17 @@ describe("agent_proposal enforcement across every Phase 1 mutating endpoint", ()
       kind: "ai_operator",
       agent: { id: agentUser!.id, email: agentUser!.email, name: agentUser!.name, role: "ai_operator", scopes: ["read"], apiKeyId: "test" },
     };
+    // Owner policy (2026-09-19): approval requires a seller's permit copy on
+    // file, so the shared seed includes one — the gate itself is covered in
+    // tests/applicationApprovalPermitGate.test.ts.
+    await db.insert(applicationDocument).values({
+      applicationId: app!.id,
+      docType: "sellers_permit",
+      storageKey: "fake-permit-key",
+      originalFilename: "permit.pdf",
+      mimeVerified: "application/pdf",
+      sizeBytes: 100,
+    });
     return { owner: owner!, agentUser: agentUser!, app: app!, ownerActor, agentActor };
   }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { decideApplication, NotFoundError, AlreadyDecidedError, type ApplicationDecision } from "@/lib/applications/decide";
+import { decideApplication, NotFoundError, AlreadyDecidedError, MissingSellersPermitError, type ApplicationDecision } from "@/lib/applications/decide";
 import { composeDecisionReason, isValidReasonCode } from "@/lib/applications/decisionReasons";
 import { requireActor } from "@/lib/auth/actor";
 
@@ -61,6 +61,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (err instanceof NotFoundError) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (err instanceof AlreadyDecidedError)
       return NextResponse.json({ error: (err as Error).message }, { status: 409 });
+    if (err instanceof MissingSellersPermitError)
+      return NextResponse.json({ error: (err as Error).message }, { status: 400 });
     throw err;
   }
 }

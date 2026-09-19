@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { db as defaultDb } from "@/db/client";
-import { account, accountContact, application, applicationStatusEvent, termsAcceptance } from "@/db/schema";
+import { account, accountContact, application, applicationDocument, applicationStatusEvent, termsAcceptance } from "@/db/schema";
 import { performOrPropose } from "@/lib/auth/rbac";
 import type { Actor } from "@/lib/auth/rbac";
 import { sendNotificationEmail } from "@/lib/email/send";
@@ -18,6 +18,15 @@ export class NotFoundError extends Error {}
  * created buyer account). The API maps this to 409.
  */
 export class AlreadyDecidedError extends Error {}
+
+/**
+ * A seller's permit copy must be on file before an application can be
+ * approved (owner policy 2026-09-19). The applicant is never blocked from
+ * applying — they upload via the status-link continue page — but approval
+ * (and the buyer account it creates) waits for the document. The API maps
+ * this to 400.
+ */
+export class MissingSellersPermitError extends Error {}
 
 import type { ApplicationDecision } from "./decisionReasons";
 export type { ApplicationDecision } from "./decisionReasons";
@@ -40,6 +49,28 @@ export async function decideApplication(
   if (!app) throw new NotFoundError("Application not found");
   if (app.status === "approved" || app.status === "declined") {
     throw new AlreadyDecidedError(`Application was already ${app.status} and cannot be re-decided.`);
+  }
+
+  // Owner policy: no approval without a seller's permit copy on file.
+  // Checked before performOrPropose so it fails fast for direct owner
+  // approvals and for ai_operator proposals alike (a proposal created
+  // without the document would just fail again at execution time).
+  if (input.decision === "approved") {
+    const [permit] = await db
+      .select({ id: applicationDocument.id })
+      .from(applicationDocument)
+      .where(
+        and(
+          eq(applicationDocument.applicationId, app.id),
+          eq(applicationDocument.docType, "sellers_permit"),
+        ),
+      )
+      .limit(1);
+    if (!permit) {
+      throw new MissingSellersPermitError(
+        "A seller's permit copy must be uploaded before this application can be approved. Ask the applicant to add it via their status link.",
+      );
+    }
   }
 
   const action =

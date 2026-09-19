@@ -207,6 +207,15 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
       <section className="card">
         <h2>Approval decision</h2>
         <p>Approving or declining is separate from — and never grants — tax-exempt status.</p>
+        {app.status !== "approved" &&
+          app.status !== "declined" &&
+          decision === "approved" &&
+          !data.documents.some((d) => d.docType === "sellers_permit") && (
+            <p role="alert" className="field-error">
+              A seller&apos;s permit copy is required before approval. No permit is on file yet — ask the
+              applicant to upload one via their status link, then record the decision.
+            </p>
+          )}
         {app.status === "approved" || app.status === "declined" ? (
           <p>
             Decision recorded: <span className={`badge ${app.status === "approved" ? "badge-ok" : "badge-bad"}`}>{app.status}</span>
