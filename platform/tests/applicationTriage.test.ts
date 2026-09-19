@@ -25,6 +25,7 @@ describe("application triage channel handling", () => {
     website: "",
     turnstileToken: null,
     productInterests: [],
+    onlinePresence: "",
   };
 
   it("does not flag a smoke shop with no channel link", () => {
@@ -80,5 +81,21 @@ describe("application product interests", () => {
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) expect(parsed.data.productInterests).toEqual(["Pokémon", "Sports cards"]);
+  });
+
+  it("defaults online presence to empty when not provided", () => {
+    const parsed = applicationSchema.safeParse({
+      businessLegalName: "Test Shop LLC",
+      channelType: "smoke_shop_convenience",
+      addressLine1: "1 Main St",
+      city: "Glendale",
+      state: "CA",
+      postalCode: "91201",
+      contactName: "Jane Doe",
+      contactEmail: "jane@example.com",
+      termsAccepted: true,
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.onlinePresence).toBe("");
   });
 });

@@ -30,6 +30,9 @@ export const applicationSchema = z.object({
   // What the applicant wants to buy. Optional multi-select on the form;
   // checkbox values are the human-readable labels shown in admin.
   productInterests: z.array(z.string().max(60)).max(20).optional().default([]),
+  // Where the applicant sells online, if anywhere. Optional free text on
+  // the form so the review screen shows it directly.
+  onlinePresence: z.string().max(500).optional().default(""),
   // Berman-compliant clickwrap: submission is blocked server-side, not
   // just client-side, unless this is explicitly true (build prompt §12).
   termsAccepted: z.literal(true, {

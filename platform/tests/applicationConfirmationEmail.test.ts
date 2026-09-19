@@ -12,6 +12,8 @@ import { buildApplicationConfirmationEmail } from "@/lib/applications/confirmati
 describe("application confirmation email", () => {
   const base = {
     businessLegalName: "K & Jassy Shop LLC",
+    channelEvidenceUrl: null as string | null,
+    onlinePresence: null as string | null,
     ttlHours: 168,
     resumeUrl: "https://app.fanzia.io/apply/continue?token=abc",
   };
@@ -29,17 +31,24 @@ describe("application confirmation email", () => {
     expect(text).toContain("168 hours");
   });
 
-  it("asks for online-selling links only when no channel evidence was provided", () => {
-    const missing = buildApplicationConfirmationEmail({ ...base, channelEvidenceUrl: null });
+  it("asks for online-selling links only when no channel evidence or online presence was provided", () => {
+    const missing = buildApplicationConfirmationEmail(base);
     expect(missing.text).toContain("If you sell online");
     expect(missing.text).toContain("Whatnot");
 
-    const provided = buildApplicationConfirmationEmail({
+    const viaUrl = buildApplicationConfirmationEmail({
       ...base,
       channelEvidenceUrl: "https://example.com/store",
     });
-    expect(provided.text).not.toContain("If you sell online");
+    expect(viaUrl.text).not.toContain("If you sell online");
+
+    const viaPresence = buildApplicationConfirmationEmail({
+      ...base,
+      onlinePresence: "Whatnot: @kandjassy",
+    });
+    expect(viaPresence.text).not.toContain("If you sell online");
     // The permit ask is still there either way.
-    expect(provided.text).toContain("seller's permit");
+    expect(viaUrl.text).toContain("seller's permit");
+    expect(viaPresence.text).toContain("seller's permit");
   });
 });

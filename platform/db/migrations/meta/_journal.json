@@ -183,6 +183,13 @@
       "when": 1789761500000,
       "tag": "0023_application_product_interests",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789761600000,
+      "tag": "0024_application_online_presence",
+      "breakpoints": true
     }
   ]
 }

@@ -108,6 +108,7 @@ export async function POST(req: NextRequest) {
       channelEvidenceUrl: input.channelEvidenceUrl || null,
       sellersPermitNumber: input.sellersPermitNumber || null,
       productInterests: input.productInterests ?? [],
+      onlinePresence: input.onlinePresence || null,
       resumeTokenHash: hashToken(rawResumeToken),
       resumeTokenExpiresAt: new Date(Date.now() + ttlHours * 60 * 60 * 1000),
       triageScore: score,
@@ -143,6 +144,7 @@ export async function POST(req: NextRequest) {
   const confirmation = buildApplicationConfirmationEmail({
     businessLegalName: input.businessLegalName,
     channelEvidenceUrl: input.channelEvidenceUrl || null,
+    onlinePresence: input.onlinePresence || null,
     ttlHours,
     resumeUrl,
   });

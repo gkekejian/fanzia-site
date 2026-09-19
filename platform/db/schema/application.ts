@@ -41,6 +41,10 @@ export const application = pgTable("application", {
   // Pokémon, Yu-Gi-Oh!, sports cards). Optional; JSON string array.
   productInterests: jsonb("product_interests").notNull().default([]),
 
+  // Where the applicant sells online, if anywhere (Whatnot / TikTok
+  // usernames, eBay links, etc.). Optional free text on the apply form.
+  onlinePresence: text("online_presence"),
+
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   resumeTokenHash: text("resume_token_hash").notNull().unique(),
   resumeTokenExpiresAt: timestamp("resume_token_expires_at", { withTimezone: true }).notNull(),

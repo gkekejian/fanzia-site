@@ -104,6 +104,7 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
       channelEvidenceUrl: data.get("channelEvidenceUrl"),
       sellersPermitNumber: data.get("sellersPermitNumber"),
       productInterests: data.getAll("productInterests").map(String),
+      onlinePresence: data.get("onlinePresence"),
       termsAccepted: true,
       website: data.get("website"), // honeypot
       turnstileToken,
@@ -231,6 +232,9 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
 
           <label htmlFor="channelEvidenceUrl">Link to your storefront or marketplace listing (optional)</label>
           <input id="channelEvidenceUrl" name="channelEvidenceUrl" type="url" placeholder="https://" />
+
+          <label htmlFor="onlinePresence">Sell online? Share your Whatnot, TikTok, or eBay links / usernames (optional)</label>
+          <input id="onlinePresence" name="onlinePresence" type="text" maxLength={500} placeholder="e.g. Whatnot: @myshop, TikTok: @myshop" />
 
           <fieldset style={{ marginTop: "1rem", border: "1px solid var(--fz-border)", borderRadius: "6px", padding: "0.75rem 1rem" }}>
             <legend style={{ padding: "0 0.4rem", fontWeight: 600 }}>What products are you interested in? (optional)</legend>

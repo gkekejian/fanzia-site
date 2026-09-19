@@ -10,10 +10,11 @@
 export function buildApplicationConfirmationEmail(input: {
   businessLegalName: string;
   channelEvidenceUrl: string | null;
+  onlinePresence: string | null;
   ttlHours: number;
   resumeUrl: string;
 }): { subject: string; text: string } {
-  const onlineAsk = input.channelEvidenceUrl
+  const onlineAsk = input.channelEvidenceUrl || input.onlinePresence
     ? ""
     : `\nIf you sell online (Whatnot, TikTok, eBay, etc.), we'd also like to know — reply to this email with your links or upload a screenshot on your status page.\n`;
   return {
