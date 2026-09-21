@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { currency, termsVersion, user as userTable } from "@/db/schema";
 import { DRAFT_POLICIES } from "@/lib/policies/content";
@@ -29,10 +29,13 @@ function displayNameFromEmail(email: string): string {
 }
 
 /**
- * Publish the draft policy documents as the current terms_version rows when
- * none is published for a doc type. Idempotent and insert-only: it never
- * touches an existing published row, so a future real (lawyer-reviewed)
- * version published through the admin flow is never overwritten.
+ * Publish the draft policy documents as the current terms_version rows.
+ * Insert-only: it never touches an existing published row, so a future real
+ * (lawyer-reviewed) version published through the admin flow is never
+ * overwritten. When the draft's versionLabel in DRAFT_POLICIES is newer than
+ * the latest published row for a doc type, a new immutable version is
+ * published so buyer-facing text (clickwrap, policy pages) always reflects
+ * the current draft without a manual publish step.
  *
  * This is the production-safe counterpart to the same block in db/seed.ts
  * (which refuses to run outside local/dev). Without a published row the
@@ -47,12 +50,14 @@ export async function bootstrapTerms(): Promise<string[]> {
     keyof typeof DRAFT_POLICIES,
     (typeof DRAFT_POLICIES)[keyof typeof DRAFT_POLICIES],
   ][]) {
-    const existing = await db
-      .select({ id: termsVersion.id })
+    const latest = await db
+      .select({ id: termsVersion.id, versionLabel: termsVersion.versionLabel })
       .from(termsVersion)
       .where(and(eq(termsVersion.docType, docType), isNotNull(termsVersion.publishedAt)))
+      .orderBy(desc(termsVersion.publishedAt))
       .limit(1);
-    if (existing.length > 0) continue;
+    const latestLabel = latest.length > 0 ? latest[0]?.versionLabel : undefined;
+    if (latestLabel === policy.versionLabel) continue;
     await db.insert(termsVersion).values({
       docType,
       versionLabel: policy.versionLabel,
@@ -60,7 +65,7 @@ export async function bootstrapTerms(): Promise<string[]> {
       isDraft: false,
       publishedAt: new Date(),
     });
-    published.push(docType);
+    published.push(`${docType}@${policy.versionLabel}`);
   }
   return published;
 }

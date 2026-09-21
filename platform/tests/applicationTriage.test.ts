@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { scoreApplication } from "@/lib/applications/triage";
 import { applicationSchema } from "@/lib/validation/application";
+import { validApplicationInput } from "@/tests/applicationFixture";
 
 /**
  * Owner direction 2026-09-19: a missing channel link is not a deficiency
@@ -9,24 +10,7 @@ import { applicationSchema } from "@/lib/validation/application";
  * nowhere to find them.
  */
 describe("application triage channel handling", () => {
-  const base = {
-    businessLegalName: "Test Shop LLC",
-    addressLine1: "1 Main St",
-    addressLine2: "",
-    city: "Glendale",
-    state: "CA",
-    postalCode: "91201",
-    country: "US",
-    contactName: "Jane Doe",
-    contactEmail: "jane@example.com",
-    sellersPermitNumber: "123-456789",
-    channelEvidenceUrl: "",
-    termsAccepted: true as const,
-    website: "",
-    turnstileToken: null,
-    productInterests: [],
-    onlinePresence: "",
-  };
+  const base = validApplicationInput();
 
   it("does not flag a smoke shop with no channel link", () => {
     const { reasons, score } = scoreApplication({ ...base, channelType: "smoke_shop_convenience" });
@@ -50,52 +34,76 @@ describe("application triage channel handling", () => {
 });
 
 describe("application product interests", () => {
-  it("defaults to an empty list when not provided", () => {
-    const parsed = applicationSchema.safeParse({
-      businessLegalName: "Test Shop LLC",
-      channelType: "smoke_shop_convenience",
-      addressLine1: "1 Main St",
-      city: "Glendale",
-      state: "CA",
-      postalCode: "91201",
-      contactName: "Jane Doe",
-      contactEmail: "jane@example.com",
-      termsAccepted: true,
-    });
-    expect(parsed.success).toBe(true);
-    if (parsed.success) expect(parsed.data.productInterests).toEqual([]);
+  it("rejects an empty product interests list (mandatory since 2026-09-20)", () => {
+    const parsed = applicationSchema.safeParse(validApplicationInput({ productInterests: [] }));
+    expect(parsed.success).toBe(false);
   });
 
   it("accepts a list of product interests", () => {
-    const parsed = applicationSchema.safeParse({
-      businessLegalName: "Test Shop LLC",
-      channelType: "smoke_shop_convenience",
-      addressLine1: "1 Main St",
-      city: "Glendale",
-      state: "CA",
-      postalCode: "91201",
-      contactName: "Jane Doe",
-      contactEmail: "jane@example.com",
-      termsAccepted: true,
-      productInterests: ["Pokémon", "Sports cards"],
-    });
+    const parsed = applicationSchema.safeParse(
+      validApplicationInput({ productInterests: ["Pokémon", "Sports cards"] }),
+    );
     expect(parsed.success).toBe(true);
     if (parsed.success) expect(parsed.data.productInterests).toEqual(["Pokémon", "Sports cards"]);
   });
 
   it("defaults online presence to empty when not provided", () => {
-    const parsed = applicationSchema.safeParse({
-      businessLegalName: "Test Shop LLC",
-      channelType: "smoke_shop_convenience",
-      addressLine1: "1 Main St",
-      city: "Glendale",
-      state: "CA",
-      postalCode: "91201",
-      contactName: "Jane Doe",
-      contactEmail: "jane@example.com",
-      termsAccepted: true,
-    });
+    const parsed = applicationSchema.safeParse(validApplicationInput());
     expect(parsed.success).toBe(true);
     if (parsed.success) expect(parsed.data.onlinePresence).toBe("");
+  });
+});
+
+describe("application intake hardening (2026-09-20)", () => {
+  it("accepts a fully complete application", () => {
+    expect(applicationSchema.safeParse(validApplicationInput()).success).toBe(true);
+  });
+
+  it("rejects a non-US state", () => {
+    expect(applicationSchema.safeParse(validApplicationInput({ state: "ON" })).success).toBe(false);
+    expect(applicationSchema.safeParse(validApplicationInput({ formationState: "XX" })).success).toBe(false);
+  });
+
+  it("normalizes lowercase state codes to uppercase", () => {
+    const parsed = applicationSchema.safeParse(validApplicationInput({ state: "ca", formationState: "tx" }));
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.state).toBe("CA");
+      expect(parsed.data.formationState).toBe("TX");
+    }
+  });
+
+  it("rejects a non-US entity type", () => {
+    expect(applicationSchema.safeParse(validApplicationInput({ entityType: "ltd" })).success).toBe(false);
+  });
+
+  it("rejects a missing AI disclosure acceptance", () => {
+    expect(applicationSchema.safeParse(validApplicationInput({ aiDisclosureAccepted: false })).success).toBe(false);
+  });
+
+  it("rejects a missing signature", () => {
+    expect(applicationSchema.safeParse(validApplicationInput({ signatureName: "" })).success).toBe(false);
+  });
+
+  it("rejects a zero monthly volume", () => {
+    expect(applicationSchema.safeParse(validApplicationInput({ expectedMonthlyVolumeUsd: 0 })).success).toBe(false);
+  });
+
+  it("accepts form-data string shapes for numbers and checkboxes", () => {
+    const parsed = applicationSchema.safeParse(
+      validApplicationInput({
+        locationCount: "3",
+        expectedMonthlyVolumeUsd: "5000",
+        yearsInBusiness: "10",
+        termsAccepted: "on",
+        aiDisclosureAccepted: "true",
+      }),
+    );
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.locationCount).toBe(3);
+      expect(parsed.data.expectedMonthlyVolumeUsd).toBe(5000);
+      expect(parsed.data.termsAccepted).toBe(true);
+    }
   });
 });

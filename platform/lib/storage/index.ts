@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import { mkdir, writeFile, readFile } from "fs/promises";
+import { mkdir, writeFile, readFile, unlink } from "fs/promises";
 import path from "path";
 
 const LOCAL_DIR = path.join(process.cwd(), ".data", "uploads");
@@ -69,6 +69,34 @@ export async function getSignedDownloadUrl(key: string, expiresInSeconds = 300):
   // Local dev/test: an internal route that itself requires admin auth (see
   // app/api/admin/documents/[key]/route.ts) — not a public static path.
   return `/api/admin/documents/${key}`;
+}
+
+/**
+ * Best-effort delete of a previously uploaded object. Used to clean up an
+ * orphaned upload when the database work that was supposed to reference it
+ * fails. Never throws: cleanup must never mask the original error.
+ */
+export async function deleteObject(key: string): Promise<void> {
+  try {
+    if (r2Configured()) {
+      const { S3Client, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+      const client = new S3Client({
+        region: "auto",
+        endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: {
+          accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+        },
+      });
+      await client.send(
+        new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }),
+      );
+      return;
+    }
+    await unlink(path.join(LOCAL_DIR, key));
+  } catch {
+    // Best-effort only.
+  }
 }
 
 export async function readLocalObject(key: string): Promise<Buffer> {

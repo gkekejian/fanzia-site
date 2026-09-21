@@ -8,7 +8,11 @@ import {
 
 const FULL_APP: ApplicationLike = {
   businessLegalName: "Looty's Lair",
-  channelType: "other",
+  dba: "Looty's",
+  entityType: "llc",
+  formationState: "TX",
+  sosEntityNumber: "123456789",
+  channelType: "retail_store",
   contactName: "Richard Darlington",
   contactEmail: "richard@example.com",
   addressLine1: "123 Main St",
@@ -16,6 +20,13 @@ const FULL_APP: ApplicationLike = {
   state: "TX",
   postalCode: "78701",
   country: "US",
+  locationCount: 2,
+  yearsInBusiness: 8,
+  expectedMonthlyVolumeUsd: 5000,
+  resaleCertNumber: "1-23-456789",
+  resaleCertState: "TX",
+  signatureName: "Richard Darlington",
+  aiDisclosureAcceptedAt: new Date("2026-09-20T10:00:00Z"),
   sellersPermitNumber: "12-3456789",
   channelEvidenceUrl: "https://lootyslair.com",
   onlinePresence: "Whatnot: lootyslair",
@@ -40,13 +51,23 @@ describe("application summary + checks", () => {
     const rows = buildBusinessSummary(FULL_APP, [{ docType: "sellers_permit", originalFilename: "permit.pdf" }]);
     const byLabel = Object.fromEntries(rows.map((r) => [r.label, r.value]));
     expect(byLabel["Business"]).toBe("Looty's Lair");
+    expect(byLabel["DBA"]).toBe("Looty's");
+    expect(byLabel["Entity type"]).toBe("LLC");
+    expect(byLabel["Formation state"]).toBe("TX");
     expect(byLabel["Contact"]).toContain("Richard Darlington");
     expect(byLabel["Contact"]).toContain("richard@example.com");
     expect(byLabel["Location"]).toContain("Austin, TX 78701");
-    expect(byLabel["Store type"]).toBe("other");
+    expect(byLabel["Store type"]).toBe("retail store");
+    expect(byLabel["Locations"]).toBe("2");
+    expect(byLabel["Years in business"]).toBe("8");
+    expect(byLabel["Expected monthly volume"]).toContain("5,000");
+    expect(byLabel["Resale certificate"]).toContain("1-23-456789");
+    expect(byLabel["Resale certificate"]).toContain("TX");
     expect(byLabel["Channel evidence"]).toBe("https://lootyslair.com");
     expect(byLabel["Products of interest"]).toContain("Pokémon");
     expect(byLabel["Seller's permit"]).toBe("12-3456789");
+    expect(byLabel["Signed by"]).toBe("Richard Darlington");
+    expect(byLabel["AI disclosure"]).toBe("Accepted");
     expect(byLabel["Documents on file"]).toContain("1 (sellers permit)");
   });
 
@@ -61,8 +82,13 @@ describe("application summary + checks", () => {
   });
 
   it("runApplicationChecks passes a complete application", () => {
-    const checks = runApplicationChecks(FULL_APP, [{ docType: "sellers_permit", originalFilename: "permit.pdf" }]);
+    const checks = runApplicationChecks(FULL_APP, [
+      { docType: "sellers_permit", originalFilename: "permit.pdf" },
+      { docType: "resale_certificate_other_state", originalFilename: "resale.pdf" },
+    ]);
     const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+    expect(byId["us_entity"]?.status).toBe("pass");
+    expect(byId["resale_cert_document"]?.status).toBe("pass");
     expect(byId["permit_number"]?.status).toBe("pass");
     expect(byId["permit_document"]?.status).toBe("pass");
     expect(byId["channel_evidence"]?.status).toBe("pass");
@@ -71,9 +97,27 @@ describe("application summary + checks", () => {
     expect(byId["email_verified"]?.status).toBe("pass");
   });
 
+  it("runApplicationChecks flags a non-US entity suffix in the business name", () => {
+    const checks = runApplicationChecks(
+      { ...FULL_APP, businessLegalName: "Good Morrow Tavern LTD" },
+      [{ docType: "resale_certificate_other_state", originalFilename: "resale.pdf" }],
+    );
+    const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+    expect(byId["us_entity"]?.status).toBe("fail");
+    expect(byId["us_entity"]?.detail).toContain("non-US entity suffix");
+  });
+
+  it("runApplicationChecks fails a missing resale certificate document", () => {
+    const checks = runApplicationChecks(FULL_APP, []);
+    const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+    expect(byId["resale_cert_document"]?.status).toBe("fail");
+  });
+
   it("runApplicationChecks fails a bare application where it should", () => {
     const checks = runApplicationChecks(BARE_APP, []);
     const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+    expect(byId["us_entity"]?.status).toBe("unknown");
+    expect(byId["resale_cert_document"]?.status).toBe("fail");
     expect(byId["permit_number"]?.status).toBe("fail");
     expect(byId["permit_document"]?.status).toBe("fail");
     expect(byId["permit_document"]?.detail).toContain("Required before approval");

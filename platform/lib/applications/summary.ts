@@ -1,3 +1,5 @@
+import { ENTITY_TYPE_LABELS } from "@/lib/validation/application";
+
 /**
  * Application submission summary + deterministic checks.
  *
@@ -14,6 +16,10 @@
 
 export type ApplicationLike = {
   businessLegalName: string;
+  dba?: string | null;
+  entityType?: string | null;
+  formationState?: string | null;
+  sosEntityNumber?: string | null;
   channelType: string;
   contactName: string;
   contactEmail: string;
@@ -23,6 +29,13 @@ export type ApplicationLike = {
   state: string;
   postalCode: string;
   country?: string | null;
+  locationCount?: number | null;
+  yearsInBusiness?: number | null;
+  expectedMonthlyVolumeUsd?: number | null;
+  resaleCertNumber?: string | null;
+  resaleCertState?: string | null;
+  signatureName?: string | null;
+  aiDisclosureAcceptedAt?: Date | string | null;
   sellersPermitNumber?: string | null;
   channelEvidenceUrl?: string | null;
   onlinePresence?: string | null;
@@ -48,6 +61,26 @@ export type SummaryRow = { label: string; value: string };
 
 const prettify = (s: string) => s.replace(/_/g, " ");
 
+function entityLabel(entityType?: string | null): string {
+  if (!entityType) return "Not collected (legacy application)";
+  return ENTITY_TYPE_LABELS[entityType] ?? prettify(entityType);
+}
+
+/**
+ * Non-US entity suffixes. Fanzia sells wholesale only to US-organized
+ * businesses; a name ending in one of these (e.g. "Good Morrow Tavern
+ * LTD") is a strong signal the applicant is not a US entity and needs a
+ * second look before any approval.
+ */
+const FOREIGN_ENTITY_SUFFIX = /\b(ltd|plc|pty|gmbh|sarl|sas|bv|aps|oy|nv|ag|sdn|bhd)\.?$/i;
+
+export function hasForeignEntitySuffix(businessLegalName: string): boolean {
+  return FOREIGN_ENTITY_SUFFIX.test(businessLegalName.trim());
+}
+
+const fmtUsd = (n: number) =>
+  n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
 function interestsList(app: ApplicationLike): string[] {
   const v = app.productInterests;
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.length > 0) : [];
@@ -63,6 +96,9 @@ export function buildBusinessSummary(app: ApplicationLike, documents: DocumentLi
   const docTypes = documents.map((d) => prettify(d.docType));
   return [
     { label: "Business", value: app.businessLegalName },
+    { label: "DBA", value: app.dba || "None" },
+    { label: "Entity type", value: entityLabel(app.entityType) },
+    { label: "Formation state", value: app.formationState || "Not collected (legacy application)" },
     { label: "Contact", value: `${app.contactName} — ${app.contactEmail}` },
     {
       label: "Location",
@@ -71,10 +107,33 @@ export function buildBusinessSummary(app: ApplicationLike, documents: DocumentLi
         .join(", "),
     },
     { label: "Store type", value: prettify(app.channelType) },
+    { label: "Locations", value: app.locationCount != null ? String(app.locationCount) : "Not collected" },
+    {
+      label: "Years in business",
+      value: app.yearsInBusiness != null ? String(app.yearsInBusiness) : "Not provided",
+    },
+    {
+      label: "Expected monthly volume",
+      value: app.expectedMonthlyVolumeUsd != null && app.expectedMonthlyVolumeUsd > 0
+        ? fmtUsd(app.expectedMonthlyVolumeUsd)
+        : "Not collected",
+    },
+    {
+      label: "Resale certificate",
+      value:
+        app.resaleCertNumber
+          ? `${app.resaleCertNumber}${app.resaleCertState ? ` (${app.resaleCertState})` : ""}`
+          : "Not provided",
+    },
     { label: "Channel evidence", value: app.channelEvidenceUrl || "Not provided" },
     { label: "Online presence", value: app.onlinePresence || "Not provided" },
     { label: "Products of interest", value: interests.length > 0 ? interests.join(", ") : "Not specified" },
     { label: "Seller's permit", value: app.sellersPermitNumber || "Not provided" },
+    { label: "Signed by", value: app.signatureName || "Not collected (legacy application)" },
+    {
+      label: "AI disclosure",
+      value: app.aiDisclosureAcceptedAt ? "Accepted" : "Not collected (legacy application)",
+    },
     {
       label: "Documents on file",
       value: documents.length > 0 ? `${documents.length} (${docTypes.join(", ")})` : "None yet",
@@ -91,8 +150,28 @@ export function buildBusinessSummary(app: ApplicationLike, documents: DocumentLi
  */
 export function runApplicationChecks(app: ApplicationLike, documents: DocumentLike[]): ApplicationCheck[] {
   const hasPermitDoc = documents.some((d) => d.docType === "sellers_permit");
+  const hasResaleCertDoc = documents.some((d) => d.docType.startsWith("resale_certificate"));
   const interests = interestsList(app);
+  const foreignSuffix = hasForeignEntitySuffix(app.businessLegalName);
   return [
+    {
+      id: "us_entity",
+      label: "US-organized entity",
+      status: foreignSuffix ? "fail" : app.entityType && app.formationState ? "pass" : "unknown",
+      detail: foreignSuffix
+        ? `Business name ends in a non-US entity suffix ("${app.businessLegalName.trim().split(/\s+/).pop()}") — verify this is actually a US entity before approving.`
+        : app.entityType && app.formationState
+          ? `${entityLabel(app.entityType)}, formed in ${app.formationState}.`
+          : "Entity info not collected (application predates the 2026-09-20 intake requirements).",
+    },
+    {
+      id: "resale_cert_document",
+      label: "Resale certificate copy on file",
+      status: hasResaleCertDoc ? "pass" : "fail",
+      detail: hasResaleCertDoc
+        ? `Uploaded${app.resaleCertNumber ? ` — ${app.resaleCertNumber}${app.resaleCertState ? ` (${app.resaleCertState})` : ""}` : ""}.`
+        : "Required at submission since 2026-09-20 — the applicant must re-submit with the certificate attached.",
+    },
     {
       id: "permit_number",
       label: "Seller's permit number provided",

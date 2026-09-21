@@ -26,6 +26,10 @@ type ApplicationData = {
   application: {
     id: string;
     businessLegalName: string;
+    dba: string | null;
+    entityType: string | null;
+    formationState: string | null;
+    sosEntityNumber: string | null;
     status: string;
     accountId: string | null;
     channelType: string;
@@ -35,6 +39,13 @@ type ApplicationData = {
     city: string;
     state: string;
     postalCode: string;
+    locationCount: number | null;
+    yearsInBusiness: number | null;
+    expectedMonthlyVolumeUsd: number | null;
+    resaleCertNumber: string | null;
+    resaleCertState: string | null;
+    signatureName: string | null;
+    aiDisclosureAcceptedAt: string | null;
     sellersPermitNumber: string | null;
     channelEvidenceUrl: string | null;
     productInterests: unknown;
@@ -213,6 +224,36 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
         <dl>
           <dt>Channel</dt>
           <dd>{app.channelType.replace(/_/g, " ")}</dd>
+          <dt>DBA</dt>
+          <dd>{app.dba || "None"}</dd>
+          <dt>Entity type</dt>
+          <dd>
+            {app.entityType
+              ? `${app.entityType.replace(/_/g, " ")}${app.formationState ? ` — formed in ${app.formationState}` : ""}`
+              : "Not collected (legacy application)"}
+          </dd>
+          <dt>Secretary of State entity #</dt>
+          <dd>{app.sosEntityNumber || "Not provided"}</dd>
+          <dt>Locations</dt>
+          <dd>{app.locationCount ?? "Not collected"}</dd>
+          <dt>Years in business</dt>
+          <dd>{app.yearsInBusiness ?? "Not provided"}</dd>
+          <dt>Expected monthly volume</dt>
+          <dd>
+            {app.expectedMonthlyVolumeUsd != null && app.expectedMonthlyVolumeUsd > 0
+              ? app.expectedMonthlyVolumeUsd.toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                  maximumFractionDigits: 0,
+                })
+              : "Not collected"}
+          </dd>
+          <dt>Resale certificate</dt>
+          <dd>
+            {app.resaleCertNumber
+              ? `${app.resaleCertNumber}${app.resaleCertState ? ` (${app.resaleCertState})` : ""}`
+              : "Not provided"}
+          </dd>
           <dt>Contact</dt>
           <dd>
             {app.contactName} — {app.contactEmail}
@@ -233,6 +274,10 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
               ? (app.productInterests as string[]).join(", ")
               : "Not specified"}
           </dd>
+          <dt>Signed by</dt>
+          <dd>{app.signatureName || "Not collected (legacy application)"}</dd>
+          <dt>AI disclosure</dt>
+          <dd>{app.aiDisclosureAcceptedAt ? `Accepted ${app.aiDisclosureAcceptedAt}` : "Not collected (legacy application)"}</dd>
         </dl>
       </section>
 

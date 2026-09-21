@@ -17,7 +17,7 @@ import {
 import { generateApiKey } from "@/lib/crypto";
 import { DRAFT_POLICIES } from "@/lib/policies/content";
 import { priceFromCostAndMarkup, realizedGrossMarginBps } from "@/lib/catalog/pricingMath";
-import { eq, and, isNotNull } from "drizzle-orm";
+import { eq, and, desc, isNotNull } from "drizzle-orm";
 
 /**
  * Refuses to run against anything that doesn't look like a local/dev
@@ -272,12 +272,14 @@ async function main() {
     keyof typeof DRAFT_POLICIES,
     (typeof DRAFT_POLICIES)[keyof typeof DRAFT_POLICIES],
   ][]) {
-    const existing = await db
-      .select()
+    const latest = await db
+      .select({ versionLabel: termsVersion.versionLabel })
       .from(termsVersion)
       .where(and(eq(termsVersion.docType, docType), isNotNull(termsVersion.publishedAt)))
+      .orderBy(desc(termsVersion.publishedAt))
       .limit(1);
-    if (existing.length === 0) {
+    const latestLabel = latest.length > 0 ? latest[0]?.versionLabel : undefined;
+    if (latestLabel !== policy.versionLabel) {
       await db.insert(termsVersion).values({
         docType,
         versionLabel: policy.versionLabel,

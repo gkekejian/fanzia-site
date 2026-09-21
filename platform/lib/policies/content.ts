@@ -20,7 +20,7 @@ export const DRAFT_POLICIES: Record<
 > = {
   terms_of_sale: {
     title: "Terms of Sale",
-    versionLabel: "draft-v1",
+    versionLabel: "draft-v2",
     body: `
 # Terms of Sale (DRAFT)
 
@@ -36,16 +36,26 @@ verified business buyers.
 3. **A request is not a sale.** Submitting an order request does not reserve inventory or
    guarantee availability. Availability is indicative until Fanzia confirms an allocation in
    writing, and an allocation offer expires at the date and time stated on the offer.
-4. **Payment and clearance.** Fanzia orders inventory from its suppliers only after payment has
+4. **Allocations are not guaranteed.** Product allocations are offered at Fanzia's sole
+   discretion. An allocation offer is never guaranteed and may be reduced, modified, or
+   withdrawn before Fanzia confirms it in writing.
+5. **Payment and clearance.** Fanzia orders inventory from its suppliers only after payment has
    genuinely cleared according to the hold period applicable to the buyer's chosen payment
    method, as disclosed at checkout.
-5. **Pricing.** Wholesale item price, estimated or fixed outbound shipping, and applicable sales
+6. **Pricing.** Wholesale item price, estimated or fixed outbound shipping, and applicable sales
    tax are shown separately before invoicing. Fanzia's supplier cost, sourcing routes, and
    internal markup are never disclosed to buyers.
-6. **Exceptions.** If Fanzia cannot fill an accepted allocation after payment, Fanzia will offer
+7. **All sales final — no returns.** This is a wholesale business. All wholesale sales are
+   final. Fanzia does not accept returns or exchanges for any reason, including change of
+   mind. Claims for visible shipping damage, concealed damage, or incorrect or short goods
+   are handled separately under the Returns & Claims Policy and are not returns.
+8. **Account termination.** Fanzia may suspend or terminate a wholesale account at any time,
+   for cause or without cause, at Fanzia's sole discretion. Termination does not affect
+   completed sales, amounts already owed, or Fanzia's right to collect outstanding balances.
+9. **Exceptions.** If Fanzia cannot fill an accepted allocation after payment, Fanzia will offer
    a refund, a buyer-approved substitute, or (only if the buyer elects it) account credit.
    Fanzia will never carry paid funds forward to a future order without the buyer's consent.
-7. **Governing law.** [[TO BE CONFIRMED WITH COUNSEL]].
+10. **Governing law.** [[TO BE CONFIRMED WITH COUNSEL]].
 
 *This document is a draft pending attorney/compliance review and is not yet in force.*
 `.trim(),

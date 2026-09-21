@@ -13,14 +13,20 @@ export function buildApplicationConfirmationEmail(input: {
   onlinePresence: string | null;
   ttlHours: number;
   resumeUrl: string;
+  /** True when the resale certificate copy arrived with the submission (mandatory since 2026-09-20). */
+  resaleCertReceived?: boolean;
 }): { subject: string; text: string } {
   const onlineAsk = input.channelEvidenceUrl || input.onlinePresence
     ? ""
     : `\nIf you sell online (Whatnot, TikTok, eBay, etc.), we'd also like to know — reply to this email with your links or upload a screenshot on your status page.\n`;
+  const certLine = input.resaleCertReceived
+    ? `We've received your resale certificate — thank you.\n\n`
+    : "";
   return {
     subject: "Your Fanzia wholesale application — a few things needed",
     text:
       `Thanks for applying to Fanzia wholesale, ${input.businessLegalName}.\n\n` +
+      certLine +
       `To complete your application, please upload a copy of your seller's permit on your status page — we can't approve your application until it's on file.` +
       onlineAsk +
       `\nYour status page (valid for ${input.ttlHours} hours):\n\n${input.resumeUrl}\n\n` +

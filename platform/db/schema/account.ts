@@ -6,6 +6,7 @@ export const channelType = pgEnum("channel_type", [
   "vending",
   "smoke_shop_convenience",
   "asian_specialty_retail",
+  "retail_store",
   "live_seller",
   "event_seller",
   "other",

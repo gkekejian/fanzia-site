@@ -89,7 +89,8 @@ describe("verifyTurnstile", () => {
 describe("applicationSchema turnstileToken", () => {
   it("accepts a null token (widget absent or unsolved) so applicants are not blocked while Turnstile is off", async () => {
     const { applicationSchema } = await import("@/lib/validation/application");
-    const base = {
+    const { validApplicationInput } = await import("@/tests/applicationFixture");
+    const base = validApplicationInput({
       businessLegalName: "K & Jassy Shop LLC",
       channelType: "other",
       addressLine1: "1401 N Batavia St",
@@ -98,8 +99,7 @@ describe("applicationSchema turnstileToken", () => {
       postalCode: "92867",
       contactName: "Kevin Sorto",
       contactEmail: "kjassyshop@gmail.com",
-      termsAccepted: true,
-    };
+    });
     expect(applicationSchema.safeParse({ ...base, turnstileToken: null }).success).toBe(true);
     expect(applicationSchema.safeParse({ ...base, turnstileToken: "tok" }).success).toBe(true);
     expect(applicationSchema.safeParse({ ...base }).success).toBe(true);

@@ -12,6 +12,19 @@ export const applicationStatus = pgEnum("application_status", [
 ]);
 
 /**
+ * US-only entity types accepted for wholesale applications (owner policy
+ * 2026-09-20: Fanzia sells only to US-organized businesses with a valid US
+ * resale certificate). There is deliberately no "Ltd"/foreign-entity
+ * option — non-US businesses cannot complete the application.
+ */
+export const applicationEntityType = pgEnum("application_entity_type", [
+  "sole_proprietorship",
+  "llc",
+  "corporation",
+  "limited_partnership",
+  "llp",
+]);
+/**
  * Scoring sorts the review queue; it never auto-declines or auto-waitlists
  * (build prompt §8: "Replace auto-waitlist decisions with needs_review
  * flags"). There is no code path anywhere that transitions an application
@@ -23,6 +36,18 @@ export const application = pgTable("application", {
   status: applicationStatus("status").notNull().default("draft"),
 
   businessLegalName: text("business_legal_name").notNull(),
+  // Trade name / DBA, optional — shown on the admin review screen and
+  // used for dedupe.
+  dba: text("dba"),
+  // US-only entity classification (owner policy 2026-09-20). Nullable so
+  // pre-2026-09-20 applications still read; required by validation for
+  // every new submission.
+  entityType: applicationEntityType("entity_type"),
+  // US state of incorporation/formation. Validated against the US state
+  // list at submit time.
+  formationState: text("formation_state"),
+  // Secretary-of-state entity number (optional; speeds up verification).
+  sosEntityNumber: text("sos_entity_number"),
   channelType: channelType("channel_type").notNull(),
   addressLine1: text("address_line1").notNull(),
   addressLine2: text("address_line2"),
@@ -36,6 +61,28 @@ export const application = pgTable("application", {
 
   channelEvidenceUrl: text("channel_evidence_url"),
   sellersPermitNumber: text("sellers_permit_number"),
+
+  // Shop scale + buying intent (mandatory from 2026-09-20 intake
+  // hardening — used for credit/analytics and the review brief).
+  locationCount: integer("location_count").notNull().default(1),
+  yearsInBusiness: integer("years_in_business"),
+  expectedMonthlyVolumeUsd: integer("expected_monthly_volume_usd").notNull().default(0),
+
+  // Resale certificate identity. The certificate *copy* is uploaded at
+  // submit time (application_document, doc_type resale_certificate_*);
+  // these fields are the number/state written on it.
+  resaleCertNumber: text("resale_cert_number"),
+  resaleCertState: text("resale_cert_state"),
+
+  // Typed legal signature certifying the application is true and
+  // correct (resale certificates require a purchaser signature).
+  signatureName: text("signature_name"),
+
+  // AI/automation disclosure acceptance evidence. The disclosure text is
+  // pending final legal review (same as the DRAFT banner on the form);
+  // the exact visible language is snapshotted here per acceptance.
+  aiDisclosureAcceptedAt: timestamp("ai_disclosure_accepted_at", { withTimezone: true }),
+  aiDisclosureLanguage: text("ai_disclosure_language"),
 
   // What the applicant wants to buy (multi-select on the apply form, e.g.
   // Pokémon, Yu-Gi-Oh!, sports cards). Optional; JSON string array.

@@ -136,6 +136,12 @@ td {
   margin-top: 0.25rem;
 }
 
+.field-note {
+  font-size: 0.85rem;
+  color: var(--fz-muted, #666);
+  margin-top: 0.25rem;
+}
+
 nav.admin-nav {
   display: flex;
   gap: 1.25rem;
