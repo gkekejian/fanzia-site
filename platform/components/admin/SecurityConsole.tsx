@@ -17,6 +17,8 @@ export function SecurityConsole() {
   const [error, setError] = useState<string | null>(null);
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [buyerLogin, setBuyerLogin] = useState<{ email: string } | null>(null);
+  const [buyerBusy, setBuyerBusy] = useState(false);
 
   async function load() {
     const res = await fetch("/api/auth/totp/recovery-codes");
@@ -27,6 +29,20 @@ export function SecurityConsole() {
   useEffect(() => {
     load();
   }, []);
+
+  async function onEnableBuyerLogin() {
+    setError(null);
+    if (!window.confirm("Enable your customer-side login? You'll be able to sign in at /member/login and browse the shop exactly like a buyer.")) return;
+    setBuyerBusy(true);
+    const res = await fetch("/api/admin/internal-buyer", { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    setBuyerBusy(false);
+    if (!res.ok) {
+      setError(body.error ?? "Could not enable buyer login.");
+      return;
+    }
+    setBuyerLogin({ email: body.buyerContact.email });
+  }
 
   async function onRegenerate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -75,6 +91,27 @@ export function SecurityConsole() {
             <a className="btn btn-secondary" href="/admin/totp-setup" style={{ marginTop: "0.5rem" }}>
               {status.totpEnabled ? "Set up a new authenticator app" : "Set up two-factor authentication"}
             </a>
+          </section>
+
+          <section className="card">
+            <h2>Customer-side login</h2>
+            <p style={{ color: "var(--fz-muted)", fontSize: "0.9rem" }}>
+              See the shop exactly as a buyer does — catalog with wholesale pricing, draft requests, orders, invoices.
+              This enables a buyer login for your own owner email on the internal Fanzia account, using the same
+              magic-link sign-in customers use. Your buyer actions are logged separately from your owner actions.
+            </p>
+            {buyerLogin ? (
+              <p>
+                Buyer login ready for <strong>{buyerLogin.email}</strong>.{" "}
+                <a className="btn" href="/member/login">
+                  Go to customer sign-in
+                </a>
+              </p>
+            ) : (
+              <button type="button" className="btn" onClick={onEnableBuyerLogin} disabled={buyerBusy}>
+                {buyerBusy ? "Enabling…" : "Enable my customer-side login"}
+              </button>
+            )}
           </section>
 
           {status.totpEnabled && !newCodes && (
