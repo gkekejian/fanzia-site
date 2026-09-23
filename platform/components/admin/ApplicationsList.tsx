@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TRIAGE_MAX_SCORE, triageBand } from "@/lib/applications/triage";
 
 type Application = {
   id: string;
@@ -37,7 +38,12 @@ export function ApplicationsList() {
   return (
     <main className="container" style={{ maxWidth: "1100px" }}>
       <h1>Applications</h1>
-      <p>Sorted by triage score — the score only orders this queue, it never decides anything.</p>
+      <p>
+        Review flags: <strong>0 of {TRIAGE_MAX_SCORE}</strong> = clear ·{" "}
+        <strong>1 of {TRIAGE_MAX_SCORE}</strong> = one thing to verify ·{" "}
+        <strong>2–{TRIAGE_MAX_SCORE} of {TRIAGE_MAX_SCORE}</strong> = check before approving. Higher means more to
+        verify, not a better applicant — flags only order this queue, they never approve or decline anyone.
+      </p>
       {error && (
         <p className="field-error" role="alert">
           {error}
@@ -47,13 +53,13 @@ export function ApplicationsList() {
       {applications && applications.length === 0 && <p>No applications yet.</p>}
       {applications && applications.length > 0 && (
         <table>
-          <caption className="visually-hidden">Applications sorted by triage score, highest first</caption>
+          <caption className="visually-hidden">Applications sorted by review flags, highest first</caption>
           <thead>
             <tr>
               <th scope="col">Business</th>
               <th scope="col">Contact</th>
               <th scope="col">Status</th>
-              <th scope="col">Triage score</th>
+              <th scope="col">Review flags</th>
               <th scope="col">Submitted</th>
               <th scope="col"></th>
             </tr>
@@ -66,7 +72,17 @@ export function ApplicationsList() {
                 <td>
                   <span className={`badge ${STATUS_BADGE[app.status] ?? ""}`}>{app.status}</span>
                 </td>
-                <td>{app.triageScore}</td>
+                <td>
+                  {(() => {
+                    const band = triageBand(app.triageScore);
+                    const toneClass = band.tone === "ok" ? "badge-ok" : band.tone === "warn" ? "badge-warn" : "badge-bad";
+                    return (
+                      <span className={`badge ${toneClass}`} title={band.label}>
+                        {app.triageScore} of {TRIAGE_MAX_SCORE} · {band.label}
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td>{app.submittedAt ? new Date(app.submittedAt).toLocaleDateString() : "—"}</td>
                 <td>
                   <a className="btn btn-secondary" href={`/admin/applications/${app.id}`} style={{ padding: "0.3rem 0.8rem" }}>

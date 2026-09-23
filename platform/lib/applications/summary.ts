@@ -1,4 +1,5 @@
 import { ENTITY_TYPE_LABELS } from "@/lib/validation/application";
+import { TRIAGE_MAX_SCORE, triageBand } from "./triage";
 
 /**
  * Application submission summary + deterministic checks.
@@ -229,7 +230,7 @@ export function formatSummaryEmail(
   lines.push("Business summary");
   for (const row of summary) lines.push(`- ${row.label}: ${row.value}`);
   lines.push("");
-  lines.push(`Triage score: ${triageScore}`);
+  lines.push(`Review flags: ${triageScore} of ${TRIAGE_MAX_SCORE} (${triageBand(triageScore).label})`);
   if (reasons.length > 0) {
     lines.push("Flags for review:");
     for (const r of reasons) lines.push(`- ${r}`);

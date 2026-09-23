@@ -12,6 +12,11 @@ import {
   type CheckStatus,
 } from "@/lib/applications/summary";
 import { ConfirmAction } from "./ConfirmAction";
+import {
+  TRIAGE_MAX_SCORE,
+  TRIAGE_REASON_POINTS,
+  triageBand,
+} from "@/lib/applications/triage";
 
 type Document = {
   id: string;
@@ -183,15 +188,38 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
     <main className="container" style={{ maxWidth: "900px" }}>
       <h1>{app.businessLegalName}</h1>
       <p>
-        Status: <span className="badge">{app.status}</span> · Triage score: {app.triageScore}
+        Status: <span className="badge">{app.status}</span>
       </p>
-      {app.needsReviewReasons.length > 0 && (
-        <ul>
-          {app.needsReviewReasons.map((r, i) => (
-            <li key={i}>{r}</li>
-          ))}
-        </ul>
-      )}
+
+      <section className="card" aria-label="Review priority">
+        <h2>Review priority</h2>
+        {(() => {
+          const band = triageBand(app.triageScore);
+          const toneClass = band.tone === "ok" ? "badge-ok" : band.tone === "warn" ? "badge-warn" : "badge-bad";
+          return (
+            <p>
+              <span className={`badge ${toneClass}`}>
+                {app.triageScore} of {TRIAGE_MAX_SCORE}
+              </span>{" "}
+              <strong>{band.label}</strong>
+            </p>
+          );
+        })()}
+        {app.needsReviewReasons.length > 0 ? (
+          <ul>
+            {app.needsReviewReasons.map((r, i) => (
+              <li key={i}>
+                {TRIAGE_REASON_POINTS[r] != null ? `+${TRIAGE_REASON_POINTS[r]} — ${r}` : r}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No flags — nothing to verify.</p>
+        )}
+        <p>
+          <small>Flags only order the review queue. They never approve or decline anyone.</small>
+        </p>
+      </section>
 
       <section className="card" aria-label="Business summary">
         <h2>Business summary</h2>
