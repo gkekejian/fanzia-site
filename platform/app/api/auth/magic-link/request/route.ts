@@ -12,7 +12,7 @@ import { recordAudit } from "@/lib/audit";
  */
 export async function POST(req: NextRequest) {
   const ip = clientIp(req.headers);
-  if (!checkRateLimit(`magic-link:${ip}`, 5, 15 * 60 * 1000)) {
+  if (!(await checkRateLimit(`magic-link:${ip}`, 5, 15 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "A valid email is required." }, { status: 400 });
   }
 
-  if (!checkRateLimit(`magic-link:${email}`, 5, 15 * 60 * 1000)) {
+  if (!(await checkRateLimit(`magic-link:${email}`, 5, 15 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 

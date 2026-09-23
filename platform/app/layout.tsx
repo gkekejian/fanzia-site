@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { ensureStartupTasks } from "@/lib/startup";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
@@ -9,16 +8,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// Force server-rendering on every request (no static CDN serving). The
-// startup tasks below (migrations + owner bootstrap) run inside the layout's
-// server render; fully static pages would never re-render at request time,
-// so the bootstrap would silently never run in production.
+// Every page reads session cookies or live DB state. Migrations no longer
+// run here: they run at build time (db/deploy.ts).
 export const dynamic = "force-dynamic";
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Once per server process: pending migrations, then real-owner provisioning.
-  // Awaited (not fire-and-forget) — see ensureStartupTasks.
-  await ensureStartupTasks();
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>

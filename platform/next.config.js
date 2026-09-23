@@ -47,15 +47,6 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  experimental: {
-    // The startup migration runner (lib/startup.ts) reads db/migrations
-    // from disk at runtime via drizzle's migrate(). Vercel's file tracer
-    // can't see that dynamic fs access, so include the folder explicitly —
-    // otherwise migrations silently never run in production.
-    outputFileTracingIncludes: {
-      "/*": ["./db/migrations/**/*"],
-    },
-  },
   async headers() {
     return [
       {

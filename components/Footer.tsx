@@ -36,12 +36,10 @@ export default function Footer() {
               <li><Link href="/store" className="hover:text-brand-red">Store</Link></li>
               <li><Link href="/products" className="hover:text-brand-red">Products</Link></li>
               <li><Link href="/wholesale" className="hover:text-brand-red">Wholesale</Link></li>
-              <li><Link href="/catalog" className="hover:text-brand-red">Catalog</Link></li>
               <li><Link href="/supply" className="hover:text-brand-red">Supply</Link></li>
               <li><Link href="/about" className="hover:text-brand-red">About</Link></li>
               <li><Link href="/contact" className="hover:text-brand-red">Contact</Link></li>
-              <li><a href="https://app.fanzia.io/apply" className="hover:text-brand-red">Wholesale Application</a></li>
-              <li><a href="https://app.fanzia.io" className="hover:text-brand-red">Customer Portal</a></li>
+              <li><a href="https://app.fanzia.io/member/login" className="hover:text-brand-red">Buyer Sign In</a></li>
             </ul>
           </nav>
 

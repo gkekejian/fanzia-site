@@ -6,6 +6,7 @@ import { notifyOwnersEvent } from "@/lib/notifications";
 import { formatMoney } from "@/lib/format";
 import { OFFER_EXPIRY_HOURS } from "@/lib/invoicing/rules";
 import { submitDraftRequest, InvoicingError } from "@/lib/invoicing/service";
+import { autoApproveIfEligible, type AutoApproveResult } from "@/lib/invoicing/autoApprove";
 import { clientIp, rateLimited, PUBLIC_WRITE_LIMITS } from "@/lib/rateLimit";
 import { verifyTurnstile, turnstileFailureBody } from "@/lib/turnstile";
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
   // Bot/abuse defense: per-buyer-account + IP rate limit (an approved buyer
   // account could still be scripted), plus Turnstile when configured.
   const ip = clientIp(req.headers);
-  const limited = rateLimited(`draft-submit:${buyer.accountId}:${ip}`, PUBLIC_WRITE_LIMITS.draftRequestSubmit);
+  const limited = await rateLimited(`draft-submit:${buyer.accountId}:${ip}`, PUBLIC_WRITE_LIMITS.draftRequestSubmit);
   if (limited) return limited;
 
   const json = await req.json().catch(() => null);
@@ -56,15 +57,29 @@ export async function POST(req: NextRequest) {
       userAgent: req.headers.get("user-agent"),
     });
 
+    // Routine repeat orders skip the owner queue entirely. Failures here
+    // must never fail the buyer's submit: the request is already saved and
+    // simply falls back to manual review.
+    let auto: AutoApproveResult = { approved: false, reason: "not attempted" };
+    try {
+      auto = await autoApproveIfEligible(db, created.id);
+    } catch (err) {
+      console.error("[draft-submit] auto-approve failed; left for manual review:", err);
+    }
+
     await notifyOwnersEvent(
       {
         type: "order_placed",
-        title: `New order request — ${buyer.contactName}`,
+        title: auto.approved
+          ? `Order auto-approved — ${buyer.contactName} (${auto.invoiceNumber})`
+          : `New order request — ${buyer.contactName}`,
         body:
           `${buyer.contactName} (${buyer.contactEmail}) submitted an order request: ` +
           `${formatMoney(created.subtotalMinor)} subtotal` +
           (created.smallOrderFeeMinor ? ` + ${formatMoney(created.smallOrderFeeMinor)} small-order fee` : "") +
-          `. The offer expires in ${OFFER_EXPIRY_HOURS} hours.\n\n` +
+          (auto.approved
+            ? `. Auto-approved and invoiced; no action needed.\n\n`
+            : `. Needs review (${auto.reason}). The offer expires in ${OFFER_EXPIRY_HOURS} hours.\n\n`) +
           `Review: ${process.env.APP_BASE_URL ?? "http://localhost:3100"}/admin/order-requests/${created.id}`,
         actorEmail: buyer.contactEmail,
         entityType: "order_request",
@@ -79,6 +94,8 @@ export async function POST(req: NextRequest) {
       subtotalMinor: created.subtotalMinor,
       smallOrderFeeMinor: created.smallOrderFeeMinor,
       expiresAt: created.expiresAt,
+      autoApproved: auto.approved,
+      invoiceId: auto.approved ? auto.invoiceId : null,
     });
   } catch (err) {
     if (err instanceof InvoicingError) {

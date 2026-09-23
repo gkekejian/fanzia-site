@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
+import { createTestDb } from "./testDb";
 import {
   checkRateLimit,
   clientIp,
@@ -6,37 +7,45 @@ import {
   PUBLIC_WRITE_LIMITS,
 } from "@/lib/rateLimit";
 
-describe("checkRateLimit (fixed window)", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
+describe("checkRateLimit (Postgres fixed window, shared across instances)", () => {
+  let db: Awaited<ReturnType<typeof createTestDb>>["db"];
+  beforeAll(async () => {
+    ({ db } = await createTestDb());
   });
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("allows up to the limit, then blocks within the window", () => {
+  it("allows up to the limit, then blocks within the window", async () => {
     const key = `test-basic:${Date.now()}`;
-    expect(checkRateLimit(key, 3, 60_000)).toBe(true);
-    expect(checkRateLimit(key, 3, 60_000)).toBe(true);
-    expect(checkRateLimit(key, 3, 60_000)).toBe(true);
-    expect(checkRateLimit(key, 3, 60_000)).toBe(false);
-    expect(checkRateLimit(key, 3, 60_000)).toBe(false);
+    expect(await checkRateLimit(key, 3, 60_000, db)).toBe(true);
+    expect(await checkRateLimit(key, 3, 60_000, db)).toBe(true);
+    expect(await checkRateLimit(key, 3, 60_000, db)).toBe(true);
+    expect(await checkRateLimit(key, 3, 60_000, db)).toBe(false);
+    expect(await checkRateLimit(key, 3, 60_000, db)).toBe(false);
   });
 
-  it("resets the bucket after the window expires", () => {
+  it("resets the bucket after the window expires", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
     const key = `test-reset:${Date.now()}`;
-    expect(checkRateLimit(key, 1, 60_000)).toBe(true);
-    expect(checkRateLimit(key, 1, 60_000)).toBe(false);
-    vi.advanceTimersByTime(60_001);
-    expect(checkRateLimit(key, 1, 60_000)).toBe(true);
+    expect(await checkRateLimit(key, 1, 60_000, db)).toBe(true);
+    expect(await checkRateLimit(key, 1, 60_000, db)).toBe(false);
+    vi.setSystemTime(Date.now() + 60_001);
+    expect(await checkRateLimit(key, 1, 60_000, db)).toBe(true);
   });
 
-  it("tracks keys independently", () => {
+  it("tracks keys independently", async () => {
     const a = `test-indep-a:${Date.now()}`;
     const b = `test-indep-b:${Date.now()}`;
-    expect(checkRateLimit(a, 1, 60_000)).toBe(true);
-    expect(checkRateLimit(a, 1, 60_000)).toBe(false);
-    expect(checkRateLimit(b, 1, 60_000)).toBe(true);
+    expect(await checkRateLimit(a, 1, 60_000, db)).toBe(true);
+    expect(await checkRateLimit(a, 1, 60_000, db)).toBe(false);
+    expect(await checkRateLimit(b, 1, 60_000, db)).toBe(true);
+  });
+
+  it("two limiter callers sharing one database share one bucket (the old Map did not)", async () => {
+    const key = `test-shared:${Date.now()}`;
+    const results = await Promise.all([1, 2, 3, 4].map(() => checkRateLimit(key, 2, 60_000, db)));
+    expect(results.filter(Boolean)).toHaveLength(2);
   });
 });
 
@@ -44,9 +53,10 @@ describe("rateLimited helper", () => {
   it("returns null while under the limit and a 429 response once exceeded", async () => {
     const key = `test-helper:${Date.now()}`;
     const preset = { limit: 2, windowMs: 60_000 };
-    expect(await rateLimited(key, preset)).toBeNull();
-    expect(await rateLimited(key, preset)).toBeNull();
-    const res = await rateLimited(key, preset);
+    const { db } = await createTestDb();
+    expect(await rateLimited(key, preset, db)).toBeNull();
+    expect(await rateLimited(key, preset, db)).toBeNull();
+    const res = await rateLimited(key, preset, db);
     expect(res).not.toBeNull();
     expect(res!.status).toBe(429);
     const body = await res!.json();

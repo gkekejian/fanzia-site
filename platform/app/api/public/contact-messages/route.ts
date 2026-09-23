@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { ingestContactMessage, ingestSchema, IngestAuthError } from "@/lib/contactMessages";
 import { clientIp, rateLimited, PUBLIC_WRITE_LIMITS } from "@/lib/rateLimit";
 import { verifyTurnstile, turnstileFailureBody } from "@/lib/turnstile";
-import { ensureStartupTasks } from "@/lib/startup";
 
 /**
  * Public ingestion endpoint for the marketing site's contact form. The
@@ -16,13 +15,8 @@ import { ensureStartupTasks } from "@/lib/startup";
  * keeps working before the marketing site adds the widget.
  */
 export async function POST(req: NextRequest) {
-  // API routes don't run the root layout, so ensure migrations/bootstrapping
-  // have run — otherwise the first-ever request (this one) could hit a
-  // schema that hasn't been migrated yet.
-  await ensureStartupTasks();
-
   const ip = clientIp(req.headers);
-  const limited = rateLimited(`contact-ingest:${ip}`, PUBLIC_WRITE_LIMITS.contactIngest);
+  const limited = await rateLimited(`contact-ingest:${ip}`, PUBLIC_WRITE_LIMITS.contactIngest);
   if (limited) return limited;
 
   const json = await req.json().catch(() => null);

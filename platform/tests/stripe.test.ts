@@ -66,7 +66,13 @@ async function seedInvoice(db: TestDb, accountId: string, totalMinor: number, st
   return row!;
 }
 
-function checkoutCompletedEvent(invoiceId: string, accountId: string, amountMinor: number, piId = "pi_test_123") {
+function checkoutCompletedEvent(
+  invoiceId: string,
+  accountId: string,
+  amountMinor: number,
+  piId = "pi_test_123",
+  paymentStatus: "paid" | "unpaid" = "paid",
+) {
   return JSON.stringify({
     id: "evt_test_123",
     type: "checkout.session.completed",
@@ -75,6 +81,7 @@ function checkoutCompletedEvent(invoiceId: string, accountId: string, amountMino
         id: "cs_test_123",
         payment_intent: piId,
         amount_total: amountMinor,
+        payment_status: paymentStatus,
         metadata: { invoiceId, accountId },
       },
     },
@@ -213,5 +220,36 @@ describe("processStripeWebhook", () => {
     await expect(
       recordCardPaymentFromStripe(db, { invoiceId: inv.id, amountMinor: 100000, paymentIntentId: "pi_x" }),
     ).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe("review hardening 2026-09-23", () => {
+  it("ignores checkout.session.completed until payment_status is paid", async () => {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+    const { db } = await createTestDb();
+    const accountId = await seedAccount(db);
+    const inv = await seedInvoice(db, accountId, 100000);
+    const result = await processStripeWebhook(
+      db,
+      checkoutCompletedEvent(inv.id, accountId, 100000, "pi_unpaid", "unpaid"),
+      null,
+    );
+    expect(result.handled).toBe(false);
+    const rows = await db.select().from(payment).where(eq(payment.invoiceId, inv.id));
+    expect(rows).toHaveLength(0);
+  });
+
+  it("concurrent deliveries of the same PaymentIntent record exactly one payment", async () => {
+    const { db } = await createTestDb();
+    const accountId = await seedAccount(db);
+    const inv = await seedInvoice(db, accountId, 100000);
+    const facts = { invoiceId: inv.id, amountMinor: 100000, paymentIntentId: "pi_race" };
+    const results = await Promise.all([
+      recordCardPaymentFromStripe(db, facts),
+      recordCardPaymentFromStripe(db, facts),
+    ]);
+    expect(results.filter((r) => !r.duplicate)).toHaveLength(1);
+    const rows = await db.select().from(payment).where(eq(payment.invoiceId, inv.id));
+    expect(rows).toHaveLength(1);
   });
 });

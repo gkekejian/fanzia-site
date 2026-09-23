@@ -51,8 +51,8 @@ export default function AboutPage() {
               </p>
               <p className="mt-5 max-w-2xl text-lg text-white/75 md:text-xl">
                 Today Fanzia operates a Glendale storefront, retail locations across Southern
-                California, and a wholesale arm supplying independent retailers and operators with
-                US, Japanese, and Chinese trading card product.
+                California, and a wholesale arm supplying vending operators, live sellers, and
+                specialty retailers with Japanese and Chinese import trading card product.
               </p>
 
               <dl className="mt-10 grid gap-0 border-[3px] border-brand-red md:grid-cols-3">

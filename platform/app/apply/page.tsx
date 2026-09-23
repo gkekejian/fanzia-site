@@ -23,17 +23,24 @@ export default async function ApplyPage() {
   }
 
   if (!open) {
+    // Route demand into a queue the owners can batch-process, not a
+    // personal inbox. The waitlist form lives on the marketing site and
+    // lands in /admin/inbox tagged "waitlist".
+    const waitlistUrl = process.env.WAITLIST_URL ?? "https://www.fanzia.io/wholesale#waitlist";
     return (
       <main className="container" style={{ maxWidth: "640px" }}>
-        <h1>Applications are paused</h1>
+        <h1>New wholesale accounts are paused</h1>
         <p>
-          We&rsquo;re not accepting new wholesale applications right now while we work through our
-          current pipeline. If you already submitted an application, your status link still works —
-          nothing about your existing application has changed.
+          We onboard buyers in small batches so every approved account gets product. Join the waitlist and
+          we&rsquo;ll email you when the next batch opens. It takes 20 seconds.
         </p>
         <p>
-          Questions? Email us at{" "}
-          <a href="mailto:george@fanzia.io">george@fanzia.io</a>.
+          <a className="btn" href={waitlistUrl}>
+            Join the waitlist
+          </a>
+        </p>
+        <p style={{ fontSize: "0.9em" }}>
+          Already applied? Your status link from the confirmation email still works.
         </p>
       </main>
     );

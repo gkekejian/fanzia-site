@@ -44,8 +44,8 @@ export default function Hero() {
           <p className="mt-8 max-w-xl text-lg text-white/75 md:text-xl">
             Fanzia is a Southern California trading card retailer and
             wholesale supplier. A storefront in Glendale, retail locations
-            across the region, and single-account sourcing for US, Japanese,
-            and Chinese product.
+            across the region, and wholesale Japanese and Chinese import
+            product for operators and sellers.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
@@ -53,7 +53,7 @@ export default function Hero() {
               Visit the Store
             </Link>
             <Link href="/wholesale" className="btn-ghost">
-              Wholesale Inquiries
+              Buy Wholesale
             </Link>
           </div>
 

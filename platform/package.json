@@ -2,10 +2,10 @@
   "name": "fanzia-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "Fanzia Wholesale Platform — internal ops/commerce app. Independent from the fanzia-site marketing app.",
+  "description": "Fanzia Wholesale Platform \u2014 internal ops/commerce app. Independent from the fanzia-site marketing app.",
   "scripts": {
     "dev": "next dev -p 3100",
-    "build": "next build",
+    "build": "tsx db/deploy.ts && next build",
     "start": "next start -p 3100",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -17,7 +17,8 @@
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
     "scan:secrets": "bash scripts/scan-secrets.sh",
-    "scan:claims": "bash scripts/scan-prohibited-claims.sh"
+    "scan:claims": "bash scripts/scan-prohibited-claims.sh",
+    "db:deploy": "RUN_DEPLOY_TASKS=1 tsx db/deploy.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.114",

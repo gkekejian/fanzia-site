@@ -6,13 +6,20 @@ export const runtime = "nodejs";
 // Body schema. `website` is a honeypot: legitimate visitors won't see or
 // fill it; bots crawling the form will. Any non-empty value short-circuits
 // as spam without leaking that it was detected.
-const schema = z.object({
-  name: z.string().trim().min(1).max(200),
-  email: z.string().trim().email().max(320),
-  message: z.string().trim().min(1).max(5000),
-  website: z.string().max(0).optional().or(z.literal("")),
-  _start: z.number().optional(),
-});
+// `topic: "waitlist"` is the wholesale waitlist (components/wholesale/
+// WaitlistForm.tsx): no free-text message, structured fields instead.
+const schema = z
+  .object({
+    topic: z.enum(["contact", "waitlist"]).optional().default("contact"),
+    name: z.string().trim().min(1).max(200),
+    email: z.string().trim().email().max(320),
+    message: z.string().trim().max(5000).optional().default(""),
+    channel: z.string().trim().max(80).optional().default(""),
+    volume: z.string().trim().max(80).optional().default(""),
+    website: z.string().optional().default(""),
+    _start: z.number().optional(),
+  })
+  .refine((d) => d.topic === "waitlist" || d.message.length > 0, { path: ["message"] });
 
 // In-memory rate limit: at most 5 submissions per IP per 10 min window.
 // Sufficient for low-volume marketing traffic; swap for Vercel KV /
@@ -44,7 +51,12 @@ function stripControls(s: string) {
  * Deliver to the Fanzia platform's website inbox (server-side, authenticated
  * with the shared ingest secret). Returns true when the message landed.
  */
-async function deliverToInbox(name: string, email: string, message: string): Promise<boolean> {
+async function deliverToInbox(
+  name: string,
+  email: string,
+  message: string,
+  meta: { source: string; subject: string } = { source: "website", subject: "" },
+): Promise<boolean> {
   const url = process.env.CONTACT_INGEST_URL;
   const secret = process.env.CONTACT_INGEST_SECRET;
   if (!url || !secret) return false;
@@ -52,7 +64,7 @@ async function deliverToInbox(name: string, email: string, message: string): Pro
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-ingest-secret": secret },
-      body: JSON.stringify({ name, email, message, source: "website" }),
+      body: JSON.stringify({ name, email, message, source: meta.source, subject: meta.subject }),
     });
     if (!res.ok) {
       console.error("[contact] inbox delivery failed:", res.status);
@@ -145,12 +157,25 @@ export async function POST(req: Request) {
 
   const name = stripControls(parsed.data.name);
   const email = stripControls(parsed.data.email);
-  const message = stripControls(parsed.data.message);
+  const isWaitlist = parsed.data.topic === "waitlist";
+  const message = isWaitlist
+    ? stripControls(
+        [
+          "Wholesale waitlist signup",
+          `Business: ${parsed.data.name}`,
+          `Channel: ${parsed.data.channel || "not given"}`,
+          `Monthly volume: ${parsed.data.volume || "not given"}`,
+        ].join("\n"),
+      )
+    : stripControls(parsed.data.message);
+  const meta = isWaitlist
+    ? { source: "waitlist", subject: `Waitlist: ${name}` }
+    : { source: "website", subject: "" };
 
   // Primary path: the website inbox in the Fanzia admin portal, where the
   // team reads and replies. Fallback: email, so no message is ever lost.
   try {
-    if (await deliverToInbox(name, email, message)) {
+    if (await deliverToInbox(name, email, message, meta)) {
       return NextResponse.json({ ok: true, delivery: "inbox" });
     }
     console.warn("[contact] inbox unavailable, falling back to email");

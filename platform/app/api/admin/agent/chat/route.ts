@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
   const owner = actor.user;
 
-  const limited = rateLimited(`agent-chat:${owner.id}`, CHAT_RATE_LIMIT);
+  const limited = await rateLimited(`agent-chat:${owner.id}`, CHAT_RATE_LIMIT);
   if (limited) return limited;
 
   if (!process.env.FANZIA_AGENT_API_KEY) {

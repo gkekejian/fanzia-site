@@ -54,4 +54,8 @@ export const SETTINGS_KEYS = {
   // (or unset — closed by default), /apply and POST /api/applications refuse
   // new submissions while in-flight applications keep working.
   applicationsOpen: "applications_open",
+  // Auto-approval ceiling for order requests, in USD minor units. 0 or
+  // unset = disabled (every request waits for an owner). See
+  // lib/invoicing/autoApprove.ts for the guardrails.
+  orderAutoApproveMaxMinor: "order_auto_approve_max_minor",
 } as const;

@@ -29,16 +29,18 @@ export async function createMagicLink(email: string): Promise<{ raw: string; use
   return { raw, userId: owner.id };
 }
 
+/**
+ * Atomic single-use consume: one UPDATE ... WHERE used_at IS NULL
+ * RETURNING, so two concurrent requests with the same token (double-click,
+ * mail-scanner prefetch racing the real click) can never both succeed.
+ */
 export async function consumeMagicLink(raw: string): Promise<{ userId: string } | null> {
   const tokenHash = hashToken(raw);
-  const rows = await db
-    .select()
-    .from(magicLink)
-    .where(and(eq(magicLink.tokenHash, tokenHash), isNull(magicLink.usedAt), gt(magicLink.expiresAt, new Date())))
-    .limit(1);
-  const link = rows[0];
-  if (!link) return null;
-
-  await db.update(magicLink).set({ usedAt: new Date() }).where(eq(magicLink.id, link.id));
-  return { userId: link.userId };
+  const now = new Date();
+  const [link] = await db
+    .update(magicLink)
+    .set({ usedAt: now })
+    .where(and(eq(magicLink.tokenHash, tokenHash), isNull(magicLink.usedAt), gt(magicLink.expiresAt, now)))
+    .returning({ userId: magicLink.userId });
+  return link ? { userId: link.userId } : null;
 }
