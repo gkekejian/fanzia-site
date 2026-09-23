@@ -18,6 +18,7 @@ import { termsClickwrapLabel } from "@/lib/policies/clickwrap";
 import { notifyOwnersEvent } from "@/lib/notifications";
 import { sniffMime, ALLOWED_MIME_TYPES, MAX_UPLOAD_BYTES } from "@/lib/storage/mime";
 import { putObject, deleteObject } from "@/lib/storage";
+import { areApplicationsOpen } from "@/lib/applications/portal";
 
 const RESALE_CERT_FILE_FIELD = "resaleCertificate";
 
@@ -58,6 +59,15 @@ function invalidFileResponse(message: string) {
 }
 
 export async function POST(req: NextRequest) {
+  // Portal kill switch (owner directive 2026-09-23): refuse new submissions
+  // while closed. In-flight resume/document endpoints are unaffected.
+  if (!(await areApplicationsOpen())) {
+    return NextResponse.json(
+      { error: "We are not accepting new wholesale applications right now." },
+      { status: 403 },
+    );
+  }
+
   const ip = clientIp(req.headers);
   const limited = rateLimited(`apply:${ip}`, PUBLIC_WRITE_LIMITS.applicationSubmit);
   if (limited) return limited;

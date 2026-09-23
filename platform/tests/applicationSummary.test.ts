@@ -137,7 +137,7 @@ describe("application summary + checks", () => {
     );
     expect(text).toContain("Business summary");
     expect(text).toContain("K & Jassy Shop LLC");
-    expect(text).toContain("Triage score: 1");
+    expect(text).toContain("Review flags: 1 of 3");
     expect(text).toContain("No channel evidence link provided");
     expect(text).toContain("Checks");
     expect(text).toContain("[FAIL] Seller's permit copy on file");

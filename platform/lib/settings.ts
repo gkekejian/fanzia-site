@@ -50,4 +50,8 @@ export const SETTINGS_KEYS = {
   invoiceSequence: "invoice.sequence",
   // Nayax vending connector — weekly restock suggestion cadence (migration 0018).
   suggestionDay: "suggestion_day",
+  // Application portal kill switch (owner directive 2026-09-23): when false
+  // (or unset — closed by default), /apply and POST /api/applications refuse
+  // new submissions while in-flight applications keep working.
+  applicationsOpen: "applications_open",
 } as const;

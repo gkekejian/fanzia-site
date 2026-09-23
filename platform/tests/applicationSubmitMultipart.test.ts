@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import { createTestDb } from "./testDb";
-import { application, applicationDocument, termsAcceptance, termsVersion } from "@/db/schema";
+import { application, applicationDocument, termsAcceptance, termsVersion, settings as settingsTable } from "@/db/schema";
 import type * as schema from "@/db/schema";
+import { SETTINGS_KEYS } from "@/lib/settings";
 
 // The route binds the real db client at module scope; point it at the
 // per-test PGlite instance through a lazily-resolved mock (same pattern as
@@ -106,6 +107,13 @@ describe("POST /api/applications multipart intake", () => {
       bodyMarkdown: "terms text",
       isDraft: false,
       publishedAt: new Date(),
+    });
+    // These tests exercise submission behavior, not the portal kill switch —
+    // open the portal so the gate lets them through.
+    await db.insert(settingsTable).values({
+      key: SETTINGS_KEYS.applicationsOpen,
+      value: true,
+      description: "test",
     });
   });
 

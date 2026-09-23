@@ -1,14 +1,44 @@
 import { getLatestPublishedTermsVersion } from "@/lib/terms";
 import { DRAFT_POLICIES } from "@/lib/policies/content";
 import { ApplyForm } from "@/components/ApplyForm";
+import { areApplicationsOpen } from "@/lib/applications/portal";
 
 /**
  * Server wrapper: resolves the published Terms of Sale version so the
  * clickwrap checkbox label matches the visible-language snapshot recorded
  * by the applications API (lib/policies/clickwrap.ts). Falls back to the
  * static draft label only if the DB is unreachable.
+ *
+ * When the portal kill switch is closed (owner directive 2026-09-23), the
+ * form is replaced with a closed notice — in-flight applicants keep using
+ * their status-link continue pages.
  */
 export default async function ApplyPage() {
+  let open = false;
+  try {
+    open = await areApplicationsOpen();
+  } catch {
+    // DB unreachable — fail closed, same direction as the API gate.
+    open = false;
+  }
+
+  if (!open) {
+    return (
+      <main className="container" style={{ maxWidth: "640px" }}>
+        <h1>Applications are paused</h1>
+        <p>
+          We&rsquo;re not accepting new wholesale applications right now while we work through our
+          current pipeline. If you already submitted an application, your status link still works —
+          nothing about your existing application has changed.
+        </p>
+        <p>
+          Questions? Email us at{" "}
+          <a href="mailto:george@fanzia.io">george@fanzia.io</a>.
+        </p>
+      </main>
+    );
+  }
+
   let versionLabel = DRAFT_POLICIES.terms_of_sale.versionLabel;
   try {
     const row = await getLatestPublishedTermsVersion("terms_of_sale");
