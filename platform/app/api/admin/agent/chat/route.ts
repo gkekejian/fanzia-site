@@ -23,7 +23,7 @@ const CHAT_RATE_LIMIT = { limit: 60, windowMs: 60 * 60 * 1000 };
  *
  * Provider-agnostic by design: FANZIA_AGENT_BASE_URL +
  * FANZIA_AGENT_API_KEY + FANZIA_AGENT_MODEL. Defaults point at Groq's free
- * tier (open-weights Llama 3.3 70B); pointing BASE_URL at a local Ollama
+ * tier (open-weights gpt-oss-120b); pointing BASE_URL at a local Ollama
  * endpoint later needs zero code changes.
  */
 export async function POST(req: NextRequest) {
@@ -100,15 +100,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Provider-agnostic: any OpenAI-compatible endpoint. Default is Groq's
-  // free tier serving open-weights Llama 3.3 70B (solid parallel tool
-  // calling, 128K context). Override all three env vars to use another
-  // provider — or a local Ollama endpoint — with no code changes.
+  // free tier serving open-weights gpt-oss-120b (their strongest open model;
+  // llama-3.3-70b-versatile was retired from Groq). Override all three env
+  // vars to use another provider — or a local Ollama endpoint — with no code
+  // changes.
   const agentProvider = createOpenAI({
     name: "fanzia-agent",
     apiKey: process.env.FANZIA_AGENT_API_KEY,
     baseURL: process.env.FANZIA_AGENT_BASE_URL?.trim() || "https://api.groq.com/openai/v1",
   });
-  const modelId = process.env.FANZIA_AGENT_MODEL?.trim() || "llama-3.3-70b-versatile";
+  const modelId = process.env.FANZIA_AGENT_MODEL?.trim() || "openai/gpt-oss-120b";
 
   const result = streamText({
     model: agentProvider(modelId),
