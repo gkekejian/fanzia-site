@@ -29,20 +29,20 @@ function displayNameFromEmail(email: string): string {
 }
 
 /**
- * Publish the draft policy documents as the current terms_version rows.
- * Insert-only: it never touches an existing published row, so a future real
+ * Publish the policy documents as the current terms_version rows.
+ * Insert-only: it never touches an existing published row, so a future
  * (lawyer-reviewed) version published through the admin flow is never
- * overwritten. When the draft's versionLabel in DRAFT_POLICIES is newer than
+ * overwritten. When a doc's versionLabel in DRAFT_POLICIES is newer than
  * the latest published row for a doc type, a new immutable version is
  * published so buyer-facing text (clickwrap, policy pages) always reflects
- * the current draft without a manual publish step.
+ * the current documents without a manual publish step.
  *
  * This is the production-safe counterpart to the same block in db/seed.ts
  * (which refuses to run outside local/dev). Without a published row the
  * application form's clickwrap has nothing to link to and submissions are
- * rejected. The DRAFT_POLICIES body text itself is marked DRAFT — PENDING
- * LEGAL REVIEW; "published" here means "the current version buyers see and
- * accept," not "final legal document."
+ * rejected. The DRAFT_POLICIES bodies are the owner-finalized v1 documents
+ * (2026-09-22, no attorney review per owner's direction); "published" here
+ * means "the current version buyers see and accept."
  */
 export async function bootstrapTerms(): Promise<string[]> {
   const published: string[] = [];
@@ -50,22 +50,29 @@ export async function bootstrapTerms(): Promise<string[]> {
     keyof typeof DRAFT_POLICIES,
     (typeof DRAFT_POLICIES)[keyof typeof DRAFT_POLICIES],
   ][]) {
-    const latest = await db
-      .select({ id: termsVersion.id, versionLabel: termsVersion.versionLabel })
-      .from(termsVersion)
-      .where(and(eq(termsVersion.docType, docType), isNotNull(termsVersion.publishedAt)))
-      .orderBy(desc(termsVersion.publishedAt))
-      .limit(1);
-    const latestLabel = latest.length > 0 ? latest[0]?.versionLabel : undefined;
-    if (latestLabel === policy.versionLabel) continue;
-    await db.insert(termsVersion).values({
-      docType,
-      versionLabel: policy.versionLabel,
-      bodyMarkdown: policy.body,
-      isDraft: false,
-      publishedAt: new Date(),
-    });
-    published.push(`${docType}@${policy.versionLabel}`);
+    // Per-doc resilience: one doc failing to publish (e.g. its enum value is
+    // missing on an old database) must not block the remaining docs or the
+    // currency bootstrap below. Failures are logged, not thrown.
+    try {
+      const latest = await db
+        .select({ id: termsVersion.id, versionLabel: termsVersion.versionLabel })
+        .from(termsVersion)
+        .where(and(eq(termsVersion.docType, docType), isNotNull(termsVersion.publishedAt)))
+        .orderBy(desc(termsVersion.publishedAt))
+        .limit(1);
+      const latestLabel = latest.length > 0 ? latest[0]?.versionLabel : undefined;
+      if (latestLabel === policy.versionLabel) continue;
+      await db.insert(termsVersion).values({
+        docType,
+        versionLabel: policy.versionLabel,
+        bodyMarkdown: policy.body,
+        isDraft: false,
+        publishedAt: new Date(),
+      });
+      published.push(`${docType}@${policy.versionLabel}`);
+    } catch (err) {
+      console.error(`[startup] failed to publish terms ${docType}@${policy.versionLabel}; continuing.`, err);
+    }
   }
   return published;
 }

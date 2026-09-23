@@ -9,6 +9,7 @@ export const termsDocType = pgEnum("terms_doc_type", [
   "shipping_policy",
   "returns_policy",
   "import_edition_acknowledgment",
+  "ai_data_policy",
 ]);
 
 /**

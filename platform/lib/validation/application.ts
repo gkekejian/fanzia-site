@@ -70,14 +70,15 @@ export const entityTypeSchema = z.enum([
  * The exact AI/automation disclosure sentence rendered next to the
  * checkbox on the public application form. Shared by client and server so
  * the language snapshot stored per acceptance is provably the text the
- * applicant saw. The underlying AI data-access policy is pending final
- * legal review (see the DRAFT banner on the form).
+ * applicant saw. The underlying AI Data-Access Policy is owner-finalized
+ * (v1, 2026-09-22; no attorney review per owner's direction) and readable
+ * at /ai-policy.
  */
 export function aiDisclosureLabel(): string {
   return (
     "I understand Fanzia may use automated systems, including artificial intelligence, " +
     "to review this application, and that the information I provide may be processed by " +
-    "AI assistants operating under Fanzia's AI data-access policy (currently pending final legal review). " +
+    "AI assistants operating under Fanzia's AI Data-Access Policy. " +
     "I consent to that processing."
   );
 }

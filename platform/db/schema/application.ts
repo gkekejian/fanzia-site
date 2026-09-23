@@ -79,7 +79,7 @@ export const application = pgTable("application", {
   signatureName: text("signature_name"),
 
   // AI/automation disclosure acceptance evidence. The disclosure text is
-  // pending final legal review (same as the DRAFT banner on the form);
+  // owner-finalized (v1, 2026-09-22; no attorney review per owner's direction);
   // the exact visible language is snapshotted here per acceptance.
   aiDisclosureAcceptedAt: timestamp("ai_disclosure_accepted_at", { withTimezone: true }),
   aiDisclosureLanguage: text("ai_disclosure_language"),

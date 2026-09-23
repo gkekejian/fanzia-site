@@ -262,12 +262,12 @@ async function main() {
     ])
     .onConflictDoNothing();
 
-  // Publish v1 draft policies as terms_version rows so the clickwrap on the
+  // Publish the owner-finalized v1 policies as terms_version rows so the clickwrap on the
   // application form (and the standalone policy pages) can link to a real,
   // immutable, versioned row instead of only the static DRAFT_POLICIES
-  // module. These are still marked DRAFT — PENDING LEGAL REVIEW in the
-  // rendered body text itself; "published" here means "the current version
-  // buyers see and accept," not "final legal document" (PROJECT_SCOPE_FINAL.md §8).
+  // module. "Published" here means "the current version buyers see and
+  // accept" (PROJECT_SCOPE_FINAL.md §8); the documents themselves are
+  // owner-finalized v1 (2026-09-22, no attorney review per owner's direction).
   for (const [docType, policy] of Object.entries(DRAFT_POLICIES) as [
     keyof typeof DRAFT_POLICIES,
     (typeof DRAFT_POLICIES)[keyof typeof DRAFT_POLICIES],

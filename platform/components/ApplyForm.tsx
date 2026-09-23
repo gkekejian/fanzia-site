@@ -194,7 +194,6 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
 
   return (
     <main className="container">
-      <div className="draft-banner">DRAFT — PENDING LEGAL REVIEW. Policies referenced below are drafts.</div>
       <div className="card">
         <h1>Wholesale application</h1>
         <p>Fanzia sells at wholesale only to verified businesses. Tell us about yours.</p>
@@ -395,7 +394,11 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
               style={{ width: "auto", marginTop: "0.2rem" }}
             />
             <label htmlFor="aiDisclosureAccepted" style={{ margin: 0, fontWeight: 400, fontSize: "0.9rem" }}>
-              {aiDisclosureLabel()}
+              {aiDisclosureLabel()}{" "}
+              <a href="/ai-policy" target="_blank" rel="noopener noreferrer">
+                Read the AI Data-Access Policy
+              </a>
+              .
             </label>
           </div>
 
