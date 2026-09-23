@@ -25,9 +25,21 @@ export async function resolveActor(req: NextRequest): Promise<Actor | null> {
   return { kind: "owner", user };
 }
 
-/** Convenience wrapper: returns the resolved Actor, or a ready-to-return 401 response. */
+/**
+ * Convenience wrapper: returns the resolved Actor, or a ready-to-return
+ * 401/403 response. An owner session without a confirmed TOTP credential
+ * is refused here (403 mfa_enrollment_required): the only routes that
+ * accept it are the enrollment endpoints under /api/auth/totp, which read
+ * the session directly and never call requireActor.
+ */
 export async function requireActor(req: NextRequest): Promise<Actor | NextResponse> {
   const actor = await resolveActor(req);
   if (!actor) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (actor.kind === "owner" && actor.user.mfaEnrolled !== true) {
+    return NextResponse.json(
+      { error: "mfa_enrollment_required", message: "Set up two-factor authentication at /admin/totp-setup first." },
+      { status: 403 },
+    );
+  }
   return actor;
 }

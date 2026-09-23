@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = clientIp(req.headers);
-  const limited = rateLimited(`apply:${ip}`, PUBLIC_WRITE_LIMITS.applicationSubmit);
+  const limited = await rateLimited(`apply:${ip}`, PUBLIC_WRITE_LIMITS.applicationSubmit);
   if (limited) return limited;
 
   const { fields, file } = await parseApplicationBody(req);

@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = clientIp(req.headers);
-  if (!checkRateLimit(`admin-user-invite:${ip}`, 10, 60 * 60 * 1000)) {
+  if (!(await checkRateLimit(`admin-user-invite:${ip}`, 10, 60 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 

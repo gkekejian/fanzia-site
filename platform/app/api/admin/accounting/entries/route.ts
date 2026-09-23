@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = clientIp(req.headers);
-  if (!checkRateLimit(`accounting-entry:${ip}`, 30, 60 * 60 * 1000)) {
+  if (!(await checkRateLimit(`accounting-entry:${ip}`, 30, 60 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 

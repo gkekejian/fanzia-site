@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const ip = clientIp(req.headers);
-  if (!checkRateLimit(`totp-recovery-regen:${user.id}`, 5, 15 * 60 * 1000)) {
+  if (!(await checkRateLimit(`totp-recovery-regen:${user.id}`, 5, 15 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
   }
 

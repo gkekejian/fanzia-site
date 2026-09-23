@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   if (!pending) return NextResponse.json({ error: "Sign-in session expired. Start over." }, { status: 401 });
 
   const ip = clientIp(req.headers);
-  if (!checkRateLimit(`totp-verify:${pending.userId}`, 10, 15 * 60 * 1000)) {
+  if (!(await checkRateLimit(`totp-verify:${pending.userId}`, 10, 15 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
   }
 

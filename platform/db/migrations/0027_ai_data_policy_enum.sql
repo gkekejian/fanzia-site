@@ -6,4 +6,4 @@
 -- ALTER TYPE ... ADD VALUE in a transaction block (verified on PG 16.4,
 -- which is what Neon runs). The value is only added here, never used in
 -- this transaction, so there is no same-transaction visibility issue.
-ALTER TYPE terms_doc_type ADD VALUE 'ai_data_policy';
+ALTER TYPE terms_doc_type ADD VALUE IF NOT EXISTS 'ai_data_policy';

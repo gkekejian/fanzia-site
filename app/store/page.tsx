@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
 import MotionSection from "@/components/MotionSection";
 import { locations } from "@/content/locations";
 import { storePhotos } from "@/content/store-photos";
+
+const publishedPhotos = storePhotos.filter((p) => p.src);
 
 export const metadata: Metadata = {
   title: "Visit Fanzia",
@@ -83,26 +86,23 @@ export default function StorePage() {
           </div>
         </MotionSection>
 
-        {/* Photo gallery */}
-        <MotionSection className="section border-t border-white/10 bg-brand-ink">
-          <div className="container">
-            <p className="eyebrow">In the Store</p>
-            <h2 className="h-section">Storefront &amp; interior.</h2>
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {storePhotos.map((photo) => (
-                <figure
-                  key={photo.label}
-                  className="relative flex aspect-[3/4] flex-col items-center justify-center gap-2 border border-white/15 bg-brand-coal p-4 text-center"
-                >
-                  <span className="font-display text-[10px] uppercase tracking-[0.2em] text-brand-red">
-                    {photo.label}
-                  </span>
-                  <span className="text-xs text-white/40">{photo.alt}</span>
-                </figure>
-              ))}
+        {/* Photo gallery: renders only once real photos exist. Placeholder
+            tiles with "{{TODO}}" alt text were shipping to production. */}
+        {publishedPhotos.length > 0 && (
+          <MotionSection className="section border-t border-white/10 bg-brand-ink">
+            <div className="container">
+              <p className="eyebrow">In the Store</p>
+              <h2 className="h-section">Storefront &amp; interior.</h2>
+              <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                {publishedPhotos.map((photo) => (
+                  <figure key={photo.label} className="relative aspect-[3/4] overflow-hidden border border-white/15 bg-brand-coal">
+                    <Image src={photo.src!} alt={photo.alt} fill sizes="(min-width:1024px) 20vw, 50vw" className="object-cover" />
+                  </figure>
+                ))}
+              </div>
             </div>
-          </div>
-        </MotionSection>
+          </MotionSection>
+        )}
 
         {/* Retail Locations */}
         <MotionSection className="section border-t border-white/10">

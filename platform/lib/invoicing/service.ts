@@ -376,7 +376,7 @@ function invoiceStatusFor(totalMinor: number, payments: { amountMinor: number; f
  * and proceeds against the renewed offer; a second expiry leaves the
  * offer expired and approval is rejected.
  */
-export async function approveOrderRequest(db: AnyDb, requestId: string, ownerId: string) {
+export async function approveOrderRequest(db: AnyDb, requestId: string, ownerId: string | null) {
   const settled = await processExpiredOffer(db, requestId);
   if (settled.request.status === "expired") throw new ExpiredError();
   const result = await db.transaction(async (tx) => {
@@ -670,6 +670,24 @@ export async function sendInvoice(db: AnyDb, invoiceId: string) {
     },
     db,
   );
+  // "Sent" previously only flipped a status and notified the OWNERS; the
+  // buyer was never told an invoice existed, so unpaid invoices just sat.
+  const to = await buyerEmailFor(db, updated!.accountId);
+  if (to) {
+    const base = process.env.APP_BASE_URL ?? "http://localhost:3100";
+    await sendNotificationEmail(
+      {
+        to,
+        subject: `Fanzia invoice ${updated!.invoiceNumber}: ${formatMoney(updated!.totalMinor)} due`,
+        text:
+          `Your Fanzia wholesale order was approved. Invoice ${updated!.invoiceNumber} ` +
+          `for ${formatMoney(updated!.totalMinor)} is ready.\n\n` +
+          `Pay by card or see ACH/wire details here: ${base}/member/invoices\n\n` +
+          `We place the supplier order once payment clears.`,
+      },
+      "invoice.sent",
+    );
+  }
   return updated!;
 }
 

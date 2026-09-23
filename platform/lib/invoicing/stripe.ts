@@ -91,6 +91,11 @@ export async function createCardCheckout(db: AnyDb, buyer: BuyerIdentity, invoic
       },
     ],
     metadata: { invoiceId: inv.id, accountId: inv.accountId },
+    // Copy the invoice id onto the PaymentIntent too. Without this,
+    // payment_intent.* events carry empty metadata, so failed-card
+    // notifications (payment_intent.payment_failed) could never match an
+    // invoice and were silently dropped.
+    payment_intent_data: { metadata: { invoiceId: inv.id, accountId: inv.accountId } },
     success_url: `${baseUrl()}/member/invoices?paid=1&invoice=${inv.id}`,
     cancel_url: `${baseUrl()}/member/invoices?canceled=1&invoice=${inv.id}`,
   });
@@ -110,6 +115,9 @@ function factsFromEvent(event: Stripe.Event): StripePaymentFacts | null {
     const session = event.data.object as Stripe.Checkout.Session;
     const invoiceId = session.metadata?.invoiceId;
     if (!invoiceId) return null;
+    // "completed" means the buyer finished the Checkout page, not that money
+    // moved. Only record a payment once Stripe reports it as paid.
+    if (session.payment_status !== "paid") return null;
     const pi = session.payment_intent;
     const paymentIntentId = typeof pi === "string" ? pi : pi?.id ?? `cs_${session.id}`;
     return { invoiceId, amountMinor: session.amount_total ?? 0, paymentIntentId };
@@ -154,14 +162,28 @@ export async function recordCardPaymentFromStripe(db: AnyDb, facts: StripePaymen
     if (inv.status === "void") throw new WebhookError("Stripe event for a void invoice; refusing to record.", 400);
     if (facts.amountMinor <= 0) throw new WebhookError("Stripe event carried a non-positive amount.", 400);
 
-    const [dup] = await tx
-      .select()
-      .from(payment)
-      .where(and(eq(payment.invoiceId, facts.invoiceId), eq(payment.reference, facts.paymentIntentId)))
-      .limit(1);
+    const findExisting = async () => {
+      const [row] = await tx
+        .select()
+        .from(payment)
+        .where(
+          and(
+            eq(payment.invoiceId, facts.invoiceId),
+            eq(payment.method, "card"),
+            eq(payment.reference, facts.paymentIntentId),
+          ),
+        )
+        .limit(1);
+      return row;
+    };
+    const dup = await findExisting();
     if (dup) return { payment: dup, invoice: inv, duplicate: true as const };
 
     const now = new Date();
+    // ON CONFLICT DO NOTHING against payment_card_reference_uniq (migration
+    // 0028): if a concurrent delivery of the same event won the race, the
+    // insert returns no row and we report a duplicate instead of
+    // double-crediting the invoice.
     const [created] = await tx
       .insert(payment)
       .values({
@@ -174,7 +196,12 @@ export async function recordCardPaymentFromStripe(db: AnyDb, facts: StripePaymen
         fundsClearedAt: now, // card clears immediately
         recordedBy: null, // automatic: no human owner recorded this
       })
+      .onConflictDoNothing()
       .returning();
+    if (!created) {
+      const existing = await findExisting();
+      return { payment: existing!, invoice: inv, duplicate: true as const };
+    }
 
     const all = await tx.select().from(payment).where(eq(payment.invoiceId, inv.id));
     const status = invoiceCleared(inv.totalMinor, all) ? "paid" : "partial";
@@ -185,7 +212,7 @@ export async function recordCardPaymentFromStripe(db: AnyDb, facts: StripePaymen
         actorType: "system",
         action: "invoice.stripe_payment_recorded",
         entityType: "payment",
-        entityId: created!.id,
+        entityId: created.id,
         after: {
           invoiceId: inv.id,
           invoiceNumber: inv.invoiceNumber,
@@ -196,7 +223,7 @@ export async function recordCardPaymentFromStripe(db: AnyDb, facts: StripePaymen
       },
       tx,
     );
-    return { payment: created!, invoice: updated!, duplicate: false as const };
+    return { payment: created, invoice: updated!, duplicate: false as const };
   });
 }
 

@@ -2,7 +2,7 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 import { cookies } from "next/headers";
 import { eq, isNull, gt, and } from "drizzle-orm";
 import { db as defaultDb } from "@/db/client";
-import { session as sessionTable, user as userTable } from "@/db/schema";
+import { session as sessionTable, totpCredential, user as userTable } from "@/db/schema";
 import { generateToken, hashToken } from "@/lib/crypto";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16,6 +16,13 @@ export type AuthedUser = {
   email: string;
   name: string;
   role: "owner" | "ai_operator";
+  /**
+   * True once the user has a CONFIRMED TOTP credential. Owners without it
+   * may only reach the enrollment flow (see lib/auth/actor.ts and
+   * lib/auth/pageGuard.ts); before 2026-09-23 nothing enforced this, so a
+   * magic link alone granted full admin access indefinitely.
+   */
+  mfaEnrolled?: boolean;
 };
 
 /** Accepts an injectable db handle purely for tests (see tests/concurrentSessions.test.ts). */
@@ -52,9 +59,10 @@ export async function getSessionUser(
   if (!rawToken) return null;
   const tokenHash = hashToken(rawToken);
   const rows = await db
-    .select({ user: userTable, expiresAt: sessionTable.expiresAt })
+    .select({ user: userTable, expiresAt: sessionTable.expiresAt, totpConfirmedAt: totpCredential.confirmedAt })
     .from(sessionTable)
     .innerJoin(userTable, eq(sessionTable.userId, userTable.id))
+    .leftJoin(totpCredential, eq(totpCredential.userId, userTable.id))
     .where(
       and(
         eq(sessionTable.tokenHash, tokenHash),
@@ -66,7 +74,13 @@ export async function getSessionUser(
 
   const row = rows[0];
   if (!row || !row.user.active) return null;
-  return { id: row.user.id, email: row.user.email, name: row.user.name, role: row.user.role };
+  return {
+    id: row.user.id,
+    email: row.user.email,
+    name: row.user.name,
+    role: row.user.role,
+    mfaEnrolled: row.totpConfirmedAt != null,
+  };
 }
 
 export async function getCurrentUser(): Promise<AuthedUser | null> {

@@ -34,17 +34,20 @@ export async function createBuyerMagicLink(email: string, db: AnyDb = defaultDb)
 
 export async function consumeBuyerMagicLink(raw: string, db: AnyDb = defaultDb): Promise<{ accountContactId: string; accountId: string } | null> {
   const tokenHash = hashToken(raw);
-  const rows = await db
-    .select({ link: buyerMagicLink, contact: accountContact })
-    .from(buyerMagicLink)
-    .innerJoin(accountContact, eq(buyerMagicLink.accountContactId, accountContact.id))
-    .where(and(eq(buyerMagicLink.tokenHash, tokenHash), isNull(buyerMagicLink.usedAt), gt(buyerMagicLink.expiresAt, new Date())))
+  const now = new Date();
+  // Atomic single-use consume (see lib/auth/magicLink.ts).
+  const [link] = await db
+    .update(buyerMagicLink)
+    .set({ usedAt: now })
+    .where(and(eq(buyerMagicLink.tokenHash, tokenHash), isNull(buyerMagicLink.usedAt), gt(buyerMagicLink.expiresAt, now)))
+    .returning({ accountContactId: buyerMagicLink.accountContactId });
+  if (!link) return null;
+  const [contact] = await db
+    .select()
+    .from(accountContact)
+    .where(eq(accountContact.id, link.accountContactId))
     .limit(1);
-  const row = rows[0];
-  if (!row) return null;
   // A contact disabled after the link was issued cannot complete login.
-  if (!row.contact.active) return null;
-
-  await db.update(buyerMagicLink).set({ usedAt: new Date() }).where(eq(buyerMagicLink.id, row.link.id));
-  return { accountContactId: row.contact.id, accountId: row.contact.accountId };
+  if (!contact || !contact.active) return null;
+  return { accountContactId: contact.id, accountId: contact.accountId };
 }

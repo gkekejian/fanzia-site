@@ -7,7 +7,7 @@ import { recordAudit } from "@/lib/audit";
 /** Same non-disclosure shape as the owner magic-link route (build prompt §2). */
 export async function POST(req: NextRequest) {
   const ip = clientIp(req.headers);
-  if (!checkRateLimit(`buyer-magic-link:${ip}`, 5, 15 * 60 * 1000)) {
+  if (!(await checkRateLimit(`buyer-magic-link:${ip}`, 5, 15 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   if (!email || !email.includes("@")) {
     return NextResponse.json({ error: "A valid email is required." }, { status: 400 });
   }
-  if (!checkRateLimit(`buyer-magic-link:${email}`, 5, 15 * 60 * 1000)) {
+  if (!(await checkRateLimit(`buyer-magic-link:${email}`, 5, 15 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
   }
 

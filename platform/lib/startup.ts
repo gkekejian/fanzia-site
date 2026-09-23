@@ -12,96 +12,52 @@ import { bootstrapCurrencies, bootstrapOwners, bootstrapTerms, parseBootstrapOwn
 const MIGRATION_LOCK_KEY = "4829471029384756102";
 
 /**
- * Runs once per server process (see ensureStartupTasks below):
- *  1. Apply any pending Drizzle migrations (versioned, append-only — the same
- *     scripts `npm run db:migrate` runs locally).
- *  2. Provision real owner accounts listed in BOOTSTRAP_OWNER_EMAILS.
+ * Deploy-time tasks, run by `db/deploy.ts` as part of `npm run build`
+ * (see package.json), never on the request path:
+ *  1. Apply pending Drizzle migrations (advisory-locked).
+ *  2. Provision owner accounts listed in BOOTSTRAP_OWNER_EMAILS.
+ *  3. Publish policy versions, ensure currency rows.
  *
- * Both steps are idempotent. Nothing is ever seeded: no fixtures, no test
- * data, no placeholder accounts (db/seed.ts stays local-only).
- *
- * Never throws: a failed boot task is logged, not fatal. Crashing the
- * instance into a restart loop would be worse than serving with a stale
- * schema, and the error is visible in the function logs.
+ * Throws on failure so a broken migration FAILS THE DEPLOY instead of
+ * shipping code against a stale schema. Previously this ran inside the
+ * root layout on every cold start, swallowed errors ("continuing without
+ * it"), forced every page dynamic, and added migration latency to the
+ * first request of every serverless instance.
  */
-export async function runStartupTasks(): Promise<void> {
+export async function runDeployTasks(): Promise<void> {
   if (!process.env.DATABASE_URL) {
-    console.warn("[startup] DATABASE_URL is unset; skipping migrations and owner bootstrap.");
-    return;
+    throw new Error("[deploy] DATABASE_URL is unset; cannot migrate.");
   }
 
   const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
-  const lockClient = await pool.connect();
   try {
-    await lockClient.query(`SELECT pg_advisory_lock(${MIGRATION_LOCK_KEY})`);
+    const lockClient = await pool.connect();
     try {
-      const migrationsFolder = path.join(process.cwd(), "db", "migrations");
-      // Visibility: on serverless the migrations folder must be bundled
-      // (see outputFileTracingIncludes in next.config.js). Log what we find
-      // so a missing folder is obvious in the function logs instead of a
-      // bare ENOENT from the migrator.
-      let migrationFiles: string[];
+      await lockClient.query(`SELECT pg_advisory_lock(${MIGRATION_LOCK_KEY})`);
       try {
-        migrationFiles = (await import("fs")).readdirSync(migrationsFolder);
-      } catch {
-        migrationFiles = [];
+        const migrationsFolder = path.join(process.cwd(), "db", "migrations");
+        await migrate(drizzle(pool), { migrationsFolder });
+        console.log("[deploy] database migrations are up to date");
+      } finally {
+        await lockClient.query(`SELECT pg_advisory_unlock(${MIGRATION_LOCK_KEY})`);
       }
-      console.log(
-        `[startup] migrations folder: ${migrationsFolder} (${migrationFiles.length} files)`
-      );
-      await migrate(drizzle(pool), { migrationsFolder });
-      console.log("[startup] database migrations are up to date");
     } finally {
-      await lockClient.query(`SELECT pg_advisory_unlock(${MIGRATION_LOCK_KEY})`);
+      lockClient.release();
     }
 
     const ownerEmails = parseBootstrapOwnerEmails(process.env.BOOTSTRAP_OWNER_EMAILS);
     if (ownerEmails.length > 0) {
       const created = await bootstrapOwners(ownerEmails);
-      if (created.length > 0) {
-        console.log(`[startup] bootstrapped owner accounts: ${created.join(", ")}`);
-      }
+      if (created.length > 0) console.log(`[deploy] bootstrapped owner accounts: ${created.join(", ")}`);
     }
+
+    // Currencies first: pricing depends on them; policies are independent.
+    const currencies = await bootstrapCurrencies();
+    if (currencies.length > 0) console.log(`[deploy] ensured currencies: ${currencies.join(", ")}`);
 
     const published = await bootstrapTerms();
-    if (published.length > 0) {
-      console.log(`[startup] published terms: ${published.join(", ")}`);
-    }
-
-    const currencies = await bootstrapCurrencies();
-    if (currencies.length > 0) {
-      console.log(`[startup] ensured currencies: ${currencies.join(", ")}`);
-    }
-  } catch (err) {
-    console.error("[startup] startup task failed (see above); continuing without it.", err);
+    if (published.length > 0) console.log(`[deploy] published terms: ${published.join(", ")}`);
   } finally {
-    lockClient.release();
     await pool.end();
   }
-}
-
-let startupPromise: Promise<void> | null = null;
-
-/**
- * Entry point, called (and awaited) from the root layout. Runs the startup
- * tasks exactly once per server process; skipped during `next build`
- * prerendering. Returns a shared promise so concurrent first renders all
- * wait for the same run instead of racing it.
- *
- * The caller MUST await this. Fire-and-forget does not work on serverless:
- * once the HTTP response is sent the instance can be frozen, which tears
- * down the DB connection mid-migration ("Connection terminated
- * unexpectedly"). Awaiting keeps the function alive until the work lands.
- * Never rejects: a failed boot task is logged, not fatal.
- */
-export function ensureStartupTasks(): Promise<void> {
-  if (!startupPromise) {
-    if (process.env.NEXT_PHASE === "phase-production-build") {
-      return Promise.resolve();
-    }
-    startupPromise = runStartupTasks().catch((err) => {
-      console.error("[startup] ensureStartupTasks failed:", err);
-    });
-  }
-  return startupPromise;
 }

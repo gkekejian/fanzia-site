@@ -45,6 +45,14 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  async redirects() {
+    return [
+      // The old /catalog page ran a second, email-based ordering and
+      // "catalog access" funnel in parallel with the portal (and still
+      // collected phone numbers + EINs by email). One funnel: the portal.
+      { source: "/catalog", destination: "https://app.fanzia.io/catalog", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

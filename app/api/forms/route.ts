@@ -2,54 +2,22 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-// Shared handler for every request/apply/quote form on the site
-// (wholesale application, catalog access, wholesale order, parts quote).
-// No database, no auth: each submission is validated, spam-checked, and
-// emailed via Resend (or logged if Resend isn't configured). File uploads
-// (resale certificate, business license, location photo) are attached to
-// the email as-is; nothing is persisted server-side.
+// Only the Supply parts-quote form still posts here. The wholesale
+// application, catalog-access, and email "order" kinds were removed on
+// 2026-09-23: they ran a second, unauthenticated intake path around the
+// portal (bypassing its kill switch) and emailed EINs, phone numbers, and
+// resale certificates to a personal inbox as attachments.
 
-const KINDS = ["wholesale", "catalog-access", "order", "parts-quote"] as const;
+const KINDS = ["parts-quote"] as const;
 type Kind = (typeof KINDS)[number];
 
 const REQUIRED_FIELDS: Record<Kind, string[]> = {
-  wholesale: [
-    "legalName",
-    "businessType",
-    "yearsInOperation",
-    "numLocations",
-    "address",
-    "city",
-    "state",
-    "zip",
-    "ein",
-    "resaleCertNumber",
-    "contactName",
-    "contactTitle",
-    "contactEmail",
-    "contactPhone",
-    "volume",
-  ],
-  "catalog-access": [
-    "businessName",
-    "contactName",
-    "email",
-    "phone",
-    "businessType",
-    "resaleCertNumber",
-  ],
-  order: ["accountEmail", "fulfillment", "lineItems"],
   "parts-quote": ["businessName", "contactName", "email", "phone"],
 };
 
-const REQUIRED_FILES: Partial<Record<Kind, string[]>> = {
-  wholesale: ["file_resaleCert"],
-};
+const REQUIRED_FILES: Partial<Record<Kind, string[]>> = {};
 
 const KIND_LABEL: Record<Kind, string> = {
-  wholesale: "Wholesale Application",
-  "catalog-access": "Catalog Access Request",
-  order: "Wholesale Order Request",
   "parts-quote": "Supply Parts Quote Request",
 };
 
