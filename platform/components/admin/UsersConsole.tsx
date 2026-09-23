@@ -73,6 +73,24 @@ export function UsersConsole() {
     load();
   }
 
+  async function reset2fa(id: string, name: string) {
+    if (
+      !window.confirm(
+        `Reset two-factor authentication for ${name}? Their authenticator and all recovery codes stop working immediately. They will re-enroll on their next sign-in. Use this only if they lost both.`,
+      )
+    )
+      return;
+    setBusy(true);
+    const res = await fetch(`/api/admin/users/${id}/reset-2fa`, { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setError(body.error ?? "Could not reset two-factor authentication.");
+      return;
+    }
+    load();
+  }
+
   async function showSessions(id: string) {
     setSessionsFor(id);
     const res = await fetch(`/api/admin/users/${id}/sessions`);
@@ -141,6 +159,16 @@ export function UsersConsole() {
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button type="button" className="btn btn-secondary" style={{ padding: "0.3rem 0.8rem", marginRight: "0.4rem" }} onClick={() => showSessions(u.id)}>
                       Sessions
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ padding: "0.3rem 0.8rem", marginRight: "0.4rem" }}
+                      disabled={busy}
+                      onClick={() => reset2fa(u.id, u.name)}
+                      title="Clear their authenticator and recovery codes — they re-enroll on next sign-in"
+                    >
+                      Reset 2FA
                     </button>
                     <button
                       type="button"

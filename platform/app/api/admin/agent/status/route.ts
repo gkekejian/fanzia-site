@@ -16,6 +16,6 @@ export async function GET(req: NextRequest) {
   }
   return NextResponse.json({
     configured: !!process.env.FANZIA_AGENT_API_KEY,
-    model: process.env.FANZIA_AGENT_MODEL?.trim() || "llama-3.3-70b-versatile",
+    model: process.env.FANZIA_AGENT_MODEL?.trim() || "openai/gpt-oss-120b",
   });
 }

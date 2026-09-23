@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { RecoveryCodes } from "./RecoveryCodes";
 
 export function TotpSetup() {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -45,13 +46,12 @@ export function TotpSetup() {
         <div className="card">
           <h1>Save your recovery codes</h1>
           <p>
-            Two-factor authentication is now active. These recovery codes are shown <strong>once</strong> — store
-            them somewhere safe. Each one can be used a single time if you lose access to your authenticator.
+            Two-factor authentication is now active. These recovery codes are shown <strong>once</strong> — copy or
+            download them and store them somewhere safe. Each one can be used a single time if you lose access to
+            your authenticator.
           </p>
-          <pre className="card" style={{ background: "#fafafa" }}>
-            {recoveryCodes.join("\n")}
-          </pre>
-          <a className="btn" href="/admin/applications">
+          <RecoveryCodes codes={recoveryCodes} />
+          <a className="btn" href="/admin/applications" style={{ marginTop: "1rem" }}>
             Continue to the admin console
           </a>
         </div>
