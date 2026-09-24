@@ -322,6 +322,7 @@ export async function POST(req: NextRequest) {
   const checks = runApplicationChecks(created, docs);
   await notifyOwnersEvent({
     type: "application_submitted",
+    actionNeeded: true,
     title: `New wholesale application — ${input.businessLegalName}`,
     body:
       `${input.businessLegalName} (${input.contactEmail}) submitted a wholesale application.\n\n` +

@@ -12,6 +12,7 @@ import {
 } from "@/lib/member/shopping";
 import { AvailabilityChip } from "./AvailabilityChip";
 import { AddToDraftButton } from "./AddToDraftButton";
+import { useQtyStep } from "./OrderRulesContext";
 
 /**
  * Product detail view: repeats the unit-first pattern ("Booster Box —
@@ -32,6 +33,7 @@ export function ProductDetail({
   const qty = qtyById.get(product.id) ?? 0;
   const unitLabel = sellableUnitLabel(product.name, product.packsPerUnit);
   const unit = unitNoun(product.name).toLowerCase();
+  const caseQty = useQtyStep(product.unitsPerCase);
   const perPack = perPackPriceMinor(product.priceMinor, product.packsPerUnit);
   const chip = availabilityChip(product);
   const outOfStock = chip.label === "Out of stock";
@@ -61,7 +63,7 @@ export function ProductDetail({
         </div>
         <div className="product-card-meta">
           {perPack !== null && product.packsPerUnit > 1 && (
-            <>≈ {formatMoney(perPack, product.currencyCode)} / pack · min 1 {unit}</>
+            <>≈ {formatMoney(perPack, product.currencyCode)} / pack · {caseQty > 1 ? `sold in cases of ${caseQty}` : `min 1 ${unit}`}</>
           )}
           {product.marginMinor !== null && product.marginBps !== null && (
             <>
@@ -88,6 +90,7 @@ export function ProductDetail({
               productName={product.name}
               qty={qty}
               onChange={onQtyChange}
+              unitsPerCase={product.unitsPerCase}
             />
           )}
         </div>
@@ -128,6 +131,7 @@ export function ProductDetail({
                   productName={s.name}
                   qty={qtyById.get(s.id) ?? 0}
                   onChange={onQtyChange}
+                  unitsPerCase={s.unitsPerCase}
                   compact
                 />
               </li>

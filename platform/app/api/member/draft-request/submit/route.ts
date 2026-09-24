@@ -4,7 +4,6 @@ import { requireBuyer } from "@/lib/auth/buyerActor";
 import { recordAudit } from "@/lib/audit";
 import { notifyOwnersEvent } from "@/lib/notifications";
 import { formatMoney } from "@/lib/format";
-import { OFFER_EXPIRY_HOURS } from "@/lib/invoicing/rules";
 import { submitDraftRequest, InvoicingError } from "@/lib/invoicing/service";
 import { autoApproveIfEligible, type AutoApproveResult } from "@/lib/invoicing/autoApprove";
 import { clientIp, rateLimited, PUBLIC_WRITE_LIMITS } from "@/lib/rateLimit";
@@ -70,6 +69,7 @@ export async function POST(req: NextRequest) {
     await notifyOwnersEvent(
       {
         type: "order_placed",
+        actionNeeded: !auto.approved,
         title: auto.approved
           ? `Order auto-approved — ${buyer.contactName} (${auto.invoiceNumber})`
           : `New order request — ${buyer.contactName}`,
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
           (created.smallOrderFeeMinor ? ` + ${formatMoney(created.smallOrderFeeMinor)} small-order fee` : "") +
           (auto.approved
             ? `. Auto-approved and invoiced; no action needed.\n\n`
-            : `. Needs review (${auto.reason}). The offer expires in ${OFFER_EXPIRY_HOURS} hours.\n\n`) +
+            : `. Needs review (${auto.reason}). The offer expires ${new Date(created.expiresAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })} PT.\n\n`) +
           `Review: ${process.env.APP_BASE_URL ?? "http://localhost:3100"}/admin/order-requests/${created.id}`,
         actorEmail: buyer.contactEmail,
         entityType: "order_request",

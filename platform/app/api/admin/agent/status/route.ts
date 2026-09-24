@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { desc } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -7,6 +8,8 @@ import { assertOwner } from "@/lib/auth/rbac";
 
 /** Tells the panel whether the agent is configured (and which model). */
 export async function GET(req: NextRequest) {
+  const moduleOff = await requireModule("module_ai_operator");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {

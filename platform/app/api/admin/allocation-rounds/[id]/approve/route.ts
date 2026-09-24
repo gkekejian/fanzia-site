@@ -5,6 +5,11 @@ import { allocationLine, allocationRound } from "@/db/schema/allocation";
 import { requireActor } from "@/lib/auth/actor";
 import { assertOwner, actorUserId } from "@/lib/auth/rbac";
 import { recordAudit } from "@/lib/audit";
+import { loadConfig } from "@/lib/config";
+import { settleRoundShortfalls } from "@/lib/allocation/fromInvoices";
+import { refundCardPayment } from "@/lib/invoicing/stripe";
+import { sendNotificationEmail } from "@/lib/email/send";
+import { notifyOwnersEvent } from "@/lib/notifications";
 
 /**
  * Owner-only. Approves the proposed split and closes the round.
@@ -95,5 +100,26 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     after: { adjustmentCount: adjustments.length, finalSplit },
   });
 
-  return NextResponse.json({ ok: true, allocationRound: closed, lines: finalSplit });
+  // Supplier shortfall contingency: anything a buyer paid for but didn't
+  // get is recorded as a refund owed, refunded to their card automatically
+  // if the owner enabled it, and the buyer is told. Never fails the close.
+  let settlement: Awaited<ReturnType<typeof settleRoundShortfalls>> | { error: string } | null = null;
+  try {
+    const config = await loadConfig(db);
+    settlement = await settleRoundShortfalls(db, round.id, {
+      autoRefundCards: config.auto_refund_card_shortfall,
+      refundCard: refundCardPayment,
+      sendEmail: (p) => sendNotificationEmail(p, "refund.shortfall"),
+      notify: (e) =>
+        notifyOwnersEvent(
+          { type: "refund_due", title: e.title, body: e.body, actionNeeded: true, urgent: e.urgent, entityType: "allocation_round", entityId: round.id },
+          db,
+        ),
+    });
+  } catch (err) {
+    console.error("[allocation-approve] shortfall settlement failed:", err);
+    settlement = { error: (err as Error).message };
+  }
+
+  return NextResponse.json({ ok: true, allocationRound: closed, lines: finalSplit, settlement });
 }

@@ -23,7 +23,7 @@ export default function AdminTotpVerifyPage() {
         setSubmitting(false);
         return;
       }
-      window.location.href = "/admin/applications";
+      window.location.href = "/admin";
     } catch {
       setError("Network error. Please try again.");
       setSubmitting(false);

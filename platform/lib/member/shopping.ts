@@ -10,11 +10,7 @@
  * All money is integer minor units (cents); formatting happens via
  * lib/format.ts's formatMoney at the call site.
  */
-import {
-  ORDER_MINIMUM_MINOR,
-  SMALL_ORDER_FEE_MINOR,
-  SMALL_ORDER_THRESHOLD_MINOR,
-} from "@/lib/invoicing/rules";
+import { DEFAULT_ORDER_RULES, type OrderRules } from "@/lib/invoicing/rules";
 
 export const LOW_STOCK_THRESHOLD = 5;
 export const CURATED_ROW_MAX = 8;
@@ -48,6 +44,8 @@ export type ShoppingProduct = {
   trending: boolean;
   trendingRank: number | null;
   requiresImportAcknowledgment: boolean;
+  /** Units per case (case-only mode). Optional so older fixtures still type-check. */
+  unitsPerCase?: number | null;
 };
 
 /**
@@ -174,26 +172,39 @@ export type MilestoneProgress = {
   message: string;
 };
 
-/** Dual-milestone progress: $500 submit unlocks · $750 drops the $25 small-order fee. */
-export function milestoneProgress(subtotalMinor: number): MilestoneProgress {
-  const minMet = subtotalMinor >= ORDER_MINIMUM_MINOR;
-  const feeApplies = subtotalMinor < SMALL_ORDER_THRESHOLD_MINOR;
-  const feeMinor = feeApplies ? SMALL_ORDER_FEE_MINOR : 0;
-  const toMinimumMinor = Math.max(0, ORDER_MINIMUM_MINOR - subtotalMinor);
-  const toFeeFreeMinor = Math.max(0, SMALL_ORDER_THRESHOLD_MINOR - subtotalMinor);
-  const barPct = Math.min(100, (subtotalMinor / SMALL_ORDER_THRESHOLD_MINOR) * 100);
-  const minMarkerPct = (ORDER_MINIMUM_MINOR / SMALL_ORDER_THRESHOLD_MINOR) * 100;
+/**
+ * Dual-milestone progress: the minimum unlocks submit, the small-order
+ * threshold drops the fee. Amounts come from the owner's Settings (passed
+ * in as `rules`); defaults are $500 / $750 / $25.
+ */
+export function milestoneProgress(
+  subtotalMinor: number,
+  rules: Pick<OrderRules, "minimumMinor" | "smallOrderThresholdMinor" | "smallOrderFeeMinor"> = DEFAULT_ORDER_RULES,
+): MilestoneProgress {
+  const min = rules.minimumMinor;
+  const threshold = Math.max(rules.smallOrderThresholdMinor, 1);
+  const feeOn = rules.smallOrderFeeMinor > 0;
+  const minMet = subtotalMinor >= min;
+  const feeApplies = feeOn && subtotalMinor < rules.smallOrderThresholdMinor;
+  const feeMinor = feeApplies ? rules.smallOrderFeeMinor : 0;
+  const toMinimumMinor = Math.max(0, min - subtotalMinor);
+  const toFeeFreeMinor = feeOn ? Math.max(0, rules.smallOrderThresholdMinor - subtotalMinor) : 0;
+  const barMax = feeOn ? Math.max(threshold, min, 1) : Math.max(min, 1);
+  const barPct = Math.min(100, (subtotalMinor / barMax) * 100);
+  const minMarkerPct = Math.min(100, (min / barMax) * 100);
+  const minLabel = `$${fmt(min)}`;
+  const feeLabel = `$${fmt(rules.smallOrderFeeMinor)}`;
 
   let message: string;
   if (!minMet) {
     message =
       toFeeFreeMinor > 0
-        ? `You're $${fmt(toMinimumMinor)} from the $500 minimum · $${fmt(toFeeFreeMinor)} from dropping the $25 fee`
-        : `You're $${fmt(toMinimumMinor)} from the $500 minimum`;
+        ? `You're $${fmt(toMinimumMinor)} from the ${minLabel} minimum · $${fmt(toFeeFreeMinor)} from dropping the ${feeLabel} fee`
+        : `You're $${fmt(toMinimumMinor)} from the ${minLabel} minimum`;
   } else if (feeApplies) {
-    message = `Minimum met — $${fmt(toFeeFreeMinor)} more drops the $25 small-order fee`;
+    message = `Minimum met — $${fmt(toFeeFreeMinor)} more drops the ${feeLabel} small-order fee`;
   } else {
-    message = "Minimum met and the small-order fee is dropped";
+    message = feeOn ? "Minimum met and the small-order fee is dropped" : "Minimum met";
   }
   return { minMet, feeApplies, feeMinor, toMinimumMinor, toFeeFreeMinor, barPct, minMarkerPct, message };
 }

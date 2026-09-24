@@ -7,6 +7,7 @@ const bodySchema = z.object({
   status: z.enum(["draft", "active", "inactive"]).optional(),
   publiclyVisible: z.boolean().optional(),
   imageStatus: z.string().max(60).optional(),
+  unitsPerCase: z.number().int().min(1).max(100000).nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

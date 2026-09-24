@@ -14,8 +14,7 @@ import { getMemberCatalog } from "@/lib/catalog/queries";
 import { canOrder, normalizeContactRole } from "@/lib/users/contactRoles";
 import { formatMoney } from "@/lib/format";
 import {
-  OFFER_EXPIRY_HOURS,
-  FIRST_ORDER_CAP_MINOR,
+  DEFAULT_ORDER_RULES,
   balanceDue,
   canAutoRollover,
   computeFundsClearedAt,
@@ -23,10 +22,12 @@ import {
   invoiceCleared,
   isExpired,
   isValidPaymentMethod,
+  isWholeCases,
   meetsMinimum,
   rolloverExpiry,
   type PaymentMethod,
 } from "./rules";
+import { getOrderRules } from "./orderRules";
 import { nextInvoiceNumber } from "./sequences";
 import { recordAudit } from "@/lib/audit";
 import { notifyOwners, notifyOwnersEvent } from "@/lib/notifications";
@@ -53,11 +54,26 @@ export class EmptyDraftError extends InvoicingError {
   }
 }
 export class BelowMinimumError extends InvoicingError {
-  constructor(subtotalMinor: number) {
+  constructor(subtotalMinor: number, minimumMinor: number = DEFAULT_ORDER_RULES.minimumMinor) {
     super(
-      `This order is ${formatMoney(subtotalMinor)}, below the ${formatMoney(50000)} wholesale minimum. Add more items and try again.`,
+      `This order is ${formatMoney(subtotalMinor)}, below the ${formatMoney(minimumMinor)} wholesale minimum. Add more items and try again.`,
       400,
     );
+  }
+}
+export class OrderingPausedError extends InvoicingError {
+  constructor(message: string) {
+    super(message || "Ordering is paused right now. Your draft is saved.", 409);
+  }
+}
+export class AccountOnHoldError extends InvoicingError {
+  constructor() {
+    super("Ordering is on hold for this account. Please contact Fanzia.", 403);
+  }
+}
+export class NotWholeCasesError extends InvoicingError {
+  constructor(name: string, unitsPerCase: number) {
+    super(`${name} is sold in full cases of ${unitsPerCase}. Change the quantity to a multiple of ${unitsPerCase}.`, 400);
   }
 }
 export class UnpricedLineError extends InvoicingError {
@@ -72,13 +88,13 @@ export class AlreadyDecidedError extends InvoicingError {
 }
 export class ExpiredError extends InvoicingError {
   constructor() {
-    super("This offer expired 48 hours after submission and can no longer be approved.", 400);
+    super("This offer expired and can no longer be approved.", 400);
   }
 }
 export class FirstOrderCapError extends InvoicingError {
-  constructor(totalMinor: number) {
+  constructor(totalMinor: number, capMinor: number = DEFAULT_ORDER_RULES.firstOrderCapMinor) {
     super(
-      `First orders are capped at ${formatMoney(FIRST_ORDER_CAP_MINOR)}. This invoice would be ${formatMoney(totalMinor)}. Reduce the order or contact the buyer.`,
+      `First orders are capped at ${formatMoney(capMinor)}. This invoice would be ${formatMoney(totalMinor)}. Reduce the order or contact the buyer.`,
       400,
     );
   }
@@ -113,6 +129,18 @@ export class ImportAcknowledgmentRequiredError extends InvoicingError {
 export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity, opts?: { importAcknowledged?: boolean }) {
   if (!canOrder(normalizeContactRole(buyer.contactRole))) throw new ViewerForbiddenError();
 
+  // Live owner settings (Settings page): pause switch, minimums, fees,
+  // case-only mode, offer expiry. Defaults apply if unset.
+  const rules = await getOrderRules(db);
+  if (rules.paused) throw new OrderingPausedError(rules.pausedMessage);
+
+  const [holdRow] = await db
+    .select({ hold: account.orderingHoldReason })
+    .from(account)
+    .where(eq(account.id, buyer.accountId))
+    .limit(1);
+  if (holdRow?.hold) throw new AccountOnHoldError();
+
   const draft = await getDraftRequest(buyer.accountId, db);
   const lines = (draft?.lines ?? []) as DraftLine[];
   if (lines.length === 0) throw new EmptyDraftError();
@@ -125,6 +153,9 @@ export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity, opts?:
   for (const line of lines) {
     const item = priceById.get(line.productId);
     if (!item) throw new UnpricedLineError();
+    if (!isWholeCases(line.qtyRequested, item.unitsPerCase, rules.caseOnly)) {
+      throw new NotWholeCasesError(item.name, item.unitsPerCase!);
+    }
     if (item.requiresImportAcknowledgment) hasImportProduct = true;
     const lineTotalMinor = item.priceMinor * line.qtyRequested;
     pricedLines.push({
@@ -143,7 +174,7 @@ export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity, opts?:
   }
 
   const subtotalMinor = pricedLines.reduce((sum, l) => sum + l.lineTotalMinor, 0);
-  if (!meetsMinimum(subtotalMinor)) throw new BelowMinimumError(subtotalMinor);
+  if (!meetsMinimum(subtotalMinor, rules)) throw new BelowMinimumError(subtotalMinor, rules.minimumMinor);
   // The $25 small-order fee is external-only: Fanzia's own internal buyer
   // never pays it (Fanzia-as-client design 2026-09-18 §1.1).
   const [acct] = await db
@@ -152,7 +183,7 @@ export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity, opts?:
     .where(eq(account.id, buyer.accountId))
     .limit(1);
   const accountKind = acct?.kind === "internal" ? "internal" : "external";
-  const smallOrderFeeMinor = computeSmallOrderFee(subtotalMinor, accountKind);
+  const smallOrderFeeMinor = computeSmallOrderFee(subtotalMinor, accountKind, rules);
 
   const [created] = await db
     .insert(orderRequest)
@@ -163,7 +194,7 @@ export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity, opts?:
       notes: draft?.notes ?? null,
       subtotalMinor,
       smallOrderFeeMinor,
-      expiresAt: new Date(Date.now() + OFFER_EXPIRY_HOURS * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + rules.offerExpiryHours * 60 * 60 * 1000),
     })
     .returning();
   await clearDraftRequest(buyer.accountId, db);
@@ -230,7 +261,7 @@ export async function processExpiredOffer(
   const rolloversUsed = req.rolloverCount ?? 0;
 
   if (canAutoRollover(rolloversUsed)) {
-    const newExpiry = rolloverExpiry(now);
+    const newExpiry = rolloverExpiry(now, (await getOrderRules(db)).offerExpiryHours);
     await db
       .update(orderRequest)
       .set({
@@ -377,6 +408,7 @@ function invoiceStatusFor(totalMinor: number, payments: { amountMinor: number; f
  * offer expired and approval is rejected.
  */
 export async function approveOrderRequest(db: AnyDb, requestId: string, ownerId: string | null) {
+  const { firstOrderCapMinor } = await getOrderRules(db);
   const settled = await processExpiredOffer(db, requestId);
   if (settled.request.status === "expired") throw new ExpiredError();
   const result = await db.transaction(async (tx) => {
@@ -386,7 +418,7 @@ export async function approveOrderRequest(db: AnyDb, requestId: string, ownerId:
 
     const prior = await priorInvoiceCount(tx, req.accountId);
     const totalMinor = req.subtotalMinor + (req.smallOrderFeeMinor ?? 0);
-    if (prior === 0 && totalMinor > FIRST_ORDER_CAP_MINOR) throw new FirstOrderCapError(totalMinor);
+    if (prior === 0 && totalMinor > firstOrderCapMinor) throw new FirstOrderCapError(totalMinor, firstOrderCapMinor);
 
     const invoiceNumber = await nextInvoiceNumber(tx);
     const [created] = await tx
@@ -497,7 +529,7 @@ export async function reacceptExpiredOffer(
         subtotalMinor: req.subtotalMinor,
         smallOrderFeeMinor: req.smallOrderFeeMinor ?? 0,
         status: "submitted",
-        expiresAt: rolloverExpiry(now),
+        expiresAt: rolloverExpiry(now, (await getOrderRules(tx)).offerExpiryHours),
         rolloverCount: 0,
         supersedesId: req.id,
       })

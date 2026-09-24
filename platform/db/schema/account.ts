@@ -47,6 +47,13 @@ export const account = pgTable("account", {
   channelType: channelType("channel_type").notNull(),
   taxStatus: taxStatus("tax_status").notNull().default("pending"),
   kind: accountKind("kind").notNull().default("external"),
+  /**
+   * Ordering hold (migration 0029): set automatically when a card payment is
+   * disputed, or by an owner. While set, the account cannot submit orders
+   * and is never auto-approved. NULL = no hold.
+   */
+  orderingHoldReason: text("ordering_hold_reason"),
+  orderingHoldAt: timestamp("ordering_hold_at", { withTimezone: true }),
   addressLine1: text("address_line1").notNull(),
   addressLine2: text("address_line2"),
   city: text("city").notNull(),

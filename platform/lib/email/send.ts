@@ -65,6 +65,12 @@ export async function sendNotificationEmail(
   try {
     await sendTransactionalEmail(params);
   } catch (err) {
-    console.error("[email:notify-failed]", context, err instanceof Error ? err.message : String(err));
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[email:notify-failed]", context, message);
+    // Contingency: queue for retry by the daily ops sweep instead of
+    // dropping it (lib/email/outbox.ts). Lazy import keeps this module
+    // free of a hard database dependency.
+    const { enqueueFailedEmail } = await import("./outbox");
+    await enqueueFailedEmail(params, context, message);
   }
 }

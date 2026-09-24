@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { convertToModelMessages, stepCountIs, streamText, validateUIMessages } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -27,6 +28,8 @@ const CHAT_RATE_LIMIT = { limit: 60, windowMs: 60 * 60 * 1000 };
  * endpoint later needs zero code changes.
  */
 export async function POST(req: NextRequest) {
+  const moduleOff = await requireModule("module_ai_operator");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {

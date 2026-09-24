@@ -96,6 +96,8 @@ export type MemberProductDTO = PublicProductDTO & {
    * cost, margin, supplier, or route data — those stay server-only.
    */
   requiresImportAcknowledgment: boolean;
+  /** Units per supplier case; with case-only mode on, order qty must be a multiple. Null = no case rule. */
+  unitsPerCase: number | null;
 };
 
 export function toMemberProductDTO(
@@ -128,6 +130,7 @@ export function toMemberProductDTO(
     trending: extras.trending ?? false,
     trendingRank: extras.trendingRank ?? null,
     requiresImportAcknowledgment,
+    unitsPerCase: p.unitsPerCase ?? null,
   };
 }
 

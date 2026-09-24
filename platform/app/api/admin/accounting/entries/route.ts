@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { cashbookEntry } from "@/db/schema";
@@ -17,6 +18,8 @@ function forbidden() {
  * balance always reflects the complete ledger, not the filtered view.
  */
 export async function GET(req: NextRequest) {
+  const moduleOff = await requireModule("module_accounting");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {
@@ -55,6 +58,8 @@ export async function GET(req: NextRequest) {
  * auto-posted payment rows.
  */
 export async function POST(req: NextRequest) {
+  const moduleOff = await requireModule("module_accounting");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   let ownerId: string;

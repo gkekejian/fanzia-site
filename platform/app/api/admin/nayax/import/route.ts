@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActor } from "@/lib/auth/actor";
 import { assertOwner, ForbiddenError } from "@/lib/auth/rbac";
@@ -72,6 +73,8 @@ export function parseCsv(text: string): string[][] {
 }
 
 export async function POST(req: NextRequest) {
+  const moduleOff = await requireModule("module_vending");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {

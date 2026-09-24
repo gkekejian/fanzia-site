@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActor } from "@/lib/auth/actor";
 import { performOrPropose } from "@/lib/auth/rbac";
@@ -11,6 +12,8 @@ import { setFxRate, ValidationError } from "@/lib/priceIntel/service";
  * { "fromCurrency": "JPY", "toCurrency": "USD", "rate": 0.0066 }.
  */
 export async function POST(req: NextRequest) {
+  const moduleOff = await requireModule("module_price_intel");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
 

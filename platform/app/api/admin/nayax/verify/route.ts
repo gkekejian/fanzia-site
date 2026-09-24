@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActor } from "@/lib/auth/actor";
 import { assertOwner, ForbiddenError } from "@/lib/auth/rbac";
@@ -9,6 +10,8 @@ import { isNayaxConfigured, listMachines, NayaxNotConfigured, NayaxApiError } fr
  * itself — it lives only in process.env.
  */
 export async function GET(req: NextRequest) {
+  const moduleOff = await requireModule("module_vending");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {

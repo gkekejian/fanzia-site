@@ -3,6 +3,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db as defaultDb } from "@/db/client";
 import { notification as notificationTable, user as userTable } from "@/db/schema";
 import { sendNotificationEmail } from "@/lib/email/send";
+import { loadConfig } from "@/lib/config";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PgDatabase<any, any, any>;
@@ -18,6 +19,12 @@ export const OWNER_NOTIFICATION_TYPES = [
   "payment_failed",
   "shipment_shipped",
   "shipment_delivered",
+  // Contingency / automation events (2026-09-23 second pass).
+  "payment_disputed",
+  "refund_due",
+  "email_failed",
+  "decisions_waiting",
+  "system_alert",
 ] as const;
 export type OwnerNotificationType = (typeof OWNER_NOTIFICATION_TYPES)[number];
 
@@ -29,6 +36,24 @@ export interface OwnerNotificationEvent {
   entityType?: "application" | "order_request" | "allocation_round" | "invoice" | null;
   entityId?: string | null;
   severity?: "info" | "warning";
+  /**
+   * The owner has to do something (review a request, pay back a refund).
+   * With the default "action_needed" email mode, only these (and warnings)
+   * are emailed; everything else stays in the in-app bell + weekly digest.
+   */
+  actionNeeded?: boolean;
+  /** Always emailed, whatever the email mode (disputes, dead-lettered mail, system down). */
+  urgent?: boolean;
+}
+
+export type OwnerEmailMode = "all" | "action_needed" | "digest_only";
+
+/** Pure email-routing decision, unit-tested in tests/opsAutomation.test.ts. */
+export function shouldEmailOwners(event: Pick<OwnerNotificationEvent, "severity" | "actionNeeded" | "urgent">, mode: OwnerEmailMode): boolean {
+  if (event.urgent) return true;
+  if (mode === "all") return true;
+  if (mode === "digest_only") return false;
+  return event.actionNeeded === true || event.severity === "warning";
 }
 
 /**
@@ -111,6 +136,15 @@ export async function notifyOwnersEvent(
       err instanceof Error ? err.message : String(err),
     );
   }
+  // Email routing by owner preference (Settings → Notifications). The
+  // in-app row above is always written, so nothing is ever lost.
+  let mode: OwnerEmailMode = "action_needed";
+  try {
+    mode = (await loadConfig(db)).owner_email_mode as OwnerEmailMode;
+  } catch {
+    // loadConfig already falls back to defaults; keep "action_needed".
+  }
+  if (!shouldEmailOwners(event, mode)) return;
   await notifyOwners(`[Fanzia] ${event.title}`, emailBody, db);
 }
 

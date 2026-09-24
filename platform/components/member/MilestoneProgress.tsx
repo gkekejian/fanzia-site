@@ -1,20 +1,20 @@
 "use client";
 
 import { formatMoney } from "@/lib/format";
-import {
-  ORDER_MINIMUM_MINOR,
-  SMALL_ORDER_FEE_MINOR,
-  SMALL_ORDER_THRESHOLD_MINOR,
-} from "@/lib/invoicing/rules";
 import { milestoneProgress } from "@/lib/member/shopping";
+import { useOrderRules } from "./OrderRulesContext";
 
 /**
- * Dual-milestone progress bar (UX brief pattern #4): milestone 1 at $500
- * ("Submit request unlocks"), milestone 2 at $750 ("$25 small-order fee
- * drops off"). Framed as goals, not penalties.
+ * Dual-milestone progress bar (UX brief pattern #4): milestone 1 at the
+ * order minimum ("Submit request unlocks"), milestone 2 at the small-order
+ * threshold (fee drops off). Amounts come from Settings via
+ * OrderRulesContext. Framed as goals, not penalties.
  */
 export function MilestoneProgress({ subtotalMinor }: { subtotalMinor: number }) {
-  const p = milestoneProgress(subtotalMinor);
+  const rules = useOrderRules();
+  const p = milestoneProgress(subtotalMinor, rules);
+  const feeOn = rules.smallOrderFeeMinor > 0;
+  const barMaxDollars = Math.round(Math.max(feeOn ? rules.smallOrderThresholdMinor : 0, rules.minimumMinor, 1) / 100);
 
   return (
     <div className="milestone" aria-live="polite">
@@ -23,25 +23,27 @@ export function MilestoneProgress({ subtotalMinor }: { subtotalMinor: number }) 
         className="milestone-track"
         role="progressbar"
         aria-valuemin={0}
-        aria-valuemax={750}
-        aria-valuenow={Math.min(750, Math.round(subtotalMinor / 100))}
-        aria-label={`Draft subtotal ${formatMoney(subtotalMinor)} of $750 fee-free milestone`}
+        aria-valuemax={barMaxDollars}
+        aria-valuenow={Math.min(barMaxDollars, Math.round(subtotalMinor / 100))}
+        aria-label={`Draft subtotal ${formatMoney(subtotalMinor)} of ${formatMoney(barMaxDollars * 100)}`}
       >
         <div className="milestone-fill" style={{ width: `${p.barPct}%` }} />
         <div
           className={`milestone-marker ${p.minMet ? "milestone-marker-hit" : ""}`}
           style={{ left: `${p.minMarkerPct}%` }}
-          title={`$500 minimum — ${p.minMet ? "met" : "submit unlocks here"}`}
+          title={`${formatMoney(rules.minimumMinor)} minimum — ${p.minMet ? "met" : "submit unlocks here"}`}
         />
       </div>
       <div className="milestone-labels">
         <span className={p.minMet ? "milestone-hit" : ""}>
-          {formatMoney(ORDER_MINIMUM_MINOR)} — submit unlocks{p.minMet ? " ✓" : ""}
+          {formatMoney(rules.minimumMinor)} — submit unlocks{p.minMet ? " ✓" : ""}
         </span>
-        <span className={!p.feeApplies ? "milestone-hit" : ""}>
-          {formatMoney(SMALL_ORDER_THRESHOLD_MINOR)} — {formatMoney(SMALL_ORDER_FEE_MINOR)} fee drops
-          {!p.feeApplies ? " ✓" : ""}
-        </span>
+        {feeOn && (
+          <span className={!p.feeApplies ? "milestone-hit" : ""}>
+            {formatMoney(rules.smallOrderThresholdMinor)} — {formatMoney(rules.smallOrderFeeMinor)} fee drops
+            {!p.feeApplies ? " ✓" : ""}
+          </span>
+        )}
       </div>
     </div>
   );

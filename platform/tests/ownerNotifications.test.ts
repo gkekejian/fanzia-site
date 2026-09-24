@@ -110,7 +110,7 @@ describe("notifyOwnersEvent", () => {
     });
     try {
       await notifyOwnersEvent(
-        { type: "order_placed", title: "New order request — Pat", body: "An order was placed." },
+        { type: "order_placed", title: "New order request — Pat", body: "An order was placed.", actionNeeded: true },
         db,
       );
     } finally {

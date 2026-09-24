@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { allocationLine, allocationRound } from "@/db/schema/allocation";
+import { product } from "@/db/schema";
 import { requireActor } from "@/lib/auth/actor";
 import { assertOwner, actorUserId } from "@/lib/auth/rbac";
 import { recordAudit } from "@/lib/audit";
@@ -61,6 +62,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const lines = await db.select().from(allocationLine).where(eq(allocationLine.roundId, round.id));
   if (lines.length === 0) {
     return NextResponse.json({ error: "No lines in this round — nothing to allocate." }, { status: 400 });
+  }
+
+  // Case sizes default to each product's units_per_case (Products page), so
+  // the owner only types quantities that actually arrived.
+  const missingCaseSize = [...new Set(lines.map((l) => l.productId))].filter((id) => caseSizes[id] === undefined);
+  if (missingCaseSize.length > 0) {
+    const rows = await db
+      .select({ id: product.id, unitsPerCase: product.unitsPerCase })
+      .from(product)
+      .where(inArray(product.id, missingCaseSize));
+    for (const r of rows) if (r.unitsPerCase && r.unitsPerCase > 0) caseSizes[r.id] = r.unitsPerCase;
   }
 
   const result = allocateRound({

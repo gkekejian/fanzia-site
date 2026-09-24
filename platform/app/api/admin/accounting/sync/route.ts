@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActor } from "@/lib/auth/actor";
 import { assertOwner } from "@/lib/auth/rbac";
@@ -10,6 +11,8 @@ import { clientIp } from "@/lib/rateLimit";
  * posted payments are skipped, so this never double-counts.
  */
 export async function POST(req: NextRequest) {
+  const moduleOff = await requireModule("module_accounting");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   let ownerId: string;

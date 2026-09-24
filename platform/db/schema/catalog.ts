@@ -73,6 +73,11 @@ export const product = pgTable("product", {
    */
   msrpMinor: bigint("msrp_minor", { mode: "number" }),
   imageStatus: text("image_status").notNull().default("none"), // none | fanzia_owned | licensed
+  /**
+   * Units in one supplier case. When set and the `case_only_mode` setting
+   * is on, buyers can only order multiples of this (migration 0029).
+   */
+  unitsPerCase: integer("units_per_case"),
   ...timestamps,
 });
 

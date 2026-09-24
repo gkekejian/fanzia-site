@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { requireActor } from "@/lib/auth/actor";
@@ -15,6 +16,8 @@ import { nayaxMachine, nayaxRestock, slotMap } from "@/db/schema/nayax";
  * returns the new per-slot on-hand estimates.
  */
 export async function POST(req: NextRequest) {
+  const moduleOff = await requireModule("module_vending");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {

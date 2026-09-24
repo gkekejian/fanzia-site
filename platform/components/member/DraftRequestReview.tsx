@@ -4,11 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMoney } from "@/lib/format";
 import { IMPORT_CLICKWRAP_TEXT } from "@/lib/disclaimers";
 import {
-  ORDER_MINIMUM_MINOR,
-  SMALL_ORDER_FEE_MINOR,
-  SMALL_ORDER_THRESHOLD_MINOR,
-} from "@/lib/invoicing/rules";
-import {
   draftTotals,
   estimateShippingRange,
   milestoneProgress,
@@ -18,6 +13,7 @@ import {
 } from "@/lib/member/shopping";
 import { useDraft } from "./useDraft";
 import { MilestoneProgress } from "./MilestoneProgress";
+import { useOrderRules } from "./OrderRulesContext";
 import { AvailabilityChip } from "./AvailabilityChip";
 import { AddToDraftButton } from "./AddToDraftButton";
 import { TurnstileWidget } from "@/components/Turnstile";
@@ -27,6 +23,8 @@ type SubmitResult = {
   subtotalMinor: number;
   smallOrderFeeMinor: number;
   expiresAt: string;
+  autoApproved?: boolean;
+  invoiceId?: string | null;
 };
 
 export function DraftRequestReview() {
@@ -75,7 +73,8 @@ export function DraftRequestReview() {
   }, [lines, productById]);
 
   const totals = useMemo(() => draftTotals(lines ?? [], priceById), [lines, priceById]);
-  const progress = useMemo(() => milestoneProgress(totals.subtotalMinor), [totals.subtotalMinor]);
+  const rules = useOrderRules();
+  const progress = useMemo(() => milestoneProgress(totals.subtotalMinor, rules), [totals.subtotalMinor, rules]);
   const shipping = useMemo(() => estimateShippingRange(totals.units), [totals.units]);
 
   let marginTotalMinor = 0;
@@ -144,6 +143,8 @@ export function DraftRequestReview() {
       subtotalMinor: body.subtotalMinor,
       smallOrderFeeMinor: body.smallOrderFeeMinor,
       expiresAt: body.expiresAt,
+      autoApproved: body.autoApproved === true,
+      invoiceId: body.invoiceId ?? null,
     });
   }
 
@@ -161,17 +162,33 @@ export function DraftRequestReview() {
               <>
                 <br />
                 Small-order fee: {formatMoney(submitted.smallOrderFeeMinor)} (orders under{" "}
-                {formatMoney(SMALL_ORDER_THRESHOLD_MINOR)} include a {formatMoney(SMALL_ORDER_FEE_MINOR)} fee)
+                {formatMoney(rules.smallOrderThresholdMinor)} include a {formatMoney(rules.smallOrderFeeMinor)} fee)
               </>
             )}
           </p>
-          <p>
-            Our team reviews every request before it becomes an invoice. This offer expires{" "}
-            {new Date(submitted.expiresAt).toLocaleString()} — 48 hours after submission.
-          </p>
-          <p>
-            <a href="/member/catalog">Back to the catalog</a>
-          </p>
+          {submitted.autoApproved ? (
+            <>
+              <p>
+                <strong>Approved.</strong> Your invoice is ready. We place the supplier order as soon as payment
+                clears.
+              </p>
+              <p>
+                <a className="btn" href="/member/invoices">
+                  Pay invoice
+                </a>
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                We review this request and email you the invoice once it&rsquo;s approved. This request stays open until{" "}
+                {new Date(submitted.expiresAt).toLocaleString()}.
+              </p>
+              <p>
+                <a href="/member/catalog">Back to the catalog</a>
+              </p>
+            </>
+          )}
         </div>
       </main>
     );
@@ -240,6 +257,7 @@ export function DraftRequestReview() {
                         productName={product.name}
                         qty={qtyById.get(line.productId) ?? 0}
                         onChange={setQty}
+                        unitsPerCase={product.unitsPerCase}
                         compact
                       />
                     ) : (
@@ -278,15 +296,15 @@ export function DraftRequestReview() {
               <div>
                 <dt>
                   Small-order fee
-                  <span className="totals-hint">orders under {formatMoney(SMALL_ORDER_THRESHOLD_MINOR)}</span>
+                  <span className="totals-hint">orders under {formatMoney(rules.smallOrderThresholdMinor)}</span>
                 </dt>
                 <dd>
                   {progress.feeApplies ? (
-                    formatMoney(SMALL_ORDER_FEE_MINOR)
+                    formatMoney(rules.smallOrderFeeMinor)
                   ) : (
                     <>
-                      <s>{formatMoney(SMALL_ORDER_FEE_MINOR)}</s>{" "}
-                      <span className="badge badge-ok">Fee dropped — you passed {formatMoney(SMALL_ORDER_THRESHOLD_MINOR)}</span>
+                      <s>{formatMoney(rules.smallOrderFeeMinor)}</s>{" "}
+                      <span className="badge badge-ok">Fee dropped — you passed {formatMoney(rules.smallOrderThresholdMinor)}</span>
                     </>
                   )}
                 </dd>
@@ -319,7 +337,7 @@ export function DraftRequestReview() {
             </dl>
             <p style={{ color: "var(--fz-muted)", fontSize: "0.85rem", marginBottom: 0 }}>
               Estimates use current catalog prices. Submitting snapshots the prices at that moment; shipping and
-              tax are calculated separately. The {formatMoney(ORDER_MINIMUM_MINOR)} minimum applies to the
+              tax are calculated separately. The {formatMoney(rules.minimumMinor)} minimum applies to the
               subtotal before fees.
             </p>
           </div>
@@ -396,7 +414,7 @@ export function DraftRequestReview() {
         </button>
         {!loading && totals.units > 0 && !progress.minMet && (
           <p className="field-error" role="alert" style={{ marginTop: "0.5rem" }}>
-            Your draft is {formatMoney(progress.toMinimumMinor)} under the {formatMoney(ORDER_MINIMUM_MINOR)}{" "}
+            Your draft is {formatMoney(progress.toMinimumMinor)} under the {formatMoney(rules.minimumMinor)}{" "}
             minimum — add more to submit.
           </p>
         )}

@@ -14,6 +14,40 @@ export const OFFER_EXPIRY_HOURS = 48;
  */
 export const MAX_SILENT_ROLLOVERS = 1;
 
+/**
+ * Owner-tunable order rules (Settings page). The constants above are the
+ * defaults; runtime code receives the live values from
+ * lib/invoicing/orderRules.ts. Pure type + defaults here so client
+ * components can import them without pulling in the database.
+ */
+export type OrderRules = {
+  minimumMinor: number;
+  smallOrderThresholdMinor: number;
+  smallOrderFeeMinor: number;
+  firstOrderCapMinor: number;
+  offerExpiryHours: number;
+  caseOnly: boolean;
+  paused: boolean;
+  pausedMessage: string;
+};
+
+export const DEFAULT_ORDER_RULES: OrderRules = {
+  minimumMinor: ORDER_MINIMUM_MINOR,
+  smallOrderThresholdMinor: SMALL_ORDER_THRESHOLD_MINOR,
+  smallOrderFeeMinor: SMALL_ORDER_FEE_MINOR,
+  firstOrderCapMinor: FIRST_ORDER_CAP_MINOR,
+  offerExpiryHours: OFFER_EXPIRY_HOURS,
+  caseOnly: true,
+  paused: false,
+  pausedMessage: "",
+};
+
+/** Case-only check: qty must be a whole number of cases when a case size is set. */
+export function isWholeCases(qty: number, unitsPerCase: number | null | undefined, caseOnly: boolean): boolean {
+  if (!caseOnly || !unitsPerCase || unitsPerCase <= 1) return true;
+  return qty % unitsPerCase === 0;
+}
+
 export type PaymentMethod = "card" | "ach" | "wire";
 
 export const PAYMENT_METHODS: PaymentMethod[] = ["card", "ach", "wire"];
@@ -36,14 +70,21 @@ export function isValidPaymentMethod(method: string): method is PaymentMethod {
  * fee exists to make small external orders economic, not to tax ourselves
  * (Fanzia-as-client design 2026-09-18 §1.1).
  */
-export function computeSmallOrderFee(subtotalMinor: number, accountKind: AccountKind): number {
+export function computeSmallOrderFee(
+  subtotalMinor: number,
+  accountKind: AccountKind,
+  rules: Pick<OrderRules, "smallOrderThresholdMinor" | "smallOrderFeeMinor"> = DEFAULT_ORDER_RULES,
+): number {
   if (accountKind === "internal") return 0;
-  return subtotalMinor < SMALL_ORDER_THRESHOLD_MINOR ? SMALL_ORDER_FEE_MINOR : 0;
+  return subtotalMinor < rules.smallOrderThresholdMinor ? rules.smallOrderFeeMinor : 0;
 }
 
 /** The $500 minimum applies to the subtotal before fees. */
-export function meetsMinimum(subtotalMinor: number): boolean {
-  return subtotalMinor >= ORDER_MINIMUM_MINOR;
+export function meetsMinimum(
+  subtotalMinor: number,
+  rules: Pick<OrderRules, "minimumMinor"> = DEFAULT_ORDER_RULES,
+): boolean {
+  return subtotalMinor >= rules.minimumMinor;
 }
 
 /**
@@ -71,8 +112,8 @@ export function canAutoRollover(rolloverCount: number): boolean {
 }
 
 /** The new expiry after a rollover: another full 48-hour window from now. */
-export function rolloverExpiry(from: Date = new Date()): Date {
-  return new Date(from.getTime() + OFFER_EXPIRY_HOURS * 60 * 60 * 1000);
+export function rolloverExpiry(from: Date = new Date(), hours: number = OFFER_EXPIRY_HOURS): Date {
+  return new Date(from.getTime() + hours * 60 * 60 * 1000);
 }
 
 /** Taxable unless the account's tax status was explicitly determined exempt. "pending" counts as taxable. */

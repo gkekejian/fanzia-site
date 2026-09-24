@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -22,6 +23,8 @@ import { loadFxRates, loadSupplierCandidates } from "@/lib/priceIntel/refresh";
  * untouched by this feature.
  */
 export async function GET(req: NextRequest) {
+  const moduleOff = await requireModule("module_price_intel");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   if (actor.kind === "ai_operator" && !actor.agent.scopes.includes("cost_stack:read")) {

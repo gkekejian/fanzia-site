@@ -22,6 +22,8 @@ export async function updateProductFields(
     status?: "draft" | "active" | "inactive";
     publiclyVisible?: boolean;
     imageStatus?: string;
+    /** Units per supplier case; null clears it (no case rule). */
+    unitsPerCase?: number | null;
     actor: Actor;
   },
   db: AnyDb = defaultDb,
@@ -33,6 +35,7 @@ export async function updateProductFields(
   if (input.status !== undefined) patch.status = input.status;
   if (input.publiclyVisible !== undefined) patch.publiclyVisible = input.publiclyVisible;
   if (input.imageStatus !== undefined) patch.imageStatus = input.imageStatus;
+  if (input.unitsPerCase !== undefined) patch.unitsPerCase = input.unitsPerCase;
 
   const [updated] = await db.update(product).set(patch).where(eq(product.id, input.productId)).returning();
 
@@ -44,7 +47,12 @@ export async function updateProductFields(
       action: "product.update",
       entityType: "product",
       entityId: input.productId,
-      before: { status: existing.status, publiclyVisible: existing.publiclyVisible, imageStatus: existing.imageStatus },
+      before: {
+        status: existing.status,
+        publiclyVisible: existing.publiclyVisible,
+        imageStatus: existing.imageStatus,
+        unitsPerCase: existing.unitsPerCase,
+      },
       after: patch,
     },
     db,

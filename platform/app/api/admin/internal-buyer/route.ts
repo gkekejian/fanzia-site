@@ -129,7 +129,10 @@ export async function POST(req: NextRequest) {
         accountId: internalAccount.id,
         name: actor.user.name,
         email: ownerEmail,
-        roleOnAccount: "owner",
+        // Must be a real contact role. "owner" is not one: it normalized to
+        // "viewer", so the owners' own buyer login could browse but never
+        // order (fixed 2026-09-23; migration 0029 repairs existing rows).
+        roleOnAccount: "primary",
         active: true,
       })
       .returning();

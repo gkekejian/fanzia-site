@@ -9,6 +9,7 @@ import {
 } from "@/lib/member/shopping";
 import { AvailabilityChip } from "./AvailabilityChip";
 import { AddToDraftButton } from "./AddToDraftButton";
+import { useQtyStep } from "./OrderRulesContext";
 
 /**
  * Unit-first product card (UX brief pattern #1): the sellable unit is the
@@ -27,6 +28,7 @@ export function ProductCard({
 }) {
   const unitLabel = sellableUnitLabel(product.name, product.packsPerUnit);
   const unit = unitNoun(product.name).toLowerCase();
+  const caseQty = useQtyStep(product.unitsPerCase);
   const perPack = perPackPriceMinor(product.priceMinor, product.packsPerUnit);
 
   return (
@@ -54,7 +56,7 @@ export function ProductCard({
         {perPack !== null && product.packsPerUnit > 1 && (
           <>≈ {formatMoney(perPack, product.currencyCode)} / pack · </>
         )}
-        min 1 {unit}
+        {caseQty > 1 ? `sold in cases of ${caseQty}` : `min 1 ${unit}`}
         {product.marginMinor !== null && product.marginBps !== null && (
           <>
             <br />
@@ -71,6 +73,7 @@ export function ProductCard({
           productName={product.name}
           qty={qty}
           onChange={onQtyChange}
+          unitsPerCase={product.unitsPerCase}
         />
       </div>
     </article>

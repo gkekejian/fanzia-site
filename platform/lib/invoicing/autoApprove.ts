@@ -28,6 +28,7 @@ export type AutoApproveResult =
  *  - external accounts have at least one PAID invoice (first orders stay
  *    manual: that is the fraud gate)
  *  - the account has no unpaid sent/partial invoices
+ *  - the account is not on an ordering hold (e.g. after a card dispute)
  *
  * Anything else falls through to the existing manual queue unchanged.
  * Buyers pay by card/ACH before anything is purchased, so an auto-approved
@@ -45,6 +46,7 @@ export async function autoApproveIfEligible(db: AnyDb, requestId: string): Promi
 
   const [acct] = await db.select().from(account).where(eq(account.id, req.accountId)).limit(1);
   if (!acct) return { approved: false, reason: "account missing" };
+  if (acct.orderingHoldReason) return { approved: false, reason: "account on ordering hold" };
 
   if (acct.kind !== "internal") {
     if (acct.taxStatus !== "exempt") return { approved: false, reason: "tax status not verified exempt" };

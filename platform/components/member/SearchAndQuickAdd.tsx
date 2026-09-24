@@ -131,6 +131,7 @@ export function SearchAndQuickAdd({
                     productName={p.name}
                     qty={qtyById.get(r.id) ?? 0}
                     onChange={onQtyChange}
+                    unitsPerCase={p.unitsPerCase}
                     compact
                   />
                 </li>

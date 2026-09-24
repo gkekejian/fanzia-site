@@ -3,6 +3,7 @@ import { idColumn, timestamps } from "./common";
 import { account } from "./account";
 import { product, supplier } from "./catalog";
 import { user } from "./user";
+import { invoice } from "./invoicing";
 
 /**
  * Batch allocation rounds (fanzia-as-client design doc §2): an explicit
@@ -82,5 +83,11 @@ export const allocationLine = pgTable("allocation_line", {
   allocatedQty: integer("allocated_qty").notNull().default(0),
   status: allocationLineStatus("status").notNull().default("requested"),
   notes: text("notes"),
+  /**
+   * Set when the line was pulled automatically from a PAID invoice
+   * (lib/allocation/fromInvoices.ts). Unique with productId, so re-syncing
+   * never double-counts. NULL for owner-typed and internal-buyer lines.
+   */
+  sourceInvoiceId: uuid("source_invoice_id").references(() => invoice.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

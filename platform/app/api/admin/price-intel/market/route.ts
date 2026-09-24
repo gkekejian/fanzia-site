@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { requireActor } from "@/lib/auth/actor";
 import { performOrPropose } from "@/lib/auth/rbac";
@@ -15,6 +16,8 @@ import {
  * marketPriceMinor is the per-unit price in USD cents.
  */
 export async function POST(req: NextRequest) {
+  const moduleOff = await requireModule("module_price_intel");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
 
@@ -62,6 +65,8 @@ export async function POST(req: NextRequest) {
  * old/new; nothing auto-flips in v1.
  */
 export async function PUT(req: NextRequest) {
+  const moduleOff = await requireModule("module_price_intel");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
 

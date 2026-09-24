@@ -1,3 +1,4 @@
+import { isModuleEnabled } from "@/lib/config";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { recordAudit } from "@/lib/audit";
@@ -21,6 +22,10 @@ export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // Module off (Settings → Modules): skip quietly, stay green.
+  if (!(await isModuleEnabled("module_price_intel"))) {
+    return NextResponse.json({ ok: true, skipped: "module_disabled" });
   }
 
   try {

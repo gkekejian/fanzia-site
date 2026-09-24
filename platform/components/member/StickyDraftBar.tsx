@@ -2,6 +2,7 @@
 
 import { formatMoney } from "@/lib/format";
 import { draftTotals, milestoneProgress } from "@/lib/member/shopping";
+import { useOrderRules } from "./OrderRulesContext";
 
 /**
  * Sticky mobile draft bar (thumb-reach): live subtotal · units ·
@@ -15,9 +16,10 @@ export function StickyDraftBar({
   lines: { productId: string; qtyRequested: number }[];
   priceById: Map<string, { priceMinor: number }>;
 }) {
+  const rules = useOrderRules();
   const totals = draftTotals(lines, priceById);
   if (totals.units === 0) return null;
-  const progress = milestoneProgress(totals.subtotalMinor);
+  const progress = milestoneProgress(totals.subtotalMinor, rules);
 
   return (
     <>
@@ -32,7 +34,7 @@ export function StickyDraftBar({
           </span>
         </span>
         <span className="sticky-draft-bar-status">
-          {progress.minMet ? "Draft ready ✓" : `$${(progress.toMinimumMinor / 100).toFixed(0)} to $500 minimum`}
+          {progress.minMet ? "Draft ready ✓" : `${formatMoney(progress.toMinimumMinor)} to ${formatMoney(rules.minimumMinor)} minimum`}
         </span>
         <span className="sticky-draft-bar-go" aria-hidden="true">
           →

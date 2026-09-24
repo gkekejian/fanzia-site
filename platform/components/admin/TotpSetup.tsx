@@ -73,7 +73,7 @@ export function TotpSetup() {
             your authenticator.
           </p>
           <RecoveryCodes codes={recoveryCodes} />
-          <a className="btn" href="/admin/applications" style={{ marginTop: "1rem" }}>
+          <a className="btn" href="/admin" style={{ marginTop: "1rem" }}>
             Continue to the admin console
           </a>
         </div>

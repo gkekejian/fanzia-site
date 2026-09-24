@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+import { track } from "@vercel/analytics";
 
 const CHANNELS = [
   "Vending operator",
@@ -51,6 +52,11 @@ export default function WaitlistForm() {
         throw new Error(body.error || "Something went wrong. Please try again.");
       }
       setStatus("ok");
+      try {
+        track("waitlist_submitted", { channel: String(data.get("channel") ?? "") });
+      } catch {
+        // never block the success state on analytics
+      }
       form.reset();
     } catch (err) {
       setStatus("error");

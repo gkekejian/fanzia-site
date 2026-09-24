@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { requireActor } from "@/lib/auth/actor";
@@ -21,6 +22,8 @@ import { weekKeyFor } from "@/lib/nayax/weekly";
  * and the configured suggestion day. Read-only.
  */
 export async function GET(req: NextRequest) {
+  const moduleOff = await requireModule("module_vending");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {

@@ -88,6 +88,23 @@ export function AllocationRoundDetail({ roundId }: { roundId: string }) {
     return { ok: res.ok, body };
   }
 
+  async function pullPaid() {
+    setActionMessage(null);
+    setBusy(true);
+    const { ok, body } = await post(`/api/admin/allocation-rounds/${roundId}/sync-paid`, {});
+    setBusy(false);
+    if (!ok) {
+      setActionMessage((body.error as string) ?? "Could not pull paid orders.");
+      return;
+    }
+    await load();
+    setActionMessage(
+      (body.added as number) > 0
+        ? `Pulled ${body.added} line(s) from paid invoices into this round.`
+        : "No new paid orders for this supplier. Anything already pulled stays in its round.",
+    );
+  }
+
   async function runAllocate() {
     setActionMessage(null);
     const availableByProduct: Record<string, number> = {};
@@ -99,8 +116,11 @@ export function AllocationRoundDetail({ roundId }: { roundId: string }) {
         return;
       }
       availableByProduct[pid] = a;
-      const c = Math.floor(Number(caseSizes[pid] ?? "1"));
-      if (Number.isFinite(c) && c > 1) sizes[pid] = c;
+      const raw = caseSizes[pid];
+      if (raw !== undefined && raw !== "") {
+        const c = Math.floor(Number(raw));
+        if (Number.isFinite(c) && c >= 1) sizes[pid] = c;
+      }
     }
     setBusy(true);
     const { ok, body } = await post(`/api/admin/allocation-rounds/${roundId}/allocate`, {
@@ -148,7 +168,17 @@ export function AllocationRoundDetail({ roundId }: { roundId: string }) {
     setAdjustQty({});
     setAdjustReason({});
     await load();
-    setActionMessage("Round approved and closed.");
+    const settlement = body.settlement as { refundsCreated?: number; autoRefunded?: number; pendingManual?: number; failed?: number; totalMinor?: number; error?: string } | null;
+    if (settlement && "error" in settlement && settlement.error) {
+      setActionMessage(`Round closed, but shortfall refunds could not be calculated: ${settlement.error}. Check the Today page.`);
+    } else if (settlement && settlement.refundsCreated) {
+      setActionMessage(
+        `Round closed. ${settlement.refundsCreated} buyer(s) were short-shipped: $${((settlement.totalMinor ?? 0) / 100).toFixed(2)} owed, ` +
+          `${settlement.autoRefunded ?? 0} refunded to card automatically, ${(settlement.pendingManual ?? 0) + (settlement.failed ?? 0)} waiting on the Today page. Buyers were emailed.`,
+      );
+    } else {
+      setActionMessage("Round approved and closed. Every paid line was filled; no refunds owed.");
+    }
   }
 
   return (
@@ -185,10 +215,26 @@ export function AllocationRoundDetail({ roundId }: { roundId: string }) {
             </p>
           )}
 
+          {round.status === "collecting" && (
+            <section aria-label="Pull paid orders" className="card" style={{ marginBottom: "1.5rem" }}>
+              <h2 style={{ marginTop: 0 }}>1. Pull in paid orders</h2>
+              <p>
+                Adds every paid invoice line for this supplier&apos;s products. Safe to press again: nothing is added twice,
+                and an order already in another round stays there.
+              </p>
+              <button type="button" className="btn" disabled={busy} onClick={() => void pullPaid()}>
+                {busy ? "Working…" : "Pull paid orders"}
+              </button>
+            </section>
+          )}
+
           {canAllocate && (
             <section aria-label="Run allocation" style={{ marginBottom: "2rem" }}>
-              <h2>Run allocation</h2>
-              <p>Enter the distributor&apos;s available stock per product and the case size used for snapping.</p>
+              <h2>{round.status === "collecting" ? "2. " : ""}Run allocation</h2>
+              <p>
+                Enter what the supplier can actually fill per product. Case size defaults to the product&apos;s case size
+                (Products page); only fill it in to override.
+              </p>
               <table>
                 <caption className="visually-hidden">Distributor availability</caption>
                 <thead>
@@ -221,7 +267,7 @@ export function AllocationRoundDetail({ roundId }: { roundId: string }) {
                           aria-label={`Case size for ${products.get(pid)!.name}`}
                           type="number"
                           min={1}
-                          placeholder="1"
+                          placeholder="from product"
                           value={caseSizes[pid] ?? ""}
                           onChange={(e) => setCaseSizes((m) => ({ ...m, [pid]: e.target.value }))}
                           style={{ maxWidth: "8rem" }}
@@ -338,7 +384,8 @@ export function AllocationRoundDetail({ roundId }: { roundId: string }) {
               <h2>Approve &amp; close</h2>
               <p>
                 Closing freezes the split above. Any per-line adjustments you entered are written to the audit
-                log with their reasons.
+                log with their reasons. If a buyer paid for more than they&apos;re getting, the difference is recorded as a
+                refund owed, refunded to their card automatically if that&apos;s on in Settings, and the buyer is emailed.
               </p>
               <button type="button" className="btn btn-primary" disabled={busy} onClick={approveRound}>
                 {busy ? "Closing…" : "Approve & close round"}
@@ -349,7 +396,7 @@ export function AllocationRoundDetail({ roundId }: { roundId: string }) {
           {round.status === "closed" && (
             <p>
               Round closed{round.closedAt ? ` ${new Date(round.closedAt).toLocaleString()}` : ""}. The approved
-              split is final — invoice generation from closed lines is a later phase.
+              split is final. Next: generate the PO pack, place it with the supplier, then mark the round ordered.
             </p>
           )}
         </>

@@ -2,7 +2,7 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 import { and, eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { db as defaultDb } from "@/db/client";
-import { invoice, payment } from "@/db/schema";
+import { account, invoice, payment } from "@/db/schema";
 import { recordAudit } from "@/lib/audit";
 import { formatMoney } from "@/lib/format";
 import { balanceDue, invoiceCleared } from "./rules";
@@ -259,6 +259,12 @@ export async function processStripeWebhook(
     }
   }
 
+  const dispute = disputeFactsFromEvent(event);
+  if (dispute) {
+    await handleDispute(db, dispute);
+    return { handled: true };
+  }
+
   const facts = factsFromEvent(event);
   if (!facts) {
     // A failed card attempt is not a payment — but the owners need to know
@@ -301,6 +307,87 @@ export async function processStripeWebhook(
     );
   }
   return { handled: true, duplicate: result.duplicate };
+}
+
+/**
+ * Partial or full refund of a card payment (supplier shortfall). The
+ * idempotency key makes a retried call return the same refund instead of
+ * refunding twice.
+ */
+export async function refundCardPayment(args: {
+  paymentIntentId: string;
+  amountMinor: number;
+  idempotencyKey: string;
+}): Promise<{ id: string }> {
+  const stripe = getStripeClient();
+  const refund = await stripe.refunds.create(
+    { payment_intent: args.paymentIntentId, amount: args.amountMinor, reason: "requested_by_customer" },
+    { idempotencyKey: args.idempotencyKey },
+  );
+  return { id: refund.id };
+}
+
+type DisputeFacts = { paymentIntentId: string | null; amountMinor: number; reason: string; disputeId: string };
+
+function disputeFactsFromEvent(event: Stripe.Event): DisputeFacts | null {
+  if (event.type !== "charge.dispute.created") return null;
+  const d = event.data.object as Stripe.Dispute;
+  const pi = typeof d.payment_intent === "string" ? d.payment_intent : d.payment_intent?.id ?? null;
+  return { paymentIntentId: pi, amountMinor: d.amount ?? 0, reason: d.reason ?? "unknown", disputeId: d.id };
+}
+
+/**
+ * Contingency: a card chargeback. Wholesale sealed product is a fraud
+ * target, so the buyer's account is put on an ordering hold immediately
+ * (no new orders, no auto-approval) and both owners get an urgent alert
+ * with the Stripe response deadline in mind. Lifting the hold is a
+ * deliberate owner action.
+ */
+export async function handleDispute(db: AnyDb, facts: DisputeFacts): Promise<{ accountId: string | null }> {
+  let accountId: string | null = null;
+  let invoiceNumber: string | null = null;
+  if (facts.paymentIntentId) {
+    const [pay] = await db
+      .select()
+      .from(payment)
+      .where(and(eq(payment.method, "card"), eq(payment.reference, facts.paymentIntentId)))
+      .limit(1);
+    if (pay) {
+      accountId = pay.accountId;
+      const [inv] = await db.select().from(invoice).where(eq(invoice.id, pay.invoiceId)).limit(1);
+      invoiceNumber = inv?.invoiceNumber ?? null;
+      await db
+        .update(account)
+        .set({ orderingHoldReason: `Card dispute ${facts.disputeId} (${facts.reason})`, orderingHoldAt: new Date() })
+        .where(eq(account.id, pay.accountId));
+    }
+  }
+  await recordAudit(
+    {
+      actorType: "system",
+      action: "payment.disputed",
+      entityType: "account",
+      entityId: accountId,
+      after: { disputeId: facts.disputeId, amountMinor: facts.amountMinor, reason: facts.reason, invoiceNumber },
+    },
+    db,
+  );
+  await notifyOwnersEvent(
+    {
+      type: "payment_disputed",
+      title: `Card dispute: ${formatMoney(facts.amountMinor)}${invoiceNumber ? ` on ${invoiceNumber}` : ""}`,
+      body:
+        `A buyer disputed a card payment (reason: ${facts.reason}). ` +
+        (accountId
+          ? `Their account is now on an ordering hold. Do not ship anything unshipped on this account. `
+          : `We could not match it to an invoice. `) +
+        `Respond in the Stripe dashboard before the evidence deadline (usually 7 to 21 days).`,
+      severity: "warning",
+      urgent: true,
+    },
+    db,
+  );
+  return { accountId };
 }
 
 export function stripeCardNote(amountMinor: number): string {

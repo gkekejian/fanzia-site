@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Anton } from "next/font/google";
 import CookieBanner from "@/components/CookieBanner";
@@ -124,6 +125,9 @@ export default function RootLayout({
         />
         {children}
         <CookieBanner />
+        {/* Cookieless page-view analytics (Vercel Web Analytics). No
+            personal data, no cross-site tracking. */}
+        <Analytics />
       </body>
     </html>
   );

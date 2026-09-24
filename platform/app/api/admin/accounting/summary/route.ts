@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { eq, sql, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -13,6 +14,8 @@ import { totalsByDirection, summarizeReceivables } from "@/lib/accounting/cashbo
  * due date.
  */
 export async function GET(req: NextRequest) {
+  const moduleOff = await requireModule("module_accounting");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {

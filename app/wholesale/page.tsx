@@ -5,6 +5,7 @@ import PageHeader from "@/components/PageHeader";
 import MotionSection from "@/components/MotionSection";
 import WaitlistForm from "@/components/wholesale/WaitlistForm";
 import { getApplicationsOpen, PORTAL_BASE } from "@/lib/portalStatus";
+import TrackedLink from "@/components/TrackedLink";
 
 export const metadata: Metadata = {
   title: "Wholesale: Japanese & Chinese TCG",
@@ -75,17 +76,17 @@ export default async function WholesalePage() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 {open ? (
-                  <a href={`${PORTAL_BASE}/apply`} className="btn-primary min-h-[52px] text-center">
+                  <TrackedLink event="apply_clicked" href={`${PORTAL_BASE}/apply`} className="btn-primary min-h-[52px] text-center">
                     Start application
-                  </a>
+                  </TrackedLink>
                 ) : (
-                  <a href="#waitlist" className="btn-primary min-h-[52px] text-center">
+                  <TrackedLink event="waitlist_cta_clicked" href="#waitlist" className="btn-primary min-h-[52px] text-center">
                     Join the waitlist
-                  </a>
+                  </TrackedLink>
                 )}
-                <a href={`${PORTAL_BASE}/member/login`} className="btn-ghost min-h-[52px] text-center">
+                <TrackedLink event="buyer_signin_clicked" href={`${PORTAL_BASE}/member/login`} className="btn-ghost min-h-[52px] text-center">
                   Buyer sign in
-                </a>
+                </TrackedLink>
               </div>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -7,6 +8,8 @@ import { assertOwner } from "@/lib/auth/rbac";
 
 /** Latest proactive suggestions for the chat panel (owner-only). */
 export async function GET(req: NextRequest) {
+  const moduleOff = await requireModule("module_ai_operator");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {

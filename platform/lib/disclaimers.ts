@@ -17,6 +17,27 @@ export const SITE_FOOTER_NOTE =
  * Concise commercial disclosure for the member catalog page: minimums, caps,
  * fees, offer expiry, tax treatment, and price-change risk in one banner.
  */
+/** Same disclosure, built from the live order rules (Settings) so it never contradicts what's enforced. */
+export function commercialDisclosureShort(r: {
+  minimumMinor: number;
+  firstOrderCapMinor: number;
+  smallOrderThresholdMinor: number;
+  smallOrderFeeMinor: number;
+  offerExpiryHours: number;
+}): string {
+  const $ = (m: number) => `$${(m / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  return (
+    `Ordering minimums: the minimum order is ${$(r.minimumMinor)}. First orders are limited to ${$(r.firstOrderCapMinor)}. ` +
+    (r.smallOrderFeeMinor > 0
+      ? `Orders under ${$(r.smallOrderThresholdMinor)} carry a ${$(r.smallOrderFeeMinor)} small-order fee, shown before you submit. `
+      : "") +
+    "Outbound shipping and applicable sales tax are calculated separately and are not included in listed prices. " +
+    "Catalog prices and availability are indicative and may change until Fanzia confirms your allocation in writing. " +
+    `A request does not reserve inventory. Allocation offers expire ${r.offerExpiryHours} hours after issue. ` +
+    "Your account is treated as taxable until Fanzia reviews your resale documentation."
+  );
+}
+
 export const COMMERCIAL_DISCLOSURE_SHORT =
   "Ordering minimums: the minimum order is $500. First orders are limited to $5,000. " +
   "Orders under $750 carry a $25 small-order fee, shown before you submit. " +

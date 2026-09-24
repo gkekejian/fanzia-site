@@ -1,3 +1,4 @@
+import { requireModule } from "@/lib/modules";
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { requireActor } from "@/lib/auth/actor";
@@ -33,6 +34,8 @@ type ActionBody = {
  * (see internal_restock_draft handoff contract).
  */
 export async function POST(req: NextRequest) {
+  const moduleOff = await requireModule("module_vending");
+  if (moduleOff) return moduleOff;
   const actor = await requireActor(req);
   if (actor instanceof NextResponse) return actor;
   try {

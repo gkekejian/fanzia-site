@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { COMMERCIAL_DISCLOSURE_SHORT } from "@/lib/disclaimers";
+import { commercialDisclosureShort } from "@/lib/disclaimers";
+import { formatMoney } from "@/lib/format";
 import {
   applyFilter,
   draftSummaryNames,
@@ -13,6 +14,7 @@ import {
 import { useDraft } from "./useDraft";
 import { ProductCard } from "./ProductCard";
 import { StickyDraftBar } from "./StickyDraftBar";
+import { useOrderRules } from "./OrderRulesContext";
 import { SearchAndQuickAdd } from "./SearchAndQuickAdd";
 import { CuratedRows } from "./CuratedRows";
 import { FilterSheet } from "./FilterSheet";
@@ -27,6 +29,7 @@ function sortTrendingFirst(products: ShoppingProduct[]): ShoppingProduct[] {
 }
 
 export function MemberCatalog() {
+  const rules = useOrderRules();
   const [products, setProducts] = useState<ShoppingProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -107,13 +110,21 @@ export function MemberCatalog() {
       )}
 
       <p className="fee-strip">
-        Wholesale orders have a <strong>$500 minimum</strong>. Orders under <strong>$750</strong> include a{" "}
-        <strong>$25 small-order fee</strong> — shown on every screen before you submit, never first at invoice.
+        Wholesale orders have a <strong>{formatMoney(rules.minimumMinor)} minimum</strong>.
+        {rules.smallOrderFeeMinor > 0 && (
+          <>
+            {" "}
+            Orders under <strong>{formatMoney(rules.smallOrderThresholdMinor)}</strong> include a{" "}
+            <strong>{formatMoney(rules.smallOrderFeeMinor)} small-order fee</strong>, shown before you submit, never
+            first at invoice.
+          </>
+        )}
+        {rules.caseOnly && " Items marked with a case size are sold in full cases only."}
       </p>
 
       {!disclosureDismissed && (
         <div className="draft-banner" role="note" style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", fontWeight: 400 }}>
-          <span style={{ flex: 1 }}>{COMMERCIAL_DISCLOSURE_SHORT}</span>
+          <span style={{ flex: 1 }}>{commercialDisclosureShort(rules)}</span>
           <button
             type="button"
             className="btn btn-secondary"
