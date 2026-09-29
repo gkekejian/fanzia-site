@@ -12,6 +12,7 @@ export function DropsList() {
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
   const [name, setName] = useState("");
   const [supplierId, setSupplierId] = useState("");
+  const [closeAt, setCloseAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +36,7 @@ export function DropsList() {
       const res = await fetch("/api/admin/drops", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, supplierId: supplierId || null }),
+        body: JSON.stringify({ name, supplierId: supplierId || null, offersCloseAt: closeAt || undefined }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Could not create the drop.");
@@ -52,8 +53,9 @@ export function DropsList() {
         <div>
           <h1>Drops</h1>
           <p className="page-sub">
-            Offer incoming stock to buyers. Add products and quantities, review the suggested split, then send. Buyers
-            get 48 hours to Accept &amp; pay; anything declined or unanswered goes to the next buyer automatically.
+            Offer incoming stock to buyers. Add products and quantities, review the suggested split, then send. Every
+            offer in a drop closes at one deadline (blank uses your default in Settings → Allocations); declines go to
+            the next buyer until then. At the deadline the drop closes and the combined supplier order is ready.
           </p>
         </div>
       </div>
@@ -73,6 +75,10 @@ export function DropsList() {
               </option>
             ))}
           </select>
+        </label>
+        <label style={{ flex: "1 1 200px" }}>
+          Offers close (Pacific)
+          <input type="datetime-local" value={closeAt} onChange={(e) => setCloseAt(e.target.value)} />
         </label>
         <button type="submit" className="btn" disabled={busy || !name.trim()}>
           {busy ? "Creating…" : "Create drop"}

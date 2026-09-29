@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { processOfferDeadlines } from "@/lib/offers/lifecycle";
+import { runOfferDeadlines } from "@/lib/offers/drops";
 
 /**
- * Expire allocation offers past their deadline and re-offer the units.
+ * Expire allocation offers past their deadline, re-offer freed units, and
+ * close drops whose deadline has passed (creating their supplier round).
  * Bearer CRON_SECRET, same as the other crons. Safe to call as often as
  * you like: every transition is conditional, so overlapping runs are
  * harmless. Vercel Hobby only runs crons daily, so offers are also
@@ -16,6 +17,6 @@ export async function GET(req: NextRequest) {
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const result = await processOfferDeadlines(db, {});
+  const result = await runOfferDeadlines(db);
   return NextResponse.json({ ok: true, ...result });
 }

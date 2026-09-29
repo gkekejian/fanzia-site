@@ -16,13 +16,24 @@ After (the "Rolex model"):
 2. Fanzia creates a **drop** (one upcoming supplier release or buy) and the
    system proposes who gets how much. The owner edits and approves.
 3. Each chosen buyer receives an **offer**: a fixed quantity at a fixed price.
-   All or nothing, valid for 48 hours.
+   All or nothing. Every offer in a drop closes at **one deadline** (default
+   Friday 5 PM or Sunday 11:59 PM Pacific, set per drop).
 4. The buyer taps **Accept & pay**: the card on file is charged on the spot.
    Accepting *is* paying. There is no accepted-but-unpaid state.
-5. Declined, expired or failed offers are **re-offered automatically** to the
-   next buyer in line (24-hour window).
-6. When the drop closes, paid offers become the supplier order through the
+5. Declined offers are **re-offered automatically** to the next buyer in
+   line, until the deadline (not in its last hour).
+6. At the deadline the drop **closes itself** and paid offers plus the
+   internal reservation become one combined supplier order through the
    existing supplier-round flow (fill entry, shortfall refunds, PO pack).
+   Units nobody paid for are simply not ordered.
+7. Lead time is about 10 to 15 days (Settings). Everything arrives at the
+   Glendale office, then Fanzia ships each buyer's share. Buyers see the
+   expected arrival range on the offer, the offer email and the receipt.
+
+Fanzia's own vending account isn't a customer in the usual sense: its
+quantity rides on the same supplier order so vending gets the bulk unit
+cost and consolidated freight. It is reserved first (owner decision), is
+never charged, and doesn't get a score.
 
 Fanzia still never buys before being paid ("pre-sell, then buy").
 
@@ -39,7 +50,8 @@ Fanzia still never buys before being paid ("pre-sell, then buy").
 | Order rules | $500 minimum / $25 fee / $5,000 first-order cap do **not** apply to offers. Unit increments still do |
 | Accepting | One tap "Accept & pay" charges the saved card; falls back to Stripe Checkout (which saves the card) |
 | Card fees | Absorbed, priced into markup. No surcharge |
-| Offer window | 48 hours (Settings); re-offers 24 hours (Settings) |
+| Offer deadline | One per drop: default Friday 5 PM or Sunday 11:59 PM Pacific (Settings), at least 12h after sending; re-offers close with it. A live deadline can only move later |
+| Lead time | 10 to 15 days to the office (Settings), shown to buyers as an arrival range |
 | Leftovers | Auto-offered to the next buyer in line |
 | Declines | Every decline or no-response lowers the buyer's score |
 | Eligibility | Tax-exempt external accounts (verified resale cert) + the internal account. Nothing is ever taxed at offer time |
@@ -58,7 +70,7 @@ Fanzia still never buys before being paid ("pre-sell, then buy").
 - `application.invite_id`: which invite an application came in on.
 - `buyer_interest`: (account, product) → desired quantity. Unique per pair.
 - `allocation_drop`: name, optional supplier, status
-  `draft → live → closed` (or `cancelled`), offer/re-offer windows
+  `draft → live → closed` (or `cancelled`), offers-close deadline, lead time
   snapshotted at send time, link to the supplier round created at close.
 - `allocation_drop_item`: product, unit price (snapshotted from the catalog,
   editable while draft), quantity available, increment snapshot.
@@ -142,8 +154,9 @@ When an offer is declined or expires while the drop is live, its units go
 back to the item's pool. The pool is re-offered immediately to the next
 candidates using the same turn-based rule, excluding anyone who already
 passed on that item in this drop, and counting what each buyer already
-holds against their desired quantity. Re-offers get the re-offer window
-(24h).
+holds against their desired quantity. Re-offers close at the drop's
+deadline; in the last hour before it, freed units aren't offered to buyers
+(too little time to act) but the internal account can still take them.
 
 A buyer has at most one open offer per product (a database rule). Someone
 still deciding on their first offer isn't sent a second one; once they pay,
@@ -156,14 +169,21 @@ lowers the quantity before ordering, or keeps them for vending.
 
 ## 8. Deadlines on Vercel Hobby
 
-Hobby allows one cron run per day, so deadlines are processed:
+Hobby allows one cron run per day, so deadlines (expiring offers, then
+closing drops whose deadline passed) are processed:
 
 - every time a buyer opens Offers, accepts or declines;
 - every time an owner opens Drops, a drop, or Today;
 - in the daily ops sweep;
-- optionally by `/api/cron/offers` every 15 minutes from a free GitHub
+- optionally by `/api/cron/offers` every 30 minutes from a free GitHub
   Actions schedule (`.github/workflows/offer-deadlines.yml`, does nothing
-  until the `CRON_SECRET` and `PORTAL_URL` repository secrets are set).
+  until the `FANZIA_APP_URL` and `FANZIA_CRON_SECRET` repository secrets
+  are set).
+
+A drop closes only once no offer is mid-payment (a Checkout started just
+before the deadline gets up to ~30 minutes to finish). With only the daily
+job, a Friday 5 PM deadline would close the next morning, so set up the
+GitHub schedule or open Today after the deadline.
 
 Processing is idempotent, so running it from several places at once is safe.
 

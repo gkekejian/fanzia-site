@@ -52,6 +52,8 @@ import { setSetting } from "@/lib/settings";
 import { saveDraftRequest } from "@/lib/catalog/draftRequest";
 import { AllocationModeError, recordInvoicePayment, submitDraftRequest, voidInvoice } from "@/lib/invoicing/service";
 import { getActionQueue } from "@/lib/ops/today";
+import { closeDueDrops, runOfferDeadlines, setDropDeadline } from "@/lib/offers/drops";
+import { allocationDrop, allocationRound } from "@/db/schema";
 
 // ── Fake card gateway ─────────────────────────────────────────────────────
 
@@ -181,7 +183,7 @@ async function offersFor(accountId: string) {
 
 async function liveDrop(available: number, wants: [string, number][], opts: { internal?: [string, number] } = {}) {
   const { product: p, supplier: sup } = await makeItemProduct();
-  const drop = await createDrop(db, ownerId, { name: "October drop", supplierId: sup.id });
+  const drop = await createDrop(db, ownerId, { name: "October drop", supplierId: sup.id, offersCloseAt: hours(48).toISOString() }, T0);
   const item = await setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: available, increment: 1 });
   for (const [accountId, qty] of wants) await want(accountId, p.id, qty);
   if (opts.internal) await want(opts.internal[0], p.id, opts.internal[1]);
@@ -237,7 +239,7 @@ describe("sending a drop", () => {
     const a = await makeBuyer("Alpha Cards");
     const pending = await makeBuyer("Pending Tax Co", { exempt: false });
     const { product: p, supplier: sup } = await makeItemProduct();
-    const drop = await createDrop(db, ownerId, { name: "D", supplierId: sup.id });
+    const drop = await createDrop(db, ownerId, { name: "D", supplierId: sup.id, offersCloseAt: hours(48).toISOString() }, T0);
     const item = await setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 5, increment: 1 });
     await expect(setProposal(db, ownerId, drop.id, item.id, [{ accountId: a.account.id, qty: 6 }])).rejects.toThrow(/only 5/);
     await expect(setProposal(db, ownerId, drop.id, item.id, [{ accountId: pending.account.id, qty: 1 }])).rejects.toThrow(/tax review/);
@@ -249,7 +251,7 @@ describe("sending a drop", () => {
   it("enforces case increments", async () => {
     const a = await makeBuyer("Alpha Cards");
     const { product: p, supplier: sup } = await makeItemProduct({ unitsPerCase: 6 });
-    const drop = await createDrop(db, ownerId, { name: "D", supplierId: sup.id });
+    const drop = await createDrop(db, ownerId, { name: "D", supplierId: sup.id, offersCloseAt: hours(48).toISOString() }, T0);
     await expect(setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 10, increment: 6 })).rejects.toThrow(/multiple of 6/);
     const item = await setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 12, increment: 6 });
     await want(a.account.id, p.id, 11);
@@ -348,7 +350,7 @@ describe("accept & pay", () => {
     const viewer = await makeBuyer("Viewer Co", { role: "viewer", card: true });
     const held = await makeBuyer("Held Co", { card: true });
     const { product: p, supplier: sup } = await makeItemProduct({ routeType: "import" });
-    const drop = await createDrop(db, ownerId, { name: "Import drop", supplierId: sup.id });
+    const drop = await createDrop(db, ownerId, { name: "Import drop", supplierId: sup.id, offersCloseAt: hours(48).toISOString() }, T0);
     const item = await setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 4, increment: 1 });
     // viewer has no buying contact, so the owner can't even propose it
     await expect(setProposal(db, ownerId, drop.id, item.id, [{ accountId: viewer.account.id, qty: 1 }])).rejects.toThrow(/No active contact/);
@@ -366,7 +368,7 @@ describe("accept & pay", () => {
 });
 
 describe("declines, deadlines and re-offers", () => {
-  it("re-offers a declined offer to the next buyer with a 24h window", async () => {
+  it("re-offers a declined offer to the next buyer until the drop deadline", async () => {
     const a = await makeBuyer("Alpha Cards", { createdAt: new Date("2025-01-01T00:00:00Z") });
     const b = await makeBuyer("Beta Cards", { card: true });
     await liveDrop(4, [[a.account.id, 4], [b.account.id, 4]]);
@@ -386,12 +388,13 @@ describe("declines, deadlines and re-offers", () => {
     const wave2 = bOffers.find((o) => o.wave === 2)!;
     expect(wave2.status).toBe("offered");
     expect(wave2.qty).toBe(oa!.qty);
-    expect(wave2.expiresAt!.getTime()).toBe(hours(26).getTime());
+    // Re-offers close with the rest of the drop.
+    expect(wave2.expiresAt!.getTime()).toBe(hours(48).getTime());
     // Alpha passed on this product; it is never re-offered to them.
     expect((await offersFor(a.account.id)).filter((o) => o.status === "offered")).toHaveLength(0);
   });
 
-  it("expires unanswered offers at the deadline, voids the invoice and re-offers", async () => {
+  it("expires unanswered offers at the deadline and voids the invoice; lapsed units aren't ordered", async () => {
     const a = await makeBuyer("Alpha Cards");
     const b = await makeBuyer("Beta Cards");
     await liveDrop(2, [[a.account.id, 2], [b.account.id, 2]]);
@@ -415,8 +418,8 @@ describe("declines, deadlines and re-offers", () => {
     expect(expired!.status).toBe("expired");
     const [inv] = await db.select().from(invoice).where(eq(invoice.id, expired!.invoiceId!));
     expect(inv!.status).toBe("void");
-    const reoffered = (await offersFor(other.account.id)).filter((o) => o.status === "offered");
-    expect(reoffered.map((o) => [o.qty, o.wave])).toEqual([[1, 2]]);
+    // The deadline is the drop's deadline: nobody is offered the lapsed unit.
+    expect((await offersFor(other.account.id)).filter((o) => o.status === "offered")).toEqual([]);
   });
 
   it("waits for an open Checkout past the deadline and accepts it if paid", async () => {
@@ -581,5 +584,82 @@ describe("allocation mode guards", () => {
     const item = queue.find((i) => i.id.startsWith(`drop-free:${drop.id}`));
     expect(item?.title).toMatch(/^4 unclaimed/);
     expect(ownerNotices.some((n) => n.type === "offer_leftover")).toBe(true);
+  });
+});
+
+describe("drop deadline", () => {
+  it("closes the drop at the deadline and creates the supplier round from what's paid", async () => {
+    const internal = await makeBuyer("Fanzia Vending", { internal: true });
+    const a = await makeBuyer("Alpha Cards", { card: true });
+    const b = await makeBuyer("Beta Cards");
+    const { drop } = await liveDrop(6, [[a.account.id, 2], [b.account.id, 2]], { internal: [internal.account.id, 2] });
+    const [oa] = await offersFor(a.account.id);
+    await acceptOffer(db, a.actor, oa!.id, { now: hours(1), gateway });
+
+    // Before the deadline nothing closes.
+    expect(await closeDueDrops(db, hours(47))).toBe(0);
+    const res = await runOfferDeadlines(db, hours(48.01));
+    expect(res.dropsClosed).toBe(1);
+    const [row] = await db.select().from(allocationDrop).where(eq(allocationDrop.id, drop.id));
+    expect(row!.status).toBe("closed");
+    expect(row!.supplierRoundId).not.toBeNull();
+    const [round] = await db.select().from(allocationRound).where(eq(allocationRound.id, row!.supplierRoundId!));
+    expect(round).toBeTruthy();
+    const lines = await db.select().from(allocationLine).where(eq(allocationLine.roundId, round!.id));
+    // Alpha's paid 2 + internal 2; Beta never answered, so nothing ordered for them.
+    expect(lines.map((l) => [l.accountId, l.requestedQty]).sort()).toEqual([[a.account.id, 2], [internal.account.id, 2]].sort());
+    expect((await offersFor(b.account.id))[0]!.status).toBe("expired");
+    expect(ownerNotices.some((n) => n.type === "drop_closed")).toBe(true);
+    // Idempotent.
+    expect((await runOfferDeadlines(db, hours(49))).dropsClosed).toBe(0);
+  });
+
+  it("waits for a Checkout still open at the deadline before closing", async () => {
+    const a = await makeBuyer("Alpha Cards");
+    const { drop } = await liveDrop(2, [[a.account.id, 2]]);
+    const [offer] = await offersFor(a.account.id);
+    await acceptOffer(db, a.actor, offer!.id, { now: hours(47.9), gateway });
+    expect((await runOfferDeadlines(db, hours(48.1))).dropsClosed).toBe(0);
+    const [paying] = await offersFor(a.account.id);
+    gateway.pay(paying!.checkoutSessionId!);
+    const res = await runOfferDeadlines(db, hours(48.5));
+    expect(res.dropsClosed).toBe(1);
+    expect((await offersFor(a.account.id))[0]!.status).toBe("accepted");
+    const [row] = await db.select().from(allocationDrop).where(eq(allocationDrop.id, drop.id));
+    expect(row!.status).toBe("closed");
+  });
+
+  it("only moves a live deadline later, and open offers move with it", async () => {
+    const a = await makeBuyer("Alpha Cards");
+    const { drop } = await liveDrop(2, [[a.account.id, 2]]);
+    await expect(setDropDeadline(db, ownerId, drop.id, hours(40).toISOString(), hours(1))).rejects.toThrow(/later/);
+    await setDropDeadline(db, ownerId, drop.id, hours(72).toISOString(), hours(1));
+    expect((await offersFor(a.account.id))[0]!.expiresAt!.getTime()).toBe(hours(72).getTime());
+    expect(sentEmails.some((e) => e.to === a.account.primaryContactEmail && /More time/.test(e.subject))).toBe(true);
+  });
+
+  it("won't send with less than 12 hours to the deadline", async () => {
+    const a = await makeBuyer("Alpha Cards");
+    const { product: p, supplier: sup } = await makeItemProduct();
+    const drop = await createDrop(db, ownerId, { name: "Late", supplierId: sup.id, offersCloseAt: hours(6).toISOString() }, T0);
+    await setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 2, increment: 1 });
+    await want(a.account.id, p.id, 2);
+    await suggestDrop(db, ownerId, drop.id, T0);
+    await expect(sendDrop(db, ownerId, drop.id, T0)).rejects.toThrow(/at least 12 hours/);
+  });
+
+  it("stops re-offering to buyers in the last hour, but vending can still take freed units", async () => {
+    const internal = await makeBuyer("Fanzia Vending", { internal: true });
+    const a = await makeBuyer("Alpha Cards");
+    const b = await makeBuyer("Beta Cards");
+    const { product: p } = await liveDrop(4, [[a.account.id, 2], [b.account.id, 4]]);
+    // Vending decides it wants one after offers went out.
+    await want(internal.account.id, p.id, 1);
+    const [ob] = await offersFor(b.account.id);
+    await declineOffer(db, b.actor, ob!.id, { now: hours(47.5), gateway });
+    // Alpha still wants more but it's the last hour: no new buyer offer.
+    expect((await offersFor(a.account.id)).filter((o) => o.wave > 1)).toHaveLength(0);
+    const reserved = (await offersFor(internal.account.id)).filter((o) => o.status === "reserved");
+    expect(reserved.reduce((s2, o) => s2 + o.qty, 0)).toBe(1);
   });
 });

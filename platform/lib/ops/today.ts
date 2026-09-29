@@ -15,8 +15,7 @@ import {
 } from "@/db/schema";
 import { formatMoney } from "@/lib/format";
 import { runHealthChecks } from "./health";
-import { dropAttention } from "@/lib/offers/drops";
-import { processOfferDeadlines } from "@/lib/offers/lifecycle";
+import { dropAttention, runOfferDeadlines } from "@/lib/offers/drops";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PgDatabase<any, any, any>;
@@ -255,7 +254,7 @@ export async function getActionQueue(db: AnyDb, now: Date = new Date()): Promise
   // Allocation drops. Deadlines are also processed here: on the Hobby plan
   // there's no hourly cron, so every owner visit keeps offers moving.
   await guarded(async () => {
-    await processOfferDeadlines(db, { now });
+    await runOfferDeadlines(db, now);
     const { drafts, unclaimed } = await dropAttention(db);
     if (drafts > 0)
       items.push({ id: "drop-drafts", priority: 4, kind: "drop", title: `${drafts} drop draft(s) not sent`, detail: "Review the suggested split and send offers.", href: "/admin/drops", severity: "info" });

@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (actor.kind !== "owner") return NextResponse.json({ error: "Owner access required." }, { status: 403 });
   const json = await req.json().catch(() => ({}));
   try {
-    const drop = await createDrop(db, actor.user.id, { name: json?.name, supplierId: json?.supplierId, notes: json?.notes });
+    const drop = await createDrop(db, actor.user.id, { name: json?.name, supplierId: json?.supplierId, notes: json?.notes, offersCloseAt: json?.offersCloseAt });
     return NextResponse.json({ ok: true, drop });
   } catch (err) {
     if (err instanceof OfferError) return NextResponse.json({ error: err.message }, { status: err.status });

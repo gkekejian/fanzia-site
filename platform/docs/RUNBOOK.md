@@ -10,7 +10,7 @@ added or verified in the second review pass (2026-09-23).
 | When you get an email | Only "action needed" and urgent items email you (Settings → Notifications). Open the link, decide, done. | Email |
 | Any time you have 2 minutes | Open **Today**. If it says "Nothing needs you", close it. | app.fanzia.io/admin |
 | Monday morning | Read the weekly digest email: numbers, what's waiting, system problems. | Email |
-| Each supplier drop (allocation mode) | Drops → New drop → add products and quantities → Suggest split → adjust → Send offers. Buyers have 48h to Accept & pay; declines and no-responses re-offer automatically (24h). When done: Create supplier round → PO pack → place order → Mark ordered. | Orders → Drops & offers |
+| Each supplier drop (allocation mode) | Drops → New drop → add products and quantities → Suggest split → adjust → Send offers. Every offer closes at the drop's deadline (default Friday 5 PM PT); declines re-offer automatically until then. At the deadline the drop closes itself and creates the supplier round (paid offers + vending): PO pack → place order → Mark ordered. Product lands at the office in ~10 to 15 days; ship each buyer's share. | Orders → Drops & offers |
 | Each supplier drop (self-serve mode) | Supplier round: Pull paid orders → enter what the supplier can fill → Run allocation → Approve. Then PO pack → place order → Mark ordered. | Orders → Supplier rounds |
 | Applications closed, someone good asks | Send them a personal invite (link + code, one use, their email only, 14 days). They still go through review. | Buyers → Applications → Invites, or Inbox → waitlist message → Send invite |
 

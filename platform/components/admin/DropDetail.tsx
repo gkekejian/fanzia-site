@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { formatMoney } from "@/lib/format";
 import type { DropDetail as Detail, DropItemView } from "@/lib/offers/drops";
 import { ConfirmAction } from "./ConfirmAction";
+import { formatDeadline, toPacificLocal } from "@/lib/offers/deadline";
 
 type CatalogProduct = { id: string; sku: string; name: string; priceMinor: number; unitsPerCase: number | null; sellUnit?: string };
 
@@ -105,8 +106,9 @@ export function DropDetail({ dropId }: { dropId: string }) {
         <div>
           <h1>{drop.name}</h1>
           <p className="page-sub">
-            <span className={`badge ${live ? "badge-ok" : draft ? "badge-warn" : ""}`}>{drop.status}</span> · Offer window{" "}
-            {drop.offerWindowHours}h, re-offers {drop.reofferWindowHours}h
+            <span className={`badge ${live ? "badge-ok" : draft ? "badge-warn" : ""}`}>{drop.status}</span>
+            {drop.offersCloseAt && <> · offers close {formatDeadline(new Date(drop.offersCloseAt))}</>}
+            {drop.arrivalLabel && <> · expected at the office {drop.arrivalLabel}</>}
             {drop.sentAt && <> · sent {new Date(drop.sentAt).toLocaleString()}</>}
           </p>
         </div>
@@ -140,6 +142,15 @@ export function DropDetail({ dropId }: { dropId: string }) {
         </p>
       )}
 
+      {(draft || live) && (
+        <DeadlineEditor
+          value={drop.offersCloseAt}
+          live={live}
+          busy={busy}
+          onSave={(v) => act({ action: "setDeadline", offersCloseAt: v }, live ? "Deadline moved; buyers with open offers were emailed." : "Deadline saved.")}
+        />
+      )}
+
       {draft && <AddItemForm catalog={catalog} existing={items} busy={busy} onAdd={(p) => act({ action: "setItem", ...p }, "Product saved.")} />}
 
       {draft && items.length > 0 && (
@@ -152,7 +163,7 @@ export function DropDetail({ dropId }: { dropId: string }) {
             confirmLabel="Confirm: email offers to buyers"
             disabled={busy || !hasProposals}
             onConfirm={() => void act({ action: "send" }, "Offers sent.")}
-            detail={`Buyers get ${drop.offerWindowHours} hours to Accept & pay. Internal quantities are reserved, not charged.`}
+            detail={`Buyers have until ${drop.offersCloseAt ? formatDeadline(new Date(drop.offersCloseAt)) : "the deadline"} to Accept & pay. Internal quantities are reserved, not charged.`}
           />
           <ConfirmAction label="Discard draft" confirmLabel="Confirm: discard" danger disabled={busy} onConfirm={() => void act({ action: "cancel" }, "Draft discarded.")} />
         </div>
@@ -200,6 +211,39 @@ export function DropDetail({ dropId }: { dropId: string }) {
         </section>
       )}
     </main>
+  );
+}
+
+function DeadlineEditor({
+  value,
+  live,
+  busy,
+  onSave,
+}: {
+  value: string | null;
+  live: boolean;
+  busy: boolean;
+  onSave: (v: string) => Promise<boolean>;
+}) {
+  const [v, setV] = useState(value ? toPacificLocal(new Date(value)) : "");
+  const changed = v && (!value || v !== toPacificLocal(new Date(value)));
+  return (
+    <div className="card" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "1rem" }}>
+      <label>
+        Offers close (Pacific time)
+        <input type="datetime-local" value={v} onChange={(e) => setV(e.target.value)} />
+      </label>
+      {changed && (
+        <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void onSave(v)}>
+          {live ? "Extend deadline" : "Save deadline"}
+        </button>
+      )}
+      <p className="page-sub" style={{ margin: 0, flexBasis: "100%" }}>
+        {live
+          ? "Offers are out: the deadline can only move later, and buyers with open offers are emailed."
+          : "Every offer in this drop, re-offers included, closes then. The drop then closes itself and the supplier order is ready to place."}
+      </p>
+    </div>
   );
 }
 

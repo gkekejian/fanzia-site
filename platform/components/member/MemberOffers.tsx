@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { formatMoney } from "@/lib/format";
 import type { BuyerOfferView } from "@/lib/offers/lifecycle";
 import type { SavedCard } from "@/lib/offers/cards";
+import { formatDeadline } from "@/lib/offers/deadline";
 
 const STATUS_LABEL: Record<string, string> = {
   offered: "Waiting on you",
@@ -120,8 +121,9 @@ export function MemberOffers() {
     <main className="container" style={{ maxWidth: "820px" }}>
       <h1>Offers</h1>
       <p style={{ marginTop: 0 }}>
-        When stock lands we offer it to buyers based on what they asked for and their history with us. Each offer is
-        all or nothing. Declining or letting one expire is fine, but it does lower your priority for future offers.
+        We offer each drop to buyers based on what they asked for and their history with us, then place one combined
+        order with our supplier when offers close. Each offer is all or nothing. Declining or letting one expire is
+        fine, but it does lower your priority for future offers.
       </p>
 
       {params.get("paid") && (
@@ -173,6 +175,12 @@ export function MemberOffers() {
                 {units(o.qty, o.sellUnit)} × {formatMoney(o.unitPriceMinor)} ={" "}
                 <strong>{formatMoney(o.totalMinor)}</strong>
               </div>
+              {o.closesAt && (
+                <div style={{ fontSize: "0.9rem", color: "var(--fz-muted)", marginTop: "0.2rem" }}>
+                  Offers close {formatDeadline(new Date(o.closesAt))}
+                  {o.arrivalLabel && <> · expected at our office {o.arrivalLabel}, then we ship</>}
+                </div>
+              )}
             </div>
             <div style={{ textAlign: "right" }}>
               <span className="badge badge-warn">{STATUS_LABEL[o.status]}</span>

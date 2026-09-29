@@ -31,6 +31,7 @@ export const OWNER_NOTIFICATION_TYPES = [
   "offer_declined",
   "offer_leftover",
   "offer_late_payment",
+  "drop_closed",
 ] as const;
 export type OwnerNotificationType = (typeof OWNER_NOTIFICATION_TYPES)[number];
 

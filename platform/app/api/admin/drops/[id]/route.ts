@@ -10,6 +10,7 @@ import {
   offerLeftovers,
   removeDropItem,
   sendDrop,
+  setDropDeadline,
   setDropItem,
   setProposal,
   suggestDrop,
@@ -23,6 +24,7 @@ import { OfferError } from "@/lib/offers/context";
  * POST -> { action, ... } where action is one of:
  *   setItem { productId, availableQty, unitPriceMinor?, increment? }
  *   removeItem { itemId } · suggest · setProposal { itemId, plan: [{accountId, qty}] }
+ *   setDeadline { offersCloseAt: "YYYY-MM-DDTHH:mm" (Pacific) }
  *   send · close · cancel · cancelOffer { offerId } · offerLeftovers { itemId } · supplierRound
  */
 async function owner(req: NextRequest) {
@@ -56,6 +58,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         break;
       case "removeItem":
         await removeDropItem(db, ownerId, params.id, str(json.itemId));
+        break;
+      case "setDeadline":
+        await setDropDeadline(db, ownerId, params.id, json.offersCloseAt);
         break;
       case "suggest":
         await suggestDrop(db, ownerId, params.id);

@@ -57,8 +57,15 @@ export const allocationDrop = pgTable("allocation_drop", {
   supplierId: uuid("supplier_id").references(() => supplier.id),
   /** draft | live | closed | cancelled */
   status: text("status").notNull().default("draft"),
-  offerWindowHours: integer("offer_window_hours").notNull().default(48),
-  reofferWindowHours: integer("reoffer_window_hours").notNull().default(24),
+  /**
+   * One deadline for the whole drop (e.g. Friday 5 PM PT): every offer,
+   * re-offers included, closes then, and the combined supplier order is
+   * placed from what's paid.
+   */
+  offersCloseAt: timestamp("offers_close_at", { withTimezone: true }),
+  /** Supplier lead time to our office, shown to buyers as an arrival range. */
+  leadTimeMinDays: integer("lead_time_min_days").notNull().default(10),
+  leadTimeMaxDays: integer("lead_time_max_days").notNull().default(15),
   notes: text("notes"),
   createdBy: uuid("created_by").references(() => user.id),
   sentAt: timestamp("sent_at", { withTimezone: true }),

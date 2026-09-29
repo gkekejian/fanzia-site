@@ -33,6 +33,7 @@ import {
   scoreAccounts,
 } from "./context";
 import { ensureStripeCustomer } from "./cards";
+import { arrivalRange, formatDeadline, MIN_REOFFER_MINUTES } from "./deadline";
 import { cardGateway, checkoutExpiryFor, type CardGateway } from "./payments";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,6 +126,8 @@ export async function emailOffers(db: AnyDb, offerIds: string[]): Promise<void> 
       return `- ${f?.name ?? "Product"}: ${formatUnits(r.offer.qty, f?.sellUnit ?? "unit")} at ${formatMoney(r.offer.unitPriceMinor)} = ${formatMoney(r.offer.totalMinor)} (accept by ${deadlineText(r.offer.expiresAt!)})`;
     });
     const reoffer = list.some((r) => r.offer.wave > 1);
+    const d = list[0]!.drop;
+    const arrival = d.offersCloseAt ? arrivalRange(d.offersCloseAt, d.leadTimeMinDays, d.leadTimeMaxDays).label : null;
     await sendNotificationEmail(
       {
         to: acct.email,
@@ -132,7 +135,13 @@ export async function emailOffers(db: AnyDb, offerIds: string[]): Promise<void> 
         text:
           `You have ${list.length === 1 ? "an allocation offer" : `${list.length} allocation offers`} from Fanzia:\n\n${lines.join("\n")}\n\n` +
           `Each offer is all or nothing. Tap "Accept & pay" to take it; your card on file is charged immediately. ` +
-          `If you don't want it, tap Decline so it can go to the next buyer.\n\n${offersUrl()}`,
+          `If you don't want it, tap Decline so it can go to the next buyer.\n\n` +
+          (d.offersCloseAt
+            ? `Offers close ${formatDeadline(d.offersCloseAt)}. Then we place one combined order with our supplier` +
+              (arrival ? `; it usually reaches our Glendale office ${arrival}` : "") +
+              `, and we ship yours from there.\n\n`
+            : "") +
+          offersUrl(),
       },
       "offer.sent",
     );
@@ -152,7 +161,7 @@ export async function onInvoicePaymentRecorded(db: AnyDb, invoiceId: string, dep
   if (!inv?.allocationOfferId) return "none";
   const loaded = await loadOffer(db, inv.allocationOfferId);
   if (!loaded) return "none";
-  const { offer, item } = loaded;
+  const { offer, item, drop } = loaded;
 
   if (offer.status === "accepted") return "accepted";
   if (offer.status === "offered" || offer.status === "paying") {
@@ -193,7 +202,11 @@ export async function onInvoicePaymentRecorded(db: AnyDb, invoiceId: string, dep
           text:
             `Thanks. Your allocation is confirmed and paid:\n\n` +
             `- ${facts?.name ?? "Product"}: ${formatUnits(offer.qty, facts?.sellUnit ?? "unit")} for ${formatMoney(inv.totalMinor)}\n\n` +
-            `Invoice ${inv.invoiceNumber}. We order from our supplier now and ship when it arrives. ` +
+            `Invoice ${inv.invoiceNumber}. ` +
+            (drop.offersCloseAt
+              ? `We place one combined supplier order when offers close ${formatDeadline(drop.offersCloseAt)}; it usually reaches our Glendale office ` +
+                `${arrivalRange(drop.offersCloseAt, drop.leadTimeMinDays, drop.leadTimeMaxDays).label}, then we ship yours. `
+              : "We order from our supplier and ship when it arrives. ") +
             `If the supplier ships us less than expected, you're refunded for anything we can't deliver.\n\n${appBaseUrl()}/member/invoices`,
         },
         "offer.paid",
@@ -326,7 +339,10 @@ export async function reofferItem(db: AnyDb, itemId: string, now: Date): Promise
     if (!drop || drop.status !== "live") return { offered: [], reserved: 0, leftover: 0, waiting: false, drop: null };
 
     const held = await heldOnItem(tx, item.id);
-    const waiting = held.accountsWithLive.size > 0;
+    // Buyers can only be offered units while the drop's deadline is far
+    // enough away to act on them; the internal account can always take them.
+    const canOfferBuyers = Boolean(drop.offersCloseAt && drop.offersCloseAt.getTime() - now.getTime() >= MIN_REOFFER_MINUTES * 60_000);
+    const waiting = held.accountsWithLive.size > 0 || !canOfferBuyers;
     const pool = item.availableQty - held.total;
     if (pool < item.increment) return { offered: [], reserved: 0, leftover: Math.max(0, pool), waiting, drop };
 
@@ -341,7 +357,7 @@ export async function reofferItem(db: AnyDb, itemId: string, now: Date): Promise
     const accts = await accountFacts(tx, [...interest.keys()]);
     const externalIds = [...interest.keys()].filter((id) => {
       const a = accts.get(id);
-      return a && a.kind === "external" && a.ineligibleReason === null && !passedSet.has(id) && !held.accountsWithLive.has(id);
+      return canOfferBuyers && a && a.kind === "external" && a.ineligibleReason === null && !passedSet.has(id) && !held.accountsWithLive.has(id);
     });
     const scores = await scoreAccounts(tx, externalIds, now);
     const internalNeed =
@@ -365,7 +381,8 @@ export async function reofferItem(db: AnyDb, itemId: string, now: Date): Promise
       .from(allocationOffer)
       .where(eq(allocationOffer.itemId, item.id));
     const wave = Number(maxWave) + 1;
-    const expiresAt = new Date(now.getTime() + drop.reofferWindowHours * 3_600_000);
+    // Re-offers close with the rest of the drop.
+    const expiresAt = drop.offersCloseAt!;
     const offered: string[] = [];
     if (split.internalQty > 0 && internalId) {
       await tx.insert(allocationOffer).values({
@@ -796,6 +813,9 @@ export type BuyerOfferView = {
   requiresImportAcknowledgment: boolean;
   lastPaymentError: string | null;
   checkoutOpen: boolean;
+  /** When the drop's offers close (Pacific deadline) and the expected arrival at the office. */
+  closesAt: string | null;
+  arrivalLabel: string | null;
 };
 
 /** A buyer's offers: live ones first, then the last 90 days of history. */
@@ -837,6 +857,8 @@ export async function listBuyerOffers(db: AnyDb, accountId: string, deps: Deps =
         requiresImportAcknowledgment: f?.requiresImportAcknowledgment ?? false,
         lastPaymentError: offer.status === "paying" ? offer.lastPaymentError : null,
         checkoutOpen: Boolean(offer.checkoutSessionId && offer.checkoutExpiresAt && offer.checkoutExpiresAt > now),
+        closesAt: drop.offersCloseAt?.toISOString() ?? null,
+        arrivalLabel: drop.offersCloseAt ? arrivalRange(drop.offersCloseAt, drop.leadTimeMinDays, drop.leadTimeMaxDays).label : null,
       };
     })
     .sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3) || (a.expiresAt ?? "").localeCompare(b.expiresAt ?? ""));

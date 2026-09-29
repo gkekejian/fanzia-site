@@ -38,7 +38,7 @@ const ALLOCATION_STEPS = [
   { n: "01", label: "Apply or get invited", copy: "Business buyers with a verified resale certificate only." },
   { n: "02", label: "Tell us what you want", copy: "Mark products and quantities in the portal. It's a wish list, not an order." },
   { n: "03", label: "Get an allocation", copy: "When stock lands we offer it to buyers by history and demand. You get an email." },
-  { n: "04", label: "Accept & pay, then we ship", copy: "One tap charges your card on file. We buy after payment, then ship from Glendale." },
+  { n: "04", label: "Accept & pay, then we ship", copy: "Offers close on a set day. We place one combined order; it lands in Glendale in about 10 to 15 days, then ships to you." },
 ];
 
 // Answers the questions that otherwise arrive as emails. Every number here
@@ -56,7 +56,8 @@ const FAQ = [
 const ALLOCATION_FAQ = [
   { q: "How are allocations decided?", a: "By what you asked for and your history with us: what you've bought, how quickly you pay, and whether you take the offers you get. Our own vending machines are stocked first." },
   { q: "Can I choose my quantity?", a: "You tell us what you want; we offer what we can. Each offer is all or nothing, and you can decline it." },
-  { q: "How long do I have?", a: "48 hours from the offer email. Declining or letting an offer lapse is fine, but it lowers your priority next time." },
+  { q: "How long do I have?", a: "Until the drop's deadline, usually Friday at 5 PM or Sunday night Pacific; it's on the offer email. Declining or letting an offer lapse is fine, but it lowers your priority next time." },
+  { q: "When does it arrive?", a: "We place one combined supplier order when offers close. It usually reaches our Glendale office in 10 to 15 days, then we ship your share. Import timing can vary." },
   { q: "How do I pay?", a: "Accept & pay charges the card you keep on file, or you pay on a secure Stripe page that saves it. Nothing is ever charged unless you accept. No credit terms." },
   { q: "Is this English product?", a: "No. Everything we sell is Japanese- or Chinese-language import edition, and every offer asks you to acknowledge that before paying." },
   { q: "What if the supplier ships short?", a: "You're refunded for anything we can't deliver. Import lead times depend on the supplier and customs, so treat any date as an estimate." },

@@ -1,5 +1,5 @@
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, lte } from "drizzle-orm";
 import {
   allocationDrop,
   allocationDropItem,
@@ -31,6 +31,24 @@ import {
 } from "./context";
 import { emailOffers, processOfferDeadlines, reofferItem, retireLiveOffer } from "./lifecycle";
 import { cardGateway, type CardGateway } from "./payments";
+import { sendNotificationEmail } from "@/lib/email/send";
+import {
+  arrivalRange,
+  formatDeadline,
+  MIN_OFFER_HOURS,
+  nextDeadline,
+  parsePacificLocal,
+  type DeadlinePreset,
+} from "./deadline";
+
+/** Owner input: a datetime-local string (Pacific) or an ISO timestamp. */
+function parseDeadline(raw: unknown): Date | null {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  const local = parsePacificLocal(raw);
+  if (local) return local;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PgDatabase<any, any, any>;
@@ -71,7 +89,8 @@ function wholeQty(raw: unknown, label: string, min = 0): number {
 export async function createDrop(
   db: AnyDb,
   ownerId: string | null,
-  input: { name: unknown; supplierId?: unknown; notes?: unknown },
+  input: { name: unknown; supplierId?: unknown; notes?: unknown; offersCloseAt?: unknown },
+  now = new Date(),
 ) {
   const name = typeof input.name === "string" ? input.name.trim() : "";
   if (!name || name.length > 200) throw new OfferError("Give the drop a name (up to 200 characters).");
@@ -82,18 +101,19 @@ export async function createDrop(
   }
   const notes = typeof input.notes === "string" && input.notes.trim() ? input.notes.trim().slice(0, 2000) : null;
   const config = await loadConfig(db);
+  let offersCloseAt = nextDeadline(config.offer_deadline_default as DeadlinePreset, now);
+  if (input.offersCloseAt !== undefined && input.offersCloseAt !== null && input.offersCloseAt !== "") {
+    const parsed = parseDeadline(input.offersCloseAt);
+    if (!parsed || parsed <= now) throw new OfferError("Pick a deadline in the future.");
+    offersCloseAt = parsed;
+  }
+  const leadMin = config.lead_time_min_days;
+  const leadMax = Math.max(leadMin, config.lead_time_max_days);
   const [drop] = await db
     .insert(allocationDrop)
-    .values({
-      name,
-      supplierId,
-      notes,
-      createdBy: ownerId,
-      offerWindowHours: config.offer_window_hours,
-      reofferWindowHours: config.reoffer_window_hours,
-    })
+    .values({ name, supplierId, notes, createdBy: ownerId, offersCloseAt, leadTimeMinDays: leadMin, leadTimeMaxDays: leadMax })
     .returning();
-  await audit(db, ownerId, "allocation_drop.created", drop!.id, { name, supplierId });
+  await audit(db, ownerId, "allocation_drop.created", drop!.id, { name, supplierId, offersCloseAt: offersCloseAt.toISOString() });
   return drop!;
 }
 
@@ -341,7 +361,12 @@ export async function sendDrop(db: AnyDb, ownerId: string | null, dropId: string
       .map((a) => (a ? `${a.legalName}: ${a.ineligibleReason}` : "An account no longer exists"));
     if (problems.length) throw new OfferError(`Fix these before sending: ${[...new Set(problems)].join("; ")}.`, 409);
 
-    const expiresAt = new Date(now.getTime() + drop.offerWindowHours * 3_600_000);
+    if (!drop.offersCloseAt) throw new OfferError("Set when offers close first.");
+    if (drop.offersCloseAt.getTime() - now.getTime() < MIN_OFFER_HOURS * 3_600_000) {
+      throw new OfferError(`Offers close ${formatDeadline(drop.offersCloseAt)}. Give buyers at least ${MIN_OFFER_HOURS} hours: move the deadline later first.`, 409);
+    }
+    // One deadline for the whole drop.
+    const expiresAt = drop.offersCloseAt;
     const offered: string[] = [];
     for (const p of proposals) {
       const internal = accts.get(p.accountId)!.kind === "internal";
@@ -366,7 +391,7 @@ export async function sendDrop(db: AnyDb, ownerId: string | null, dropId: string
     {
       type: "offers_sent",
       title: `Offers sent — ${sent.drop.name}: ${sent.offered.length} offer${sent.offered.length === 1 ? "" : "s"}, ${formatMoney(sent.totalMinor)}`,
-      body: `${sent.buyers} buyer${sent.buyers === 1 ? "" : "s"} have until ${sent.expiresAt.toUTCString()} to accept and pay. Declines and no-responses are re-offered automatically.`,
+      body: `${sent.buyers} buyer${sent.buyers === 1 ? "" : "s"} have until ${formatDeadline(sent.expiresAt)} to accept and pay. Declines are re-offered automatically until then; at the deadline the drop closes and the supplier order is ready to place.`,
       entityType: "allocation_drop",
       entityId: dropId,
     },
@@ -424,13 +449,126 @@ export async function closeDrop(db: AnyDb, ownerId: string | null, dropId: strin
     .from(allocationOffer)
     .where(and(eq(allocationOffer.dropId, dropId), inArray(allocationOffer.status, ["offered", "paying"])));
   if (open.length) throw new OfferError(`${open.length} offer${open.length === 1 ? " is" : "s are"} still open. Wait for the deadline or cancel them first.`, 409);
+  if (!(await finalizeDrop(db, ownerId, dropId, now))) throw new OfferError("Only a live drop can be closed.", 409);
+}
+
+/**
+ * Close a live drop and hand it to ordering: the supplier round is created
+ * (paid offers + internal reservation) when the drop has a supplier, and
+ * the owners are told what to order. Returns false if it wasn't live.
+ */
+async function finalizeDrop(db: AnyDb, ownerId: string | null, dropId: string, now: Date): Promise<boolean> {
   const [done] = await db
     .update(allocationDrop)
     .set({ status: "closed", closedAt: now, updatedAt: now })
     .where(and(eq(allocationDrop.id, dropId), eq(allocationDrop.status, "live")))
     .returning();
-  if (!done) throw new OfferError("Only a live drop can be closed.", 409);
-  await audit(db, ownerId, "allocation_drop.closed", dropId, {});
+  if (!done) return false;
+  await audit(db, ownerId, "allocation_drop.closed", dropId, { automatic: ownerId === null });
+
+  let roundNote = "Set the drop's supplier, then create the supplier round from the drop page.";
+  if (done.supplierId && !done.supplierRoundId) {
+    try {
+      await createSupplierRound(db, ownerId, dropId);
+      roundNote = "The supplier round is ready: generate the PO pack and place the order.";
+    } catch (err) {
+      console.error("[drops] supplier round on close failed", dropId, (err as Error).message);
+      roundNote = "Creating the supplier round failed; create it from the drop page.";
+    }
+  }
+  const rows = await db
+    .select({ status: allocationOffer.status, qty: allocationOffer.qty, totalMinor: allocationOffer.totalMinor, accountId: allocationOffer.accountId })
+    .from(allocationOffer)
+    .where(and(eq(allocationOffer.dropId, dropId), inArray(allocationOffer.status, ["accepted", "reserved"])));
+  const paid = rows.filter((r) => r.status === "accepted");
+  const paidMinor = paid.reduce((s, r) => s + r.totalMinor, 0);
+  const units = rows.reduce((s, r) => s + r.qty, 0);
+  const buyers = new Set(paid.map((r) => r.accountId)).size;
+  await notifyOwnersEvent(
+    {
+      type: "drop_closed",
+      title: `Offers closed — ${done.name}: ${formatMoney(paidMinor)} paid, ${units} units to order`,
+      body: `${buyers} buyer${buyers === 1 ? "" : "s"} paid${rows.length > paid.length ? ", plus your internal reservation" : ""}. ${roundNote}`,
+      entityType: "allocation_drop",
+      entityId: dropId,
+      actionNeeded: true,
+    },
+    db,
+  );
+  return true;
+}
+
+/**
+ * Close every live drop whose deadline has passed and nothing is still
+ * mid-payment. Runs with the deadline sweep (Today, buyer Offers page,
+ * daily job, /api/cron/offers).
+ */
+export async function closeDueDrops(db: AnyDb, now = new Date()): Promise<number> {
+  const due = await db
+    .select({ id: allocationDrop.id })
+    .from(allocationDrop)
+    .where(and(eq(allocationDrop.status, "live"), isNotNull(allocationDrop.offersCloseAt), lte(allocationDrop.offersCloseAt, now)));
+  let closed = 0;
+  for (const d of due) {
+    const open = await db
+      .select({ id: allocationOffer.id })
+      .from(allocationOffer)
+      .where(and(eq(allocationOffer.dropId, d.id), inArray(allocationOffer.status, ["offered", "paying"])));
+    if (open.length) continue; // a Checkout still finishing; next run closes it
+    if (await finalizeDrop(db, null, d.id, now)) closed++;
+  }
+  return closed;
+}
+
+/** Expire offers past their deadline, then close drops whose deadline passed. */
+export async function runOfferDeadlines(db: AnyDb, now = new Date()) {
+  const offers = await processOfferDeadlines(db, { now });
+  const dropsClosed = await closeDueDrops(db, now);
+  return { ...offers, dropsClosed };
+}
+
+/**
+ * Move a drop's deadline. Draft: any future time. Live: later only (never
+ * cut a buyer's time short); open offers move with it and their buyers
+ * are emailed the new time.
+ */
+export async function setDropDeadline(db: AnyDb, ownerId: string | null, dropId: string, raw: unknown, now = new Date()) {
+  const drop = await loadDrop(db, dropId);
+  const at = parseDeadline(raw);
+  if (!at || at <= now) throw new OfferError("Pick a deadline in the future.");
+  if (drop.status !== "draft" && drop.status !== "live") throw new OfferError("This drop is closed.", 409);
+  if (drop.status === "live" && drop.offersCloseAt && at <= drop.offersCloseAt) {
+    throw new OfferError("Offers are out, so the deadline can only move later.", 409);
+  }
+  await db.update(allocationDrop).set({ offersCloseAt: at, updatedAt: now }).where(eq(allocationDrop.id, dropId));
+  let moved: { accountId: string }[] = [];
+  if (drop.status === "live") {
+    moved = await db
+      .update(allocationOffer)
+      .set({ expiresAt: at, updatedAt: now })
+      .where(and(eq(allocationOffer.dropId, dropId), inArray(allocationOffer.status, ["offered", "paying"])))
+      .returning({ accountId: allocationOffer.accountId });
+    const accts = await accountFacts(db, [...new Set(moved.map((m) => m.accountId))]);
+    for (const a of accts.values()) {
+      await sendNotificationEmail(
+        {
+          to: a.email,
+          subject: `More time: Fanzia offers now close ${formatDeadline(at)}`,
+          text: `The deadline for your open Fanzia offers in "${drop.name}" moved to ${formatDeadline(at)}.\n\n${appBaseUrlForEmail()}/member/offers`,
+        },
+        "offer.deadline_extended",
+      );
+    }
+  }
+  await audit(db, ownerId, "allocation_drop.deadline_changed", dropId, {
+    before: drop.offersCloseAt?.toISOString() ?? null,
+    after: at.toISOString(),
+    offersMoved: moved.length,
+  });
+}
+
+function appBaseUrlForEmail(): string {
+  return process.env.APP_BASE_URL ?? "http://localhost:3100";
 }
 
 /** Throw away a draft drop. A sent drop is closed instead (it may hold payments). */
@@ -606,8 +744,10 @@ export type DropDetail = {
     status: string;
     supplierId: string | null;
     notes: string | null;
-    offerWindowHours: number;
-    reofferWindowHours: number;
+    offersCloseAt: string | null;
+    leadTimeMinDays: number;
+    leadTimeMaxDays: number;
+    arrivalLabel: string | null;
     sentAt: string | null;
     closedAt: string | null;
     supplierRoundId: string | null;
@@ -699,8 +839,10 @@ export async function getDropDetail(db: AnyDb, dropId: string, now = new Date())
       status: drop.status,
       supplierId: drop.supplierId,
       notes: drop.notes,
-      offerWindowHours: drop.offerWindowHours,
-      reofferWindowHours: drop.reofferWindowHours,
+      offersCloseAt: drop.offersCloseAt?.toISOString() ?? null,
+      leadTimeMinDays: drop.leadTimeMinDays,
+      leadTimeMaxDays: drop.leadTimeMaxDays,
+      arrivalLabel: drop.offersCloseAt ? arrivalRange(drop.offersCloseAt, drop.leadTimeMinDays, drop.leadTimeMaxDays).label : null,
       sentAt: drop.sentAt?.toISOString() ?? null,
       closedAt: drop.closedAt?.toISOString() ?? null,
       supplierRoundId: drop.supplierRoundId,
