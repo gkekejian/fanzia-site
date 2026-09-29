@@ -26,8 +26,8 @@ export function ProductCard({
   qty: number;
   onQtyChange: (productId: string, qty: number) => void;
 }) {
-  const unitLabel = sellableUnitLabel(product.name, product.packsPerUnit);
-  const unit = unitNoun(product.name).toLowerCase();
+  const unitLabel = sellableUnitLabel(product.name, product.packsPerUnit, product.sellUnit);
+  const unit = (product.sellUnit || unitNoun(product.name)).toLowerCase();
   const caseQty = useQtyStep(product.unitsPerCase);
   const perPack = perPackPriceMinor(product.priceMinor, product.packsPerUnit);
 

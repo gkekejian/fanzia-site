@@ -44,6 +44,8 @@ export type ShoppingProduct = {
   trending: boolean;
   trendingRank: number | null;
   requiresImportAcknowledgment: boolean;
+  /** What one unit is ("Booster Box", "Bundle"…); falls back to the name when absent. */
+  sellUnit?: string | null;
   /** Units per case (case-only mode). Optional so older fixtures still type-check. */
   unitsPerCase?: number | null;
 };
@@ -68,8 +70,8 @@ export function unitNoun(name: string): string {
  * Unit-first card headline, e.g. "Booster Box — 36 packs". The price
  * anchor belongs to this unit; per-pack math lives in the meta line only.
  */
-export function sellableUnitLabel(name: string, packsPerUnit: number): string {
-  const noun = unitNoun(name);
+export function sellableUnitLabel(name: string, packsPerUnit: number, sellUnit?: string | null): string {
+  const noun = sellUnit?.trim() || unitNoun(name);
   if (packsPerUnit > 1) return `${noun} — ${packsPerUnit} packs`;
   return noun;
 }

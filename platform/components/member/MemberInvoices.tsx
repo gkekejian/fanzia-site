@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatMoney } from "@/lib/format";
+import { useOrderRules } from "./OrderRulesContext";
 
 type MemberShipment = {
   status: string;
@@ -18,6 +19,7 @@ type MemberInvoice = {
   totalMinor: number;
   balanceMinor: number;
   status: string;
+  fromOffer?: boolean;
   sentAt: string | null;
   createdAt: string;
   shipment: MemberShipment | null;
@@ -29,9 +31,11 @@ const STATUS_BADGE: Record<string, string> = {
   partial: "badge-warn",
   paid: "badge-ok",
   void: "badge-bad",
+  refunded: "badge",
 };
 
 export function MemberInvoices() {
+  const { allocationMode } = useOrderRules();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [invoices, setInvoices] = useState<MemberInvoice[] | null>(null);
@@ -123,7 +127,8 @@ export function MemberInvoices() {
           </thead>
           <tbody>
             {invoices.map((inv) => {
-              const payable = (inv.status === "sent" || inv.status === "partial") && inv.balanceMinor > 0;
+              // Offer invoices are paid from the Offers page (Accept & pay).
+              const payable = !inv.fromOffer && (inv.status === "sent" || inv.status === "partial") && inv.balanceMinor > 0;
               const paid = inv.status === "paid";
               return (
                 <tr key={inv.id}>
@@ -167,6 +172,11 @@ export function MemberInvoices() {
                         {payingId === inv.id ? "Starting…" : "Pay by card"}
                       </button>
                     )}
+                    {inv.fromOffer && inv.balanceMinor > 0 && (inv.status === "sent" || inv.status === "partial") && (
+                      <a href="/member/offers">Pay on the Offers page</a>
+                    )}
+                    {!allocationMode && (
+                      <>
                     <br />
                     <button
                       type="button"
@@ -178,6 +188,8 @@ export function MemberInvoices() {
                     >
                       {reorderingId === inv.id ? "Adding…" : "Reorder these items"}
                     </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               );

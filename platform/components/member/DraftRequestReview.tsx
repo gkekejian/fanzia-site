@@ -148,6 +148,25 @@ export function DraftRequestReview() {
     });
   }
 
+  if (rules.allocationMode) {
+    return (
+      <main className="container" style={{ maxWidth: "720px" }}>
+        <h1>Draft request</h1>
+        <div className="card" role="status">
+          <p style={{ marginTop: 0 }}>
+            Fanzia sells by allocation now, so there are no order requests. Mark what you want on{" "}
+            <a href="/member/wants">your wants list</a> and we&apos;ll email you an offer when stock lands.
+          </p>
+          <p style={{ marginBottom: 0 }}>
+            <a className="btn" href="/member/offers">
+              See your offers
+            </a>
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   if (submitted) {
     return (
       <main className="container">
@@ -237,7 +256,7 @@ export function DraftRequestReview() {
                   <td data-label="Product">
                     {product ? (
                       <>
-                        <strong>{sellableUnitLabel(product.name, product.packsPerUnit)}</strong>
+                        <strong>{sellableUnitLabel(product.name, product.packsPerUnit, product.sellUnit)}</strong>
                         <br />
                         <span style={{ fontSize: "0.9rem" }}>{product.name}</span>
                         <br />

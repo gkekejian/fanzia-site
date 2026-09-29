@@ -11,8 +11,12 @@ type Product = {
   publiclyVisible: boolean;
   priceMinor: number;
   unitsPerCase: number | null;
+  sellUnit?: string;
   costStack?: { markupBps: number; belowMarkupFloor: boolean };
 };
+
+/** What one unit is: buyers' wants and offers count in this unit. */
+const SELL_UNITS = ["Booster Box", "Booster Pack", "Bundle", "Elite Trainer Box", "Collection Box", "Display", "Tin", "Case", "Box"];
 
 /**
  * The live catalog at a glance, and the one place to set case sizes.
@@ -60,6 +64,21 @@ export function ProductsConsole() {
     setMsg((m) => ({ ...m, [p.id]: "Saved." }));
   }
 
+  async function saveUnit(p: Product, value: string) {
+    const res = await fetch(`/api/admin/products/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sellUnit: value || null }),
+    });
+    if (!res.ok) {
+      setMsg((m) => ({ ...m, [p.id]: "Could not save the unit." }));
+      return;
+    }
+    const saved = (await res.json().catch(() => ({}))).product as { sellUnit?: string | null } | undefined;
+    setProducts((list) => list?.map((x) => (x.id === p.id ? { ...x, sellUnit: saved?.sellUnit || value || x.sellUnit } : x)) ?? null);
+    setMsg((m) => ({ ...m, [p.id]: "Saved." }));
+  }
+
   const shown = (products ?? []).filter(
     (p) => !filter || p.sku.toLowerCase().includes(filter.toLowerCase()) || p.name.toLowerCase().includes(filter.toLowerCase()),
   );
@@ -69,7 +88,7 @@ export function ProductsConsole() {
       <div className="page-head">
         <div>
           <h1>Products</h1>
-          <p className="page-sub">Prices come from price list imports. Set case sizes here.</p>
+          <p className="page-sub">Prices come from price list imports. Set what each product is sold as and case sizes here.</p>
         </div>
         <a className="btn" href="/admin/catalog-imports">
           Import a price list
@@ -107,6 +126,7 @@ export function ProductsConsole() {
                 <th>Name</th>
                 <th>Status</th>
                 <th style={{ textAlign: "right" }}>Price</th>
+                <th>Sold as</th>
                 <th>Case size</th>
               </tr>
             </thead>
@@ -127,6 +147,20 @@ export function ProductsConsole() {
                     {!p.publiclyVisible && <span className="badge" style={{ marginLeft: "0.3rem" }}>hidden</span>}
                   </td>
                   <td style={{ textAlign: "right" }}>{p.priceMinor ? formatMoney(p.priceMinor) : "—"}</td>
+                  <td>
+                    <label htmlFor={`unit-${p.id}`} className="visually-hidden">
+                      What one unit of {p.name} is
+                    </label>
+                    <select id={`unit-${p.id}`} value={p.sellUnit ?? ""} onChange={(e) => void saveUnit(p, e.target.value)}>
+                      {p.sellUnit && !SELL_UNITS.includes(p.sellUnit) && <option value={p.sellUnit}>{p.sellUnit}</option>}
+                      <option value="">Auto (from name)</option>
+                      {SELL_UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                   <td>
                     <span style={{ display: "inline-flex", gap: "0.4rem", alignItems: "center" }}>
                       <label htmlFor={`case-${p.id}`} className="visually-hidden">

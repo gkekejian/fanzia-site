@@ -15,6 +15,8 @@ import {
 } from "@/db/schema";
 import { formatMoney } from "@/lib/format";
 import { runHealthChecks } from "./health";
+import { dropAttention } from "@/lib/offers/drops";
+import { processOfferDeadlines } from "@/lib/offers/lifecycle";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyDb = PgDatabase<any, any, any>;
@@ -34,6 +36,7 @@ export type ActionItem = {
     | "fulfillment"
     | "hold"
     | "proposal"
+    | "drop"
     | "inbox";
   title: string;
   detail: string;
@@ -245,6 +248,26 @@ export async function getActionQueue(db: AnyDb, now: Date = new Date()): Promise
         href: `/admin/accounts/${a.id}`,
         severity: "info",
         action: { label: "Lift hold", method: "POST", endpoint: `/api/admin/accounts/${a.id}/hold`, body: { hold: false }, confirm: `Let ${a.legalName} order again?` },
+      });
+    }
+  });
+
+  // Allocation drops. Deadlines are also processed here: on the Hobby plan
+  // there's no hourly cron, so every owner visit keeps offers moving.
+  await guarded(async () => {
+    await processOfferDeadlines(db, { now });
+    const { drafts, unclaimed } = await dropAttention(db);
+    if (drafts > 0)
+      items.push({ id: "drop-drafts", priority: 4, kind: "drop", title: `${drafts} drop draft(s) not sent`, detail: "Review the suggested split and send offers.", href: "/admin/drops", severity: "info" });
+    for (const u of unclaimed) {
+      items.push({
+        id: `drop-free:${u.dropId}:${u.productId}`,
+        priority: 3,
+        kind: "drop",
+        title: `${u.freeQty} unclaimed in ${u.dropName}`,
+        detail: "Every interested buyer has answered. Offer it to someone by hand, lower the quantity, or keep it for vending.",
+        href: `/admin/drops/${u.dropId}`,
+        severity: "warn",
       });
     }
   });

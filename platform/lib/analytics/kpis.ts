@@ -1,5 +1,5 @@
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { and, count, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, count, gte, inArray, lt, ne, notInArray, sql } from "drizzle-orm";
 import {
   application,
   auditLog,
@@ -165,7 +165,8 @@ export async function computeKpis(db: AnyDb, opts: { days?: number; now?: Date }
   const invoices = await db
     .select()
     .from(invoice)
-    .where(and(ne(invoice.status, "void"), gte(invoice.createdAt, earliest)));
+    // "refunded" = a late allocation-offer payment returned in full: never revenue.
+    .where(and(notInArray(invoice.status, ["void", "refunded"]), gte(invoice.createdAt, earliest)));
   const inWindow = invoices.filter((i) => i.createdAt >= start && i.createdAt <= now);
   const inPrev = invoices.filter((i) => i.createdAt >= prevStart && i.createdAt < start);
 

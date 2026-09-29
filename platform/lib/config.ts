@@ -123,13 +123,16 @@ export const SETTING_DEFS = [
     key: "selling_mode",
     group: "Allocations",
     type: "enum",
-    default: "allocation",
+    // Self-serve until the owner switches: deploying this never changes how
+    // live buyers order mid-cycle. Open order requests finish normally
+    // after the switch; only new submissions stop.
+    default: "self_serve",
     options: [
       { value: "allocation", label: "Allocation offers (buyers mark interest, you send offers)" },
       { value: "self_serve", label: "Self-serve ordering (buyers submit order requests)" },
     ],
     label: "How buyers get product",
-    help: "Allocation offers: the catalog becomes an interest list and buyers only buy through offers you send from Drops. Self-serve: the old catalog + order requests. Your internal vending account can always order directly.",
+    help: "Allocation offers: the catalog becomes an interest list and buyers only buy through offers you send from Drops. Self-serve: the old catalog + order requests. Your internal vending account can always order directly. Switch when your first drop is ready; order requests already submitted still finish normally.",
   },
   {
     key: "offer_window_hours",

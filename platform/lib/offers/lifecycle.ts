@@ -1,5 +1,5 @@
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { and, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import {
   account,
   allocationDrop,
@@ -609,6 +609,7 @@ export async function acceptOffer(
         and(
           eq(allocationOffer.id, offer.id),
           inArray(allocationOffer.status, ["offered", "paying"]),
+          gt(allocationOffer.expiresAt, now),
           or(isNull(allocationOffer.chargeStartedAt), lt(allocationOffer.chargeStartedAt, new Date(now.getTime() - CHARGE_LOCK_MS))),
         ),
       )
@@ -664,6 +665,9 @@ export async function acceptOffer(
   if (!locked) {
     const again = await loadOffer(db, offer.id);
     if (again?.offer.status === "accepted" && again.offer.invoiceId) return { status: "accepted", invoiceId: again.offer.invoiceId };
+    if (!again || (again.offer.status !== "offered" && again.offer.status !== "paying") || (again.offer.expiresAt && again.offer.expiresAt <= now)) {
+      throw new OfferError("This offer has closed.", 409);
+    }
     throw new OfferError("A payment for this offer is already in progress. Refresh in a minute.", 409);
   }
   const invoiceId = locked.offer.invoiceId!;

@@ -57,7 +57,7 @@ export async function createShipment(db: AnyDb, invoiceId: string, ownerId: stri
 
   const [inv] = await db.select().from(invoice).where(eq(invoice.id, invoiceId)).limit(1);
   if (!inv) throw new ShipmentError("Invoice not found.", 404);
-  if (inv.status === "void") throw new ShipmentError("Cannot ship a void invoice.", 400);
+  if (inv.status === "void" || inv.status === "refunded") throw new ShipmentError(`Cannot ship a ${inv.status} invoice.`, 400);
 
   const detail = await getInvoiceDetail(db, invoiceId);
   if (!detail.readyForFulfillment) {

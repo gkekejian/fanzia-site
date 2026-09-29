@@ -69,6 +69,11 @@ export async function createCardCheckout(db: AnyDb, buyer: BuyerIdentity, invoic
   if (!inv || inv.accountId !== buyer.accountId) {
     throw new InvoicingError("Invoice not found.", 404);
   }
+  if (inv.allocationOfferId) {
+    // Offer invoices are paid with "Accept & pay" so the offer, its deadline
+    // and its Checkout stay in step; a second Checkout could double-charge.
+    throw new InvoicingError("Pay this invoice from your Offers page (Accept & pay).", 409);
+  }
   if (inv.status === "void") throw new InvoicingError("This invoice was voided.", 400);
   if (inv.status === "draft") throw new InvoicingError("This invoice has not been sent yet.", 400);
   if (inv.status === "paid") throw new InvoicingError("This invoice is already paid.", 400);
@@ -291,10 +296,11 @@ export async function processStripeWebhook(
   }
 
   const cardSave = cardSaveFromEvent(event);
-  if (cardSave) {
+  if (cardSave?.setupOnly) {
+    // "Save my card" with no payment: a failure here is retried by Stripe.
     const { saveCardFromCheckout } = await import("@/lib/offers/cards");
     await saveCardFromCheckout(db, cardSave.accountId, cardSave.sessionId);
-    if (cardSave.setupOnly) return { handled: true };
+    return { handled: true };
   }
 
   const facts = factsFromEvent(event);
@@ -327,6 +333,16 @@ export async function processStripeWebhook(
     return { handled: false }; // unknown event type, or card event without our metadata
   }
   const result = await recordCardPaymentFromStripe(db, facts);
+  if (cardSave) {
+    // Card saved alongside an offer payment. Best effort, after the payment
+    // is safely recorded: the buyer can always re-add the card.
+    try {
+      const { saveCardFromCheckout } = await import("@/lib/offers/cards");
+      await saveCardFromCheckout(db, cardSave.accountId, cardSave.sessionId);
+    } catch (err) {
+      console.error("[stripe] could not save the card from checkout", cardSave.sessionId, (err as Error).message);
+    }
+  }
   if (result.invoice.allocationOfferId) {
     // Offer invoices: acceptance (or a late-payment refund) sends its own notices.
     const { onInvoicePaymentRecorded } = await import("@/lib/offers/lifecycle");

@@ -6,6 +6,7 @@ import { requireActor } from "@/lib/auth/actor";
 import { assertOwner } from "@/lib/auth/rbac";
 import { recordAudit } from "@/lib/audit";
 import { refundCardPayment } from "@/lib/invoicing/stripe";
+import { markLateOfferInvoiceRefunded } from "@/lib/allocation/fromInvoices";
 
 /**
  * Owner-only: refund a pending/failed refund to the buyer's card through
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .update(refundDue)
       .set({ status: "refunded", method: "card", stripeRefundId: refund.id, resolvedBy: actor.user.id, resolvedAt: new Date(), lastError: null })
       .where(eq(refundDue.id, row.id));
+    await markLateOfferInvoiceRefunded(db, row.invoiceId);
     await recordAudit({ actorUserId: actor.user.id, actorRole: "owner", actorType: "owner", action: "refund_due.card_refunded", entityType: "refund_due", entityId: row.id, after: { stripeRefundId: refund.id } });
     return NextResponse.json({ ok: true });
   } catch (err) {

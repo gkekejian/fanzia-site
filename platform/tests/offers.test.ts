@@ -47,6 +47,11 @@ import {
   suggestDrop,
 } from "@/lib/offers/drops";
 import { OfferError } from "@/lib/offers/context";
+import { saveInterest, getInterest } from "@/lib/offers/interest";
+import { setSetting } from "@/lib/settings";
+import { saveDraftRequest } from "@/lib/catalog/draftRequest";
+import { AllocationModeError, recordInvoicePayment, submitDraftRequest, voidInvoice } from "@/lib/invoicing/service";
+import { getActionQueue } from "@/lib/ops/today";
 
 // ── Fake card gateway ─────────────────────────────────────────────────────
 
@@ -529,5 +534,52 @@ describe("buyer offer list", () => {
       .from(allocationOffer)
       .where(and(eq(allocationOffer.accountId, b.account.id), eq(allocationOffer.status, "offered")));
     expect(rows).toHaveLength(1);
+  });
+});
+
+describe("allocation mode guards", () => {
+  it("blocks order submission for external buyers but not the internal account", async () => {
+    await setSetting("selling_mode", "allocation", "test", db);
+    const a = await makeBuyer("Alpha Cards");
+    const internal = await makeBuyer("Fanzia Vending", { internal: true });
+    const { product: p } = await makeItemProduct();
+    await saveDraftRequest(a.account.id, { lines: [{ productId: p.id, qtyRequested: 10 }], notes: "" }, db);
+    await expect(submitDraftRequest(db, a.actor)).rejects.toBeInstanceOf(AllocationModeError);
+    await saveDraftRequest(internal.account.id, { lines: [{ productId: p.id, qtyRequested: 10 }], notes: "" }, db);
+    const created = await submitDraftRequest(db, internal.actor);
+    expect(created.accountId).toBe(internal.account.id);
+  });
+
+  it("saves a wants list in whole cases and replaces it on each save", async () => {
+    const a = await makeBuyer("Alpha Cards");
+    const { product: p } = await makeItemProduct({ unitsPerCase: 6 });
+    await expect(saveInterest(db, a.account.id, { lines: [{ productId: p.id, qtyRequested: 5 }] })).rejects.toThrow(/cases of 6/);
+    await saveInterest(db, a.account.id, { lines: [{ productId: p.id, qtyRequested: 12 }] });
+    expect(await getInterest(db, a.account.id)).toEqual([{ productId: p.id, qtyRequested: 12 }]);
+    await saveInterest(db, a.account.id, { lines: [] });
+    expect(await getInterest(db, a.account.id)).toEqual([]);
+  });
+
+  it("offer invoices can't be voided or paid outside Accept & pay", async () => {
+    const a = await makeBuyer("Alpha Cards");
+    await liveDrop(2, [[a.account.id, 2]]);
+    const [offer] = await offersFor(a.account.id);
+    await acceptOffer(db, a.actor, offer!.id, { now: hours(1), gateway });
+    const [paying] = await offersFor(a.account.id);
+    await expect(voidInvoice(db, paying!.invoiceId!)).rejects.toThrow(/Cancel the offer/);
+    await expect(recordInvoicePayment(db, paying!.invoiceId!, ownerId, { amountMinor: 100, method: "ach" })).rejects.toThrow(/Accept & pay/);
+  });
+
+  it("puts unclaimed units on Today once every interested buyer has answered", async () => {
+    const a = await makeBuyer("Alpha Cards");
+    const { drop } = await liveDrop(4, [[a.account.id, 2]]);
+    let queue = await getActionQueue(db, hours(1));
+    expect(queue.some((i) => i.id.startsWith(`drop-free:${drop.id}`))).toBe(false);
+    const [offer] = await offersFor(a.account.id);
+    await declineOffer(db, a.actor, offer!.id, { now: hours(2), gateway });
+    queue = await getActionQueue(db, hours(2));
+    const item = queue.find((i) => i.id.startsWith(`drop-free:${drop.id}`));
+    expect(item?.title).toMatch(/^4 unclaimed/);
+    expect(ownerNotices.some((n) => n.type === "offer_leftover")).toBe(true);
   });
 });

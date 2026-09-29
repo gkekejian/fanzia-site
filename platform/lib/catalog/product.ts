@@ -24,6 +24,8 @@ export async function updateProductFields(
     imageStatus?: string;
     /** Units per supplier case; null clears it (no case rule). */
     unitsPerCase?: number | null;
+    /** What one unit is ("Booster Pack", "Bundle"…); null = infer from the name. */
+    sellUnit?: string | null;
     actor: Actor;
   },
   db: AnyDb = defaultDb,
@@ -36,6 +38,7 @@ export async function updateProductFields(
   if (input.publiclyVisible !== undefined) patch.publiclyVisible = input.publiclyVisible;
   if (input.imageStatus !== undefined) patch.imageStatus = input.imageStatus;
   if (input.unitsPerCase !== undefined) patch.unitsPerCase = input.unitsPerCase;
+  if (input.sellUnit !== undefined) patch.sellUnit = input.sellUnit?.trim() || null;
 
   const [updated] = await db.update(product).set(patch).where(eq(product.id, input.productId)).returning();
 
@@ -52,6 +55,7 @@ export async function updateProductFields(
         publiclyVisible: existing.publiclyVisible,
         imageStatus: existing.imageStatus,
         unitsPerCase: existing.unitsPerCase,
+        sellUnit: existing.sellUnit,
       },
       after: patch,
     },

@@ -1,5 +1,5 @@
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { and, count, desc, eq, lte, ne } from "drizzle-orm";
+import { and, count, desc, eq, lte, ne, notInArray } from "drizzle-orm";
 import { db as defaultDb } from "@/db/client";
 import {
   account,
@@ -64,6 +64,14 @@ export class BelowMinimumError extends InvoicingError {
 export class OrderingPausedError extends InvoicingError {
   constructor(message: string) {
     super(message || "Ordering is paused right now. Your draft is saved.", 409);
+  }
+}
+export class AllocationModeError extends InvoicingError {
+  constructor() {
+    super(
+      "Fanzia sells by allocation now: mark what you want in the catalog and we'll send you offers when stock lands. Your list is saved.",
+      409,
+    );
   }
 }
 export class AccountOnHoldError extends InvoicingError {
@@ -135,11 +143,12 @@ export async function submitDraftRequest(db: AnyDb, buyer: BuyerIdentity, opts?:
   if (rules.paused) throw new OrderingPausedError(rules.pausedMessage);
 
   const [holdRow] = await db
-    .select({ hold: account.orderingHoldReason })
+    .select({ hold: account.orderingHoldReason, kind: account.kind })
     .from(account)
     .where(eq(account.id, buyer.accountId))
     .limit(1);
   if (holdRow?.hold) throw new AccountOnHoldError();
+  if (rules.allocationMode && holdRow?.kind !== "internal") throw new AllocationModeError();
 
   const draft = await getDraftRequest(buyer.accountId, db);
   const lines = (draft?.lines ?? []) as DraftLine[];
@@ -388,7 +397,7 @@ async function priorInvoiceCount(db: AnyDb, accountId: string): Promise<number> 
   const [row] = await db
     .select({ n: count() })
     .from(invoice)
-    .where(and(eq(invoice.accountId, accountId), ne(invoice.status, "void")));
+    .where(and(eq(invoice.accountId, accountId), notInArray(invoice.status, ["void", "refunded"])));
   return row?.n ?? 0;
 }
 
@@ -729,6 +738,9 @@ export async function voidInvoice(db: AnyDb, invoiceId: string) {
   if (inv.status !== "draft" && inv.status !== "sent") {
     throw new InvoicingError("Only draft or sent invoices can be voided.", 400);
   }
+  if (inv.allocationOfferId) {
+    throw new InvoicingError("This invoice belongs to an allocation offer. Cancel the offer on its drop page instead.", 409);
+  }
   const existing = await db.select().from(payment).where(eq(payment.invoiceId, invoiceId)).limit(1);
   if (existing.length > 0) throw new InvoicingError("Invoices with recorded payments cannot be voided.", 400);
   const [updated] = await db
@@ -781,6 +793,11 @@ export async function recordInvoicePayment(db: AnyDb, invoiceId: string, ownerId
     const [inv] = await tx.select().from(invoice).where(eq(invoice.id, invoiceId)).limit(1);
     if (!inv) throw new InvoicingError("Invoice not found.", 404);
     if (inv.status === "void") throw new InvoicingError("Cannot record a payment on a void invoice.", 400);
+    if (inv.allocationOfferId) {
+      // Offers are all-or-nothing card payments with a deadline; a partial or
+      // uncleared manual payment would leave the offer neither paid nor open.
+      throw new InvoicingError("Allocation offer invoices are paid by card through Accept & pay.", 409);
+    }
 
     const existing = await tx.select().from(payment).where(eq(payment.invoiceId, invoiceId));
     const balance = balanceDue(inv.totalMinor, existing);

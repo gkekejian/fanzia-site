@@ -31,8 +31,8 @@ export function ProductDetail({
   onQtyChange: (productId: string, qty: number) => void;
 }) {
   const qty = qtyById.get(product.id) ?? 0;
-  const unitLabel = sellableUnitLabel(product.name, product.packsPerUnit);
-  const unit = unitNoun(product.name).toLowerCase();
+  const unitLabel = sellableUnitLabel(product.name, product.packsPerUnit, product.sellUnit);
+  const unit = (product.sellUnit || unitNoun(product.name)).toLowerCase();
   const caseQty = useQtyStep(product.unitsPerCase);
   const perPack = perPackPriceMinor(product.priceMinor, product.packsPerUnit);
   const chip = availabilityChip(product);
@@ -108,8 +108,7 @@ export function ProductDetail({
 
       {product.requiresImportAcknowledgment && (
         <div className="draft-banner" role="note" style={{ marginTop: "1rem" }}>
-          This product is sourced through an import route. You&apos;ll confirm the import notice on the draft
-          review screen before submitting.
+          This product is sourced through an import route. You&apos;ll confirm the import notice before paying.
         </div>
       )}
 
@@ -123,7 +122,7 @@ export function ProductDetail({
                 <a href={`/member/catalog/${s.id}`}>
                   <strong>{s.name}</strong>
                   <span className="search-suggestion-unit">
-                    {sellableUnitLabel(s.name, s.packsPerUnit)} · {formatMoney(s.priceMinor, s.currencyCode)}
+                    {sellableUnitLabel(s.name, s.packsPerUnit, s.sellUnit)} · {formatMoney(s.priceMinor, s.currencyCode)}
                   </span>
                 </a>
                 <AddToDraftButton

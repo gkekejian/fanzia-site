@@ -15,6 +15,7 @@ export function orderRulesFromConfig(config: Config): OrderRules {
     caseOnly: config.case_only_mode,
     paused: config.ordering_paused,
     pausedMessage: config.ordering_paused_message,
+    allocationMode: config.selling_mode === "allocation",
   };
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useOrderRules } from "./OrderRulesContext";
 
 export type DraftLine = { productId: string; qtyRequested: number };
 
@@ -11,6 +12,10 @@ export type DraftLine = { productId: string; qtyRequested: number };
  * against out-of-order saves with a monotonically increasing revision.
  */
 export function useDraft() {
+  // In allocation mode the same stepper edits the interest list instead.
+  const { allocationMode } = useOrderRules();
+  const endpoint = allocationMode ? "/api/member/interest" : "/api/member/draft-request";
+  const noun = allocationMode ? "list" : "draft";
   const [lines, setLinesState] = useState<DraftLine[] | null>(null);
   const [notes, setNotes] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -19,7 +24,7 @@ export function useDraft() {
   const revisionRef = useRef(0);
 
   useEffect(() => {
-    fetch("/api/member/draft-request")
+    fetch(endpoint)
       .then(async (res) => {
         if (!res.ok) throw new Error();
         const body = await res.json();
@@ -35,10 +40,10 @@ export function useDraft() {
         linesRef.current = [];
         setLinesState([]);
       });
-  }, []);
+  }, [endpoint]);
 
   const persist = useCallback(async (next: DraftLine[], revision: number) => {
-    const res = await fetch("/api/member/draft-request", {
+    const res = await fetch(endpoint, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lines: next, notes: notesRef.current }),
@@ -46,11 +51,11 @@ export function useDraft() {
     if (revision !== revisionRef.current) return; // superseded by a newer save
     if (!res || !res.ok) {
       const body = res ? await res.json().catch(() => ({})) : {};
-      setSaveError(body.error ?? "Could not save your draft. Try again.");
+      setSaveError(body.error ?? `Could not save your ${noun}. Try again.`);
       return;
     }
     setSaveError(null);
-  }, []);
+  }, [endpoint, noun]);
 
   /** Replace the quantity for one product (0 removes the line). Saves through immediately. */
   const setQty = useCallback(

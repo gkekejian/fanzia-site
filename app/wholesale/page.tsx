@@ -4,13 +4,13 @@ import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
 import MotionSection from "@/components/MotionSection";
 import WaitlistForm from "@/components/wholesale/WaitlistForm";
-import { getApplicationsOpen, PORTAL_BASE } from "@/lib/portalStatus";
+import { getPortalStatus, PORTAL_BASE } from "@/lib/portalStatus";
 import TrackedLink from "@/components/TrackedLink";
 
 export const metadata: Metadata = {
   title: "Wholesale: Japanese & Chinese TCG",
   description:
-    "Wholesale sealed Japanese- and Chinese-language trading card product for vending operators, live sellers, and specialty retailers. $500 minimum. Pay before we buy.",
+    "Wholesale sealed Japanese- and Chinese-language trading card product for vending operators, live sellers, and specialty retailers. Verified business buyers only. Pay before we buy.",
 };
 
 // Re-check the portal toggle every 5 minutes (ISR), so flipping it in the
@@ -33,6 +33,14 @@ const STEPS = [
   { n: "04", label: "Pay, then we ship", copy: "Card, ACH, or wire. We buy after your payment clears, then ship from Glendale." },
 ];
 
+// Allocation selling (portal Settings → Allocations). Shown when that mode is on.
+const ALLOCATION_STEPS = [
+  { n: "01", label: "Apply or get invited", copy: "Business buyers with a verified resale certificate only." },
+  { n: "02", label: "Tell us what you want", copy: "Mark products and quantities in the portal. It's a wish list, not an order." },
+  { n: "03", label: "Get an allocation", copy: "When stock lands we offer it to buyers by history and demand. You get an email." },
+  { n: "04", label: "Accept & pay, then we ship", copy: "One tap charges your card on file. We buy after payment, then ship from Glendale." },
+];
+
 // Answers the questions that otherwise arrive as emails. Every number here
 // is enforced in platform/lib/invoicing/rules.ts; change both together.
 const FAQ = [
@@ -44,8 +52,22 @@ const FAQ = [
   { q: "Are you an authorized distributor?", a: "No. Fanzia is an independent import and sourcing business, not affiliated with or endorsed by any trading card publisher." },
 ];
 
+// Rules enforced in platform/lib/offers (allocation mode).
+const ALLOCATION_FAQ = [
+  { q: "How are allocations decided?", a: "By what you asked for and your history with us: what you've bought, how quickly you pay, and whether you take the offers you get. Our own vending machines are stocked first." },
+  { q: "Can I choose my quantity?", a: "You tell us what you want; we offer what we can. Each offer is all or nothing, and you can decline it." },
+  { q: "How long do I have?", a: "48 hours from the offer email. Declining or letting an offer lapse is fine, but it lowers your priority next time." },
+  { q: "How do I pay?", a: "Accept & pay charges the card you keep on file, or you pay on a secure Stripe page that saves it. Nothing is ever charged unless you accept. No credit terms." },
+  { q: "Is this English product?", a: "No. Everything we sell is Japanese- or Chinese-language import edition, and every offer asks you to acknowledge that before paying." },
+  { q: "What if the supplier ships short?", a: "You're refunded for anything we can't deliver. Import lead times depend on the supplier and customs, so treat any date as an estimate." },
+  { q: "Returns?", a: "Wholesale sales are final. Shipping damage, short counts, or wrong items are handled as claims through the portal." },
+  { q: "Are you an authorized distributor?", a: "No. Fanzia is an independent import and sourcing business, not affiliated with or endorsed by any trading card publisher." },
+];
+
 export default async function WholesalePage() {
-  const open = await getApplicationsOpen();
+  const { applicationsOpen: open, allocation } = await getPortalStatus();
+  const steps = allocation ? ALLOCATION_STEPS : STEPS;
+  const faq = allocation ? ALLOCATION_FAQ : FAQ;
 
   return (
     <>
@@ -110,7 +132,7 @@ export default async function WholesalePage() {
           <div className="container">
             <p className="eyebrow">How it works</p>
             <ol className="mt-8 grid gap-6 md:grid-cols-4">
-              {STEPS.map((s) => (
+              {steps.map((s) => (
                 <li key={s.n} className="border-t-2 border-brand-red pt-4">
                   <span className="font-display text-sm text-brand-red">{s.n}</span>
                   <p className="mt-2 font-display text-lg uppercase leading-tight text-white">{s.label}</p>
@@ -128,7 +150,7 @@ export default async function WholesalePage() {
               <h2 className="h-section">Before you ask.</h2>
             </div>
             <dl className="divide-y divide-white/10 border-y border-white/10 lg:col-span-8">
-              {FAQ.map((f) => (
+              {faq.map((f) => (
                 <div key={f.q} className="grid gap-2 py-5 md:grid-cols-3 md:gap-6">
                   <dt className="font-display text-sm uppercase tracking-[0.12em] text-white">{f.q}</dt>
                   <dd className="text-white/70 md:col-span-2">{f.a}</dd>

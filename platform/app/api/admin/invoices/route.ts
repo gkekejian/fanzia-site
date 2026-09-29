@@ -5,7 +5,7 @@ import { account, invoice } from "@/db/schema";
 import { requireActor } from "@/lib/auth/actor";
 import { assertOwner } from "@/lib/auth/rbac";
 
-const VALID_STATUSES = ["draft", "sent", "paid", "partial", "void"];
+const VALID_STATUSES = ["draft", "sent", "paid", "partial", "void", "refunded"];
 
 export async function GET(req: NextRequest) {
   const actor = await requireActor(req);

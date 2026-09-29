@@ -1,3 +1,4 @@
+import { unitNoun } from "@/lib/member/shopping";
 import type { product, sourcingRoute } from "@/db/schema";
 import type { priceEpoch } from "@/db/schema";
 import { CONFIDENCE_LABEL, isExpired } from "./staleness";
@@ -98,6 +99,8 @@ export type MemberProductDTO = PublicProductDTO & {
   requiresImportAcknowledgment: boolean;
   /** Units per supplier case; with case-only mode on, order qty must be a multiple. Null = no case rule. */
   unitsPerCase: number | null;
+  /** What one unit is ("Booster Box", "Booster Pack", "Bundle"…): the owner's setting, else inferred from the name. */
+  sellUnit: string;
 };
 
 export function toMemberProductDTO(
@@ -131,6 +134,7 @@ export function toMemberProductDTO(
     trendingRank: extras.trendingRank ?? null,
     requiresImportAcknowledgment,
     unitsPerCase: p.unitsPerCase ?? null,
+    sellUnit: p.sellUnit?.trim() || unitNoun(p.name),
   };
 }
 

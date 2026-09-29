@@ -19,6 +19,24 @@ export function StickyDraftBar({
   const rules = useOrderRules();
   const totals = draftTotals(lines, priceById);
   if (totals.units === 0) return null;
+  if (rules.allocationMode) {
+    return (
+      <>
+        <div className="sticky-draft-bar-spacer" aria-hidden="true" />
+        <a href="/member/wants" className="sticky-draft-bar" aria-label="Open your wants list">
+          <span className="sticky-draft-bar-main">
+            <strong>
+              {lines.length} product{lines.length === 1 ? "" : "s"} wanted
+            </strong>
+          </span>
+          <span className="sticky-draft-bar-status">Offers arrive by email when stock lands</span>
+          <span className="sticky-draft-bar-go" aria-hidden="true">
+            →
+          </span>
+        </a>
+      </>
+    );
+  }
   const progress = milestoneProgress(totals.subtotalMinor, rules);
 
   return (

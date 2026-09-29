@@ -12,6 +12,7 @@ import { notifyOwnersEvent } from "@/lib/notifications";
 import { maybeSendDecisionReminder } from "@/lib/ops/reminders";
 import { maybeSendWeeklyDigest } from "@/lib/analytics/digest";
 import { OPS_SWEEP_HEARTBEAT_KEY, OPS_SWEEP_RESULT_KEY } from "@/lib/ops/health";
+import { processOfferDeadlines } from "@/lib/offers/lifecycle";
 
 /**
  * Daily ops sweep. Runs on Vercel Cron (vercel.json), which sends
@@ -114,6 +115,9 @@ export async function GET(req: NextRequest) {
     }
   };
 
+  // Allocation offers past their deadline (also run on page visits and by
+  // /api/cron/offers, since Hobby cron is daily).
+  const offers = await isolated("offer deadlines", () => processOfferDeadlines(db, { now }));
   const outbox = await isolated("email outbox", () => retryEmailOutbox(db, sendTransactionalEmail, now));
   const reminder = await isolated("decision reminder", () =>
     maybeSendDecisionReminder(db, {
@@ -147,6 +151,7 @@ export async function GET(req: NextRequest) {
         proposalNudges: result.proposalNudges,
         nayax,
         suggestion,
+        offers,
         outbox,
         reminder,
         digest,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useQtyStep } from "./OrderRulesContext";
+import { useOrderRules, useQtyStep } from "./OrderRulesContext";
 
 /**
  * One-tap "Add to draft" that morphs into an inline − qty + stepper after
@@ -26,6 +26,9 @@ export function AddToDraftButton({
   unitsPerCase?: number | null;
 }) {
   const unit = useQtyStep(unitsPerCase);
+  // Allocation mode: the same control edits the interest list ("I want this").
+  const { allocationMode } = useOrderRules();
+  const listName = allocationMode ? "your wants" : "draft";
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const qtyRef = useRef(qty);
@@ -61,16 +64,16 @@ export function AddToDraftButton({
         type="button"
         className={`btn ${compact ? "btn-compact" : ""}`}
         onClick={() => onChange(productId, unit)}
-        aria-label={unit > 1 ? `Add one case (${unit} units) of ${productName} to draft` : `Add ${productName} to draft`}
+        aria-label={unit > 1 ? `Add one case (${unit} units) of ${productName} to ${listName}` : `Add ${productName} to ${listName}`}
       >
-        {unit > 1 ? `Add case of ${unit}` : "Add to draft"}
+        {allocationMode ? (unit > 1 ? `I want a case of ${unit}` : "I want this") : unit > 1 ? `Add case of ${unit}` : "Add to draft"}
       </button>
     );
   }
 
   const btn = compact ? "btn btn-compact btn-secondary stepper-btn" : "btn btn-secondary stepper-btn";
   return (
-    <div className="stepper" role="group" aria-label={`Quantity of ${productName} in draft`}>
+    <div className="stepper" role="group" aria-label={`Quantity of ${productName} in ${listName}`}>
       <button
         type="button"
         className={btn}

@@ -24,6 +24,7 @@ const GROUPS: { label: string; links: Link[] }[] = [
   {
     label: "Orders",
     links: [
+      { href: "/admin/drops", label: "Drops & offers" },
       { href: "/admin/order-requests", label: "Order requests" },
       { href: "/admin/invoices", label: "Invoices" },
       { href: "/admin/allocation-rounds", label: "Supplier rounds" },

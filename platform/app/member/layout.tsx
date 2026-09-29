@@ -1,4 +1,8 @@
 import type { ReactNode } from "react";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { account } from "@/db/schema";
+import { getCurrentBuyer } from "@/lib/auth/buyerSession";
 import { getOrderRules } from "@/lib/invoicing/orderRules";
 import { OrderRulesProvider } from "@/components/member/OrderRulesContext";
 
@@ -8,7 +12,15 @@ import { OrderRulesProvider } from "@/components/member/OrderRulesContext";
  * buyer page, so nobody builds a cart they can't submit without knowing.
  */
 export default async function MemberLayout({ children }: { children: ReactNode }) {
-  const rules = await getOrderRules();
+  let rules = await getOrderRules();
+  if (rules.allocationMode) {
+    // The internal vending account keeps ordering directly in either mode.
+    const buyer = await getCurrentBuyer().catch(() => null);
+    if (buyer) {
+      const [acct] = await db.select({ kind: account.kind }).from(account).where(eq(account.id, buyer.accountId)).limit(1);
+      if (acct?.kind === "internal") rules = { ...rules, allocationMode: false };
+    }
+  }
   return (
     <OrderRulesProvider rules={rules}>
       {rules.paused && (

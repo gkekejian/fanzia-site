@@ -84,7 +84,15 @@ export function MemberCatalog() {
     <main className="container catalog-page" style={{ maxWidth: "1100px" }}>
       <h1>Catalog</h1>
 
-      {savedLines.length > 0 && !resumeDismissed && (
+      {rules.allocationMode && (
+        <p className="fee-strip">
+          <strong>How buying works:</strong> tap <em>I want this</em> on anything you&apos;d take and set how many.
+          When stock lands we send you an offer by email. Each offer is all or nothing: <em>Accept &amp; pay</em>{" "}
+          charges your card on file, or <em>Decline</em> passes it on. Your list isn&apos;t an order and costs nothing.
+        </p>
+      )}
+
+      {!rules.allocationMode && savedLines.length > 0 && !resumeDismissed && (
         <div className="draft-banner resume-banner" role="status">
           <span>
             <strong>Resume your draft</strong> — {draftSummaryNames(savedLines, nameById)}{" "}
@@ -109,7 +117,7 @@ export function MemberCatalog() {
         </div>
       )}
 
-      <p className="fee-strip">
+      {!rules.allocationMode && <p className="fee-strip">
         Wholesale orders have a <strong>{formatMoney(rules.minimumMinor)} minimum</strong>.
         {rules.smallOrderFeeMinor > 0 && (
           <>
@@ -120,9 +128,9 @@ export function MemberCatalog() {
           </>
         )}
         {rules.caseOnly && " Items marked with a case size are sold in full cases only."}
-      </p>
+      </p>}
 
-      {!disclosureDismissed && (
+      {!rules.allocationMode && !disclosureDismissed && (
         <div className="draft-banner" role="note" style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start", fontWeight: 400 }}>
           <span style={{ flex: 1 }}>{commercialDisclosureShort(rules)}</span>
           <button

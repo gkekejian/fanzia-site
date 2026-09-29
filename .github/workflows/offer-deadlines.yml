@@ -1,0 +1,27 @@
+# Moves allocation offers along between Vercel's daily crons (Hobby plan).
+# Optional: without the two repository secrets below it does nothing.
+#   FANZIA_APP_URL   e.g. https://app.fanzia.io
+#   FANZIA_CRON_SECRET  the same value as CRON_SECRET on Vercel
+name: Offer deadlines
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Process offer deadlines
+        env:
+          APP_URL: ${{ secrets.FANZIA_APP_URL }}
+          CRON_SECRET: ${{ secrets.FANZIA_CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "FANZIA_APP_URL / FANZIA_CRON_SECRET not set; skipping."
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/offers"

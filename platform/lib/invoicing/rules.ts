@@ -29,6 +29,12 @@ export type OrderRules = {
   caseOnly: boolean;
   paused: boolean;
   pausedMessage: string;
+  /**
+   * Allocation selling (Settings → Allocations → Selling mode): buyers keep
+   * an interest list and pay for offers; they can't submit orders. The
+   * internal account is always exempt.
+   */
+  allocationMode: boolean;
 };
 
 export const DEFAULT_ORDER_RULES: OrderRules = {
@@ -40,6 +46,7 @@ export const DEFAULT_ORDER_RULES: OrderRules = {
   caseOnly: true,
   paused: false,
   pausedMessage: "",
+  allocationMode: false,
 };
 
 /** Case-only check: qty must be a whole number of cases when a case size is set. */

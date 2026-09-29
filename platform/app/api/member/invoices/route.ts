@@ -17,8 +17,11 @@ export async function GET(req: NextRequest) {
     .orderBy(desc(invoice.createdAt))
     .limit(200);
 
+  // An offer's invoice is voided when the offer closes unpaid; that was
+  // never a bill the buyer owed, so it isn't listed.
+  const visible = invoices.filter((inv) => !(inv.allocationOfferId && inv.status === "void"));
   const rows = await Promise.all(
-    invoices.map(async (inv) => {
+    visible.map(async (inv) => {
       const payments = await db.select().from(payment).where(eq(payment.invoiceId, inv.id));
       const [latestShipment] = await db
         .select()
@@ -32,6 +35,7 @@ export async function GET(req: NextRequest) {
         totalMinor: inv.totalMinor,
         balanceMinor: balanceDue(inv.totalMinor, payments),
         status: inv.status,
+        fromOffer: Boolean(inv.allocationOfferId),
         sentAt: inv.sentAt,
         createdAt: inv.createdAt,
         // Lines are included so the buyer can one-click reorder them into

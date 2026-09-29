@@ -22,3 +22,20 @@ export async function getApplicationsOpen(): Promise<boolean> {
     return false;
   }
 }
+
+export type PortalStatus = { applicationsOpen: boolean; allocation: boolean };
+
+/** Applications toggle plus selling mode (allocation offers vs. self-serve ordering). */
+export async function getPortalStatus(): Promise<PortalStatus> {
+  try {
+    const res = await fetch(`${PORTAL_BASE}/api/public/portal-status`, {
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!res.ok) return { applicationsOpen: false, allocation: false };
+    const body = (await res.json()) as { applicationsOpen?: unknown; sellingMode?: unknown };
+    return { applicationsOpen: body.applicationsOpen === true, allocation: body.sellingMode === "allocation" };
+  } catch {
+    return { applicationsOpen: false, allocation: false };
+  }
+}

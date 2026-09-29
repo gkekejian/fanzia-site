@@ -138,14 +138,21 @@ always be answered later.
 
 ## 7. Re-offers
 
-When an offer is declined, expires, or is withdrawn while the drop is live,
-its units go back to the item's pool. The pool is re-offered immediately to
-the next candidates using the same turn-based rule, excluding anyone who
-already passed on that item in this drop, and counting what each buyer
-already holds against their desired quantity. Re-offers get the re-offer
-window (24h). If nobody is left, the units show as **Unclaimed** on the drop
-and on Today; the owner either offers them by hand or orders less from the
-supplier.
+When an offer is declined or expires while the drop is live, its units go
+back to the item's pool. The pool is re-offered immediately to the next
+candidates using the same turn-based rule, excluding anyone who already
+passed on that item in this drop, and counting what each buyer already
+holds against their desired quantity. Re-offers get the re-offer window
+(24h).
+
+A buyer has at most one open offer per product (a database rule). Someone
+still deciding on their first offer isn't sent a second one; once they pay,
+any free units they still want are offered to them right away. An owner
+withdrawal doesn't re-offer by itself (the owner may be pulling stock) and
+doesn't count against the buyer; "Offer N free now" on the drop sends the
+units on. If nobody is left and no offer is still open, the units show as
+**Unclaimed** on the drop and on Today; the owner offers them by hand,
+lowers the quantity before ordering, or keeps them for vending.
 
 ## 8. Deadlines on Vercel Hobby
 
@@ -176,9 +183,11 @@ Processing is idempotent, so running it from several places at once is safe.
 
 ## 10. Selling mode switch
 
-Settings → Ordering → "How buyers get product": **Allocation offers**
-(default, this design) or **Self-serve ordering** (the old catalog + order
-requests). In allocation mode external buyers can't submit order requests
+Settings → Allocations → "How buyers get product": **Allocation offers**
+(this design) or **Self-serve ordering** (the old catalog + order
+requests). It ships set to self-serve so a deploy never changes how live
+buyers order mid-cycle; switch it when the first drop is ready (buyers can
+build interest lists only once it's on). In allocation mode external buyers can't submit order requests
 (the API refuses, not only the UI). The internal account keeps self-serve
 ordering for vending restocks either way. Order requests already submitted
 before the switch still work normally.

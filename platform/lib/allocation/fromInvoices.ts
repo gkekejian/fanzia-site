@@ -303,13 +303,25 @@ export async function settleRoundShortfalls(
 }
 
 /** Owner marks a pending/failed refund as paid back outside Stripe. */
+/**
+ * A late offer payment (lib/offers/lifecycle.ts) sits on a void invoice
+ * until it's paid back; once it is, the invoice reads "refunded".
+ */
+export async function markLateOfferInvoiceRefunded(db: AnyDb, invoiceId: string): Promise<void> {
+  await db
+    .update(invoice)
+    .set({ status: "refunded" })
+    .where(and(eq(invoice.id, invoiceId), eq(invoice.status, "void"), isNotNull(invoice.allocationOfferId)));
+}
+
 export async function markRefundResolved(db: AnyDb, refundId: string, ownerId: string, method: string): Promise<boolean> {
   const updated = await db
     .update(refundDue)
     .set({ status: "refunded", method, resolvedBy: ownerId, resolvedAt: new Date() })
     .where(and(eq(refundDue.id, refundId), inArray(refundDue.status, ["pending", "failed"])))
-    .returning({ id: refundDue.id });
+    .returning({ id: refundDue.id, invoiceId: refundDue.invoiceId });
   if (updated.length === 0) return false;
+  await markLateOfferInvoiceRefunded(db, updated[0]!.invoiceId);
   await recordAudit(
     { actorUserId: ownerId, actorRole: "owner", actorType: "owner", action: "refund_due.marked_refunded", entityType: "refund_due", entityId: refundId, after: { method } },
     db,

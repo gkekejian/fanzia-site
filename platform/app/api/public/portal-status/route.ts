@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { areApplicationsOpen } from "@/lib/applications/portal";
+import { loadConfig } from "@/lib/config";
 
 /**
  * Public, read-only: lets the marketing site show "Apply" vs "Join the
@@ -14,8 +15,16 @@ export async function GET() {
   } catch {
     open = false;
   }
+  // How buyers get product (Settings → Allocations), so the marketing
+  // site's "How it works" matches the portal.
+  let sellingMode = "self_serve";
+  try {
+    sellingMode = (await loadConfig()).selling_mode;
+  } catch {
+    sellingMode = "self_serve";
+  }
   return NextResponse.json(
-    { applicationsOpen: open },
+    { applicationsOpen: open, sellingMode },
     { headers: { "cache-control": "public, s-maxage=60, stale-while-revalidate=300" } },
   );
 }
