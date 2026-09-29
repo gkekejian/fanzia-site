@@ -19,6 +19,9 @@ import { notifyOwnersEvent } from "@/lib/notifications";
 import { sniffMime, ALLOWED_MIME_TYPES, MAX_UPLOAD_BYTES } from "@/lib/storage/mime";
 import { putObject, deleteObject } from "@/lib/storage";
 import { areApplicationsOpen } from "@/lib/applications/portal";
+import { consumeInvite, findInvite, inviteProblem } from "@/lib/applications/invites";
+
+class InviteConsumedError extends Error {}
 
 const RESALE_CERT_FILE_FIELD = "resaleCertificate";
 
@@ -59,20 +62,25 @@ function invalidFileResponse(message: string) {
 }
 
 export async function POST(req: NextRequest) {
-  // Portal kill switch (owner directive 2026-09-23): refuse new submissions
-  // while closed. In-flight resume/document endpoints are unaffected.
-  if (!(await areApplicationsOpen())) {
-    return NextResponse.json(
-      { error: "We are not accepting new wholesale applications right now." },
-      { status: 403 },
-    );
-  }
-
   const ip = clientIp(req.headers);
   const limited = await rateLimited(`apply:${ip}`, PUBLIC_WRITE_LIMITS.applicationSubmit);
   if (limited) return limited;
 
   const { fields, file } = await parseApplicationBody(req);
+
+  // Portal kill switch (owner directive 2026-09-23): refuse new submissions
+  // while closed, unless the applicant holds a personal invite
+  // (docs/allocation-design.md §9). In-flight resume/document endpoints are
+  // unaffected. The invite is only checked here; it is consumed in the
+  // transaction that creates the application, below.
+  const rawInviteCode = typeof fields.inviteCode === "string" && fields.inviteCode.trim() ? fields.inviteCode.trim() : null;
+  const portalOpen = await areApplicationsOpen();
+  if (!portalOpen && !rawInviteCode) {
+    return NextResponse.json(
+      { error: "We are not accepting new wholesale applications right now." },
+      { status: 403 },
+    );
+  }
 
   // Bot check (Cloudflare Turnstile). Fail-open when the secret key is not
   // configured; enforced once the owner provisions the keys.
@@ -93,6 +101,18 @@ export async function POST(req: NextRequest) {
   // Honeypot: a bot fills every field, including ones humans never see.
   if (input.website) {
     return NextResponse.json({ ok: true }); // pretend success, no record created
+  }
+
+  // Invite check. Closed portal: the invite must be valid for this email.
+  // Open portal: a valid invite is still recorded; an invalid one is ignored.
+  let inviteToConsume: string | null = null;
+  if (rawInviteCode) {
+    const found = await findInvite(db, rawInviteCode);
+    const problem = inviteProblem(found, input.contactEmail);
+    if (problem && !portalOpen) {
+      return NextResponse.json({ error: problem }, { status: 403 });
+    }
+    if (!problem) inviteToConsume = rawInviteCode;
   }
 
   // The resale certificate copy is mandatory at submit time — this is the
@@ -268,12 +288,36 @@ export async function POST(req: NextRequest) {
         tx,
       );
 
+      if (inviteToConsume) {
+        const invite = await consumeInvite(tx, { rawCode: inviteToConsume, email: input.contactEmail, applicationId: app!.id });
+        if (!invite) {
+          // Lost a race (the code was used, revoked, or expired a moment ago).
+          if (!portalOpen) throw new InviteConsumedError();
+        } else {
+          await tx.update(application).set({ inviteId: invite.id }).where(eq(application.id, app!.id));
+          await recordAudit(
+            {
+              actorType: "applicant",
+              action: "application_invite.used",
+              entityType: "application_invite",
+              entityId: invite.id,
+              after: { applicationId: app!.id },
+              ip,
+            },
+            tx,
+          );
+        }
+      }
+
       return { app: app!, doc: doc! };
     });
     created = result.app;
     resaleDoc = result.doc;
   } catch (err) {
     await deleteObject(storageKey);
+    if (err instanceof InviteConsumedError) {
+      return NextResponse.json({ error: "This invite has already been used or is no longer valid." }, { status: 403 });
+    }
     console.error("[applications] submission failed; orphaned upload cleaned up", err);
     return NextResponse.json(
       { error: "Something went wrong saving your application. Please try again." },

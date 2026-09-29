@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import type { SettingDef, SettingGroup } from "@/lib/config";
 
 type Values = Record<string, boolean | number | string>;
-const GROUP_ORDER: SettingGroup[] = ["Ordering", "Automation", "Applications", "Notifications", "Modules"];
+const GROUP_ORDER: SettingGroup[] = ["Ordering", "Allocations", "Automation", "Applications", "Notifications", "Modules"];
 const GROUP_INTRO: Record<SettingGroup, string> = {
   Ordering: "What buyers can order and when. Enforced by the server, shown to buyers automatically.",
+  Allocations: "Offers you send from Drops. Buyers accept by paying with their card on file.",
   Automation: "How much runs without you. Every automatic step is still audit-logged.",
   Applications: "Whether new buyers can apply or go to the waitlist.",
   Notifications: "How much email you get. The in-app bell always has everything.",

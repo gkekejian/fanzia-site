@@ -23,7 +23,7 @@ type AnyDb = PgDatabase<any, any, any>;
  * one row per product for the given ids, or all priced products if
  * `productIds` is omitted.
  */
-async function latestPriceEpochsByProduct(db: AnyDb, productIds?: string[]) {
+export async function latestPriceEpochsByProduct(db: AnyDb, productIds?: string[]) {
   const rows = await db
     .select()
     .from(priceEpoch)

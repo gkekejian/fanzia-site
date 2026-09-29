@@ -131,6 +131,24 @@ function factsFromEvent(event: Stripe.Event): StripePaymentFacts | null {
   return null;
 }
 
+/**
+ * A completed Checkout that saved a card: setup mode ("save my card") or an
+ * offer payment made with setup_future_usage.
+ */
+function cardSaveFromEvent(event: Stripe.Event): { accountId: string; sessionId: string; setupOnly: boolean } | null {
+  if (event.type !== "checkout.session.completed") return null;
+  const session = event.data.object as Stripe.Checkout.Session;
+  const accountId = session.metadata?.accountId;
+  if (!accountId) return null;
+  if (session.mode === "setup" && session.metadata?.purpose === "save_card") {
+    return { accountId, sessionId: session.id, setupOnly: true };
+  }
+  if (session.metadata?.saveCard === "1" && session.payment_status === "paid") {
+    return { accountId, sessionId: session.id, setupOnly: false };
+  }
+  return null;
+}
+
 type StripeFailureFacts = {
   invoiceId: string;
   amountMinor: number;
@@ -159,7 +177,13 @@ export async function recordCardPaymentFromStripe(db: AnyDb, facts: StripePaymen
   return db.transaction(async (tx) => {
     const [inv] = await tx.select().from(invoice).where(eq(invoice.id, facts.invoiceId)).limit(1);
     if (!inv) throw new WebhookError(`Invoice ${facts.invoiceId} from Stripe event not found.`, 400);
-    if (inv.status === "void") throw new WebhookError("Stripe event for a void invoice; refusing to record.", 400);
+    // An allocation-offer invoice is voided when its offer closes. Money can
+    // still arrive afterwards (a Checkout finished at the deadline, a slow
+    // webhook): record it so lib/offers/lifecycle.ts can refund it in full.
+    // Any other void invoice is refused as before.
+    if (inv.status === "void" && !inv.allocationOfferId) {
+      throw new WebhookError("Stripe event for a void invoice; refusing to record.", 400);
+    }
     if (facts.amountMinor <= 0) throw new WebhookError("Stripe event carried a non-positive amount.", 400);
 
     const findExisting = async () => {
@@ -204,7 +228,8 @@ export async function recordCardPaymentFromStripe(db: AnyDb, facts: StripePaymen
     }
 
     const all = await tx.select().from(payment).where(eq(payment.invoiceId, inv.id));
-    const status = invoiceCleared(inv.totalMinor, all) ? "paid" : "partial";
+    const status =
+      inv.status === "void" || inv.status === "refunded" ? inv.status : invoiceCleared(inv.totalMinor, all) ? "paid" : "partial";
     const [updated] = await tx.update(invoice).set({ status }).where(eq(invoice.id, inv.id)).returning();
 
     await recordAudit(
@@ -265,6 +290,13 @@ export async function processStripeWebhook(
     return { handled: true };
   }
 
+  const cardSave = cardSaveFromEvent(event);
+  if (cardSave) {
+    const { saveCardFromCheckout } = await import("@/lib/offers/cards");
+    await saveCardFromCheckout(db, cardSave.accountId, cardSave.sessionId);
+    if (cardSave.setupOnly) return { handled: true };
+  }
+
   const facts = factsFromEvent(event);
   if (!facts) {
     // A failed card attempt is not a payment — but the owners need to know
@@ -272,6 +304,9 @@ export async function processStripeWebhook(
     const failure = failureFactsFromEvent(event);
     if (failure) {
       const [inv] = await db.select().from(invoice).where(eq(invoice.id, failure.invoiceId)).limit(1);
+      // A declined "Accept & pay" charge falls back to Checkout with the
+      // buyer present; the offer page shows the reason. Not an owner task.
+      if (inv?.allocationOfferId) return { handled: true };
       await notifyOwnersEvent(
         {
           type: "payment_failed",
@@ -292,6 +327,12 @@ export async function processStripeWebhook(
     return { handled: false }; // unknown event type, or card event without our metadata
   }
   const result = await recordCardPaymentFromStripe(db, facts);
+  if (result.invoice.allocationOfferId) {
+    // Offer invoices: acceptance (or a late-payment refund) sends its own notices.
+    const { onInvoicePaymentRecorded } = await import("@/lib/offers/lifecycle");
+    await onInvoicePaymentRecorded(db, result.invoice.id);
+    return { handled: true, duplicate: result.duplicate };
+  }
   if (!result.duplicate) {
     await notifyOwnersEvent(
       {

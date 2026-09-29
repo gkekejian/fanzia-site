@@ -14,7 +14,7 @@ type AnyDb = PgDatabase<any, any, any>;
  *
  * Adding a knob = one entry here. No migration, no new page.
  */
-export type SettingGroup = "Ordering" | "Automation" | "Applications" | "Notifications" | "Modules";
+export type SettingGroup = "Ordering" | "Allocations" | "Automation" | "Applications" | "Notifications" | "Modules";
 
 type Base<K extends string> = { key: K; label: string; help: string; group: SettingGroup };
 export type SettingDef =
@@ -118,6 +118,41 @@ export const SETTING_DEFS = [
     label: "Minimum markup",
     help: "Catalog imports and publishing refuse prices below cost plus this markup.",
   },
+  // ── Allocations ───────────────────────────────────────────────────────
+  {
+    key: "selling_mode",
+    group: "Allocations",
+    type: "enum",
+    default: "allocation",
+    options: [
+      { value: "allocation", label: "Allocation offers (buyers mark interest, you send offers)" },
+      { value: "self_serve", label: "Self-serve ordering (buyers submit order requests)" },
+    ],
+    label: "How buyers get product",
+    help: "Allocation offers: the catalog becomes an interest list and buyers only buy through offers you send from Drops. Self-serve: the old catalog + order requests. Your internal vending account can always order directly.",
+  },
+  {
+    key: "offer_window_hours",
+    group: "Allocations",
+    type: "integer",
+    default: 48,
+    min: 2,
+    max: 336,
+    unit: "hours",
+    label: "Offer window",
+    help: "How long a buyer has to Accept & pay before the offer passes to the next buyer.",
+  },
+  {
+    key: "reoffer_window_hours",
+    group: "Allocations",
+    type: "integer",
+    default: 24,
+    min: 2,
+    max: 336,
+    unit: "hours",
+    label: "Re-offer window",
+    help: "Window for units re-offered automatically after someone declines or lets an offer expire.",
+  },
   // ── Automation ────────────────────────────────────────────────────────
   {
     key: "order_auto_approve_max_minor",
@@ -156,6 +191,17 @@ export const SETTING_DEFS = [
     default: false,
     label: "Accept new wholesale applications",
     help: "Off sends new buyers to the waitlist. In-flight applications keep working either way.",
+  },
+  {
+    key: "invite_expiry_days",
+    group: "Applications",
+    type: "integer",
+    default: 14,
+    min: 1,
+    max: 90,
+    unit: "days",
+    label: "Invite codes expire after",
+    help: "Personal invites let one person apply while applications are closed. Single use, tied to their email.",
   },
   // ── Notifications ─────────────────────────────────────────────────────
   {

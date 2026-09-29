@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ConfirmAction } from "./ConfirmAction";
+import { InviteForm } from "./InvitesPanel";
 
 type ContactMessage = {
   id: string;
@@ -203,6 +204,22 @@ export function InboxConsole() {
                 {thread.message.email} · {formatDate(thread.message.createdAt)}
               </p>
               <blockquote style={{ whiteSpace: "pre-wrap" }}>{thread.message.message}</blockquote>
+
+              {thread.message.source === "waitlist" && (
+                <details style={{ margin: "1rem 0" }}>
+                  <summary>
+                    <strong>Send invite</strong> (let them apply while applications are closed)
+                  </summary>
+                  <div style={{ marginTop: "0.75rem" }}>
+                    <InviteForm
+                      key={thread.message.id}
+                      defaultName={thread.message.name}
+                      defaultEmail={thread.message.email}
+                      sourceMessageId={thread.message.id}
+                    />
+                  </div>
+                </details>
+              )}
 
               {thread.replies.length > 0 && (
                 <>

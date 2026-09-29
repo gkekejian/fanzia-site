@@ -78,6 +78,11 @@ export const product = pgTable("product", {
    * is on, buyers can only order multiples of this (migration 0029).
    */
   unitsPerCase: integer("units_per_case"),
+  /**
+   * The unit one quantity counts ("Booster Pack", "Box", "Bundle", "Case").
+   * NULL = inferred from the name (lib/member/shopping.ts unitNoun). Migration 0030.
+   */
+  sellUnit: text("sell_unit"),
   ...timestamps,
 });
 

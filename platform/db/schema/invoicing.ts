@@ -2,6 +2,7 @@ import { integer, jsonb, pgTable, text, timestamp, uuid, type AnyPgColumn } from
 import { idColumn } from "./common";
 import { account, accountContact } from "./account";
 import { user } from "./user";
+import { allocationOffer } from "./offers";
 
 /**
  * A buyer's submitted order request. Created from a draft_request at submit
@@ -102,6 +103,11 @@ export const invoice = pgTable("invoice", {
   sentAt: timestamp("sent_at", { withTimezone: true }),
   voidedAt: timestamp("voided_at", { withTimezone: true }),
   createdBy: uuid("created_by").references(() => user.id),
+  /**
+   * Set when this invoice pays for an allocation offer (migration 0030).
+   * Unique: an offer never has more than one invoice.
+   */
+  allocationOfferId: uuid("allocation_offer_id").references((): AnyPgColumn => allocationOffer.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -84,7 +84,9 @@ function StateSelect({ id, name, label }: { id: string; name: string; label: str
  * uploaded with the application (owner policy 2026-09-20: no submissions
  * without the certificate on file).
  */
-export function ApplyForm({ versionLabel }: { versionLabel: string }) {
+export type ApplyInvite = { code: string; email: string; name: string };
+
+export function ApplyForm({ versionLabel, invite = null }: { versionLabel: string; invite?: ApplyInvite | null }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -139,6 +141,7 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
     data.set("aiDisclosureAccepted", aiDisclosureAccepted ? "true" : "false");
     data.set("turnstileToken", turnstileToken ?? "");
     data.set("country", "US");
+    if (invite) data.set("inviteCode", invite.code);
 
     setSubmitting(true);
     try {
@@ -196,6 +199,11 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
     <main className="container">
       <div className="card">
         <h1>Wholesale application</h1>
+        {invite && (
+          <p className="notice-banner" role="status">
+            Welcome, {invite.name}. You&rsquo;re applying with a personal invite.
+          </p>
+        )}
         <p>Fanzia sells at wholesale only to verified businesses. Tell us about yours.</p>
         <p className="field-note" style={{ marginTop: "-0.5rem" }}>
           We currently sell wholesale <strong>only to businesses organized in the United States</strong> with
@@ -326,7 +334,21 @@ export function ApplyForm({ versionLabel }: { versionLabel: string }) {
           <input id="contactName" name="contactName" type="text" required minLength={2} maxLength={200} autoComplete="name" />
 
           <label htmlFor="contactEmail">Your email</label>
-          <input id="contactEmail" name="contactEmail" type="email" required autoComplete="email" />
+          <input
+            id="contactEmail"
+            name="contactEmail"
+            type="email"
+            required
+            autoComplete="email"
+            defaultValue={invite?.email}
+            readOnly={invite !== null}
+            aria-describedby={invite ? "contactEmail-invite" : undefined}
+          />
+          {invite && (
+            <p id="contactEmail-invite" style={{ fontSize: "0.9em", margin: "0.25rem 0 0" }}>
+              Your invite is tied to this email address.
+            </p>
+          )}
           {fieldErrors.contactEmail && <p className="field-error">{fieldErrors.contactEmail[0]}</p>}
 
           <label htmlFor="sellersPermitNumber">Seller&apos;s permit number (optional now — a copy is required before approval)</label>

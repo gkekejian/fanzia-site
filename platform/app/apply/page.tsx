@@ -1,6 +1,8 @@
 import { getLatestPublishedTermsVersion } from "@/lib/terms";
 import { DRAFT_POLICIES } from "@/lib/policies/content";
-import { ApplyForm } from "@/components/ApplyForm";
+import { ApplyForm, type ApplyInvite } from "@/components/ApplyForm";
+import { db } from "@/db/client";
+import { findInvite, inviteProblem } from "@/lib/applications/invites";
 import { areApplicationsOpen } from "@/lib/applications/portal";
 
 /**
@@ -13,7 +15,7 @@ import { areApplicationsOpen } from "@/lib/applications/portal";
  * form is replaced with a closed notice — in-flight applicants keep using
  * their status-link continue pages.
  */
-export default async function ApplyPage() {
+export default async function ApplyPage({ searchParams }: { searchParams?: { invite?: string | string[] } }) {
   let open = false;
   try {
     open = await areApplicationsOpen();
@@ -22,7 +24,22 @@ export default async function ApplyPage() {
     open = false;
   }
 
-  if (!open) {
+  // Personal invite (docs/allocation-design.md §9): lets one person apply
+  // while the portal is closed. Checked again, and consumed, by the API.
+  const rawInvite = typeof searchParams?.invite === "string" ? searchParams.invite.slice(0, 64) : null;
+  let invite: ApplyInvite | null = null;
+  let inviteError: string | null = null;
+  if (rawInvite) {
+    try {
+      const found = await findInvite(db, rawInvite);
+      inviteError = inviteProblem(found);
+      if (!inviteError && found) invite = { code: rawInvite, email: found.invite.email, name: found.invite.name };
+    } catch {
+      inviteError = "We couldn't check your invite right now. Please try again in a few minutes.";
+    }
+  }
+
+  if (!open && !invite) {
     // Route demand into a queue the owners can batch-process, not a
     // personal inbox. The waitlist form lives on the marketing site and
     // lands in /admin/inbox tagged "waitlist".
@@ -30,6 +47,11 @@ export default async function ApplyPage() {
     return (
       <main className="container" style={{ maxWidth: "640px" }}>
         <h1>New wholesale accounts are paused</h1>
+        {inviteError && (
+          <p className="field-error" role="alert">
+            {inviteError}
+          </p>
+        )}
         <p>
           We onboard buyers in small batches so every approved account gets product. Join the waitlist and
           we&rsquo;ll email you when the next batch opens. It takes 20 seconds.
@@ -53,5 +75,5 @@ export default async function ApplyPage() {
   } catch {
     // DB unreachable — the client form still works with the draft label.
   }
-  return <ApplyForm versionLabel={versionLabel} />;
+  return <ApplyForm versionLabel={versionLabel} invite={invite} />;
 }

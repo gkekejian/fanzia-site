@@ -1,7 +1,8 @@
-import { integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { idColumn, timestamps } from "./common";
 import { account, channelType } from "./account";
 import { user } from "./user";
+import { applicationInvite } from "./offers";
 
 export const applicationStatus = pgEnum("application_status", [
   "draft",
@@ -104,6 +105,8 @@ export const application = pgTable("application", {
   decisionReason: text("decision_reason"),
 
   submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  /** The invite this application came in on while intake was closed (migration 0030). */
+  inviteId: uuid("invite_id").references((): AnyPgColumn => applicationInvite.id, { onDelete: "set null" }),
   ...timestamps,
 });
 

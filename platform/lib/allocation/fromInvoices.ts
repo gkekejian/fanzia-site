@@ -2,7 +2,9 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import {
   account,
+  allocationDrop,
   allocationLine,
+  allocationOffer,
   allocationRound,
   invoice,
   payment,
@@ -46,6 +48,17 @@ export async function syncPaidInvoicesIntoRound(db: AnyDb, roundId: string, acto
   if (supplierProducts.size === 0) return { added: 0, skippedAlreadyInRound: 0, invoicesScanned: 0 };
 
   const paid = await db.select().from(invoice).where(eq(invoice.status, "paid"));
+  // Allocation-offer invoices count only once their offer is accepted, and
+  // only in the round their drop is tied to (when it is tied to one).
+  const offerIds = paid.map((i) => i.allocationOfferId).filter((x): x is string => Boolean(x));
+  const offerRows = offerIds.length
+    ? await db
+        .select({ id: allocationOffer.id, status: allocationOffer.status, roundId: allocationDrop.supplierRoundId })
+        .from(allocationOffer)
+        .innerJoin(allocationDrop, eq(allocationOffer.dropId, allocationDrop.id))
+        .where(inArray(allocationOffer.id, offerIds))
+    : [];
+  const offerById = new Map(offerRows.map((o) => [o.id, o]));
   // Anything already pulled into any round stays there.
   const already = await db
     .select({ invoiceId: allocationLine.sourceInvoiceId, productId: allocationLine.productId })
@@ -57,6 +70,11 @@ export async function syncPaidInvoicesIntoRound(db: AnyDb, roundId: string, acto
   let skipped = 0;
   for (const inv of paid) {
     if (round.cutoffAt && inv.createdAt > round.cutoffAt) continue;
+    if (inv.allocationOfferId) {
+      const offer = offerById.get(inv.allocationOfferId);
+      if (!offer || offer.status !== "accepted") continue;
+      if (offer.roundId && offer.roundId !== roundId) continue;
+    }
     // Merge duplicate product lines within one invoice.
     const qtyByProduct = new Map<string, number>();
     for (const line of (inv.lines ?? []) as OrderRequestLine[]) {

@@ -22,3 +22,4 @@ export * from "./nayax";
 export * from "./priceIntel";
 export * from "./notification";
 export * from "./ops";
+export * from "./offers";

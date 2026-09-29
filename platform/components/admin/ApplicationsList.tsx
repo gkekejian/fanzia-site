@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TRIAGE_MAX_SCORE, triageBand } from "@/lib/applications/triage";
+import { InvitesPanel } from "./InvitesPanel";
 
 type Application = {
   id: string;
@@ -97,6 +98,7 @@ export function ApplicationsList() {
           {toggling ? "Saving…" : portalOpen ? "Close portal" : "Reopen portal"}
         </button>
       </section>
+      <InvitesPanel />
       <p>
         Review flags: <strong>0 of {TRIAGE_MAX_SCORE}</strong> = clear ·{" "}
         <strong>1 of {TRIAGE_MAX_SCORE}</strong> = one thing to verify ·{" "}

@@ -1,4 +1,4 @@
-import { boolean, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { idColumn, timestamps } from "./common";
 import { user } from "./user";
 
@@ -54,6 +54,18 @@ export const account = pgTable("account", {
    */
   orderingHoldReason: text("ordering_hold_reason"),
   orderingHoldAt: timestamp("ordering_hold_at", { withTimezone: true }),
+  /**
+   * Card on file (migration 0030). Stripe holds the card; only ids and
+   * display details live here. Charged when the buyer taps "Accept & pay"
+   * on an allocation offer.
+   */
+  stripeCustomerId: text("stripe_customer_id"),
+  cardPaymentMethodId: text("card_payment_method_id"),
+  cardBrand: text("card_brand"),
+  cardLast4: text("card_last4"),
+  cardExpMonth: integer("card_exp_month"),
+  cardExpYear: integer("card_exp_year"),
+  cardUpdatedAt: timestamp("card_updated_at", { withTimezone: true }),
   addressLine1: text("address_line1").notNull(),
   addressLine2: text("address_line2"),
   city: text("city").notNull(),

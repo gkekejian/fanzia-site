@@ -58,6 +58,7 @@ type ApplicationData = {
     triageScore: number;
     needsReviewReasons: string[];
     decisionReason: string | null;
+    inviteId?: string | null;
   };
   documents: Document[];
   taxDeterminations: { id: string; status: string; notes: string; determinedAt: string }[];
@@ -189,6 +190,14 @@ export function ApplicationDetail({ applicationId }: { applicationId: string }) 
       <h1>{app.businessLegalName}</h1>
       <p>
         Status: <span className="badge">{app.status}</span>
+        {app.inviteId && (
+          <>
+            {" "}
+            <span className="badge badge-ok" title="Applied with a personal invite while applications were closed">
+              Invited
+            </span>
+          </>
+        )}
       </p>
 
       <section className="card" aria-label="Review priority">

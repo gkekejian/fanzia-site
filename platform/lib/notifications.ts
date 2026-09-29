@@ -25,6 +25,12 @@ export const OWNER_NOTIFICATION_TYPES = [
   "email_failed",
   "decisions_waiting",
   "system_alert",
+  // Allocation offers (2026-09-29, docs/allocation-design.md).
+  "offers_sent",
+  "offer_paid",
+  "offer_declined",
+  "offer_leftover",
+  "offer_late_payment",
 ] as const;
 export type OwnerNotificationType = (typeof OWNER_NOTIFICATION_TYPES)[number];
 
@@ -33,7 +39,7 @@ export interface OwnerNotificationEvent {
   title: string;
   body: string;
   actorEmail?: string | null;
-  entityType?: "application" | "order_request" | "allocation_round" | "invoice" | null;
+  entityType?: "application" | "order_request" | "allocation_round" | "invoice" | "allocation_drop" | null;
   entityId?: string | null;
   severity?: "info" | "warning";
   /**
@@ -98,6 +104,8 @@ export function notificationLinkPath(
       return `/admin/allocation-rounds/${entityId}`;
     case "invoice":
       return `/admin/invoices/${entityId}`;
+    case "allocation_drop":
+      return `/admin/drops/${entityId}`;
   }
 }
 
