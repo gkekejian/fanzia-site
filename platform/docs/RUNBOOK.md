@@ -55,7 +55,12 @@ touches per order; target is 90% automated).
    `CRON_SECRET`). The "Offer deadlines" workflow then moves expired offers
    along every 30 minutes. Without it, deadlines are still processed
    whenever you open Today or a buyer opens Offers, and by the daily job.
-9. **2FA**: both owners are sent to set it up on first login. Save the
+9. **Protect main**: GitHub → repo → Settings → Branches → add a rule for
+   `main` that requires the CI checks ("platform" and "site") to pass.
+   Vercel deploys main, so this keeps untested code out of production.
+   Schema changes always go in a new migration; shipped migration files
+   are locked by checksum (`npm run db:checksums` records new ones).
+10. **2FA**: both owners are sent to set it up on first login. Save the
    recovery codes somewhere that isn't your phone.
 
 ## Contingencies

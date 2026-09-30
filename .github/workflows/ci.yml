@@ -1,0 +1,47 @@
+# Runs on every pull request and push to main. Vercel deploys main, so
+# require these checks on main (Settings → Branches) to keep untested code
+# out of production.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  platform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+      - name: Migration checksums
+        run: node scripts/migration-checksums.mjs
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test
+      - name: Build (no database; migrations only run on production deploys)
+        run: npm run build
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx next build

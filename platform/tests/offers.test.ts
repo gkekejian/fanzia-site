@@ -62,6 +62,7 @@ type Session = { id: string; amountMinor: number; status: "open" | "paid" | "exp
 class FakeGateway implements CardGateway {
   charges: { amountMinor: number; idempotencyKey: string; metadata: Record<string, string> }[] = [];
   refunds: { paymentIntentId: string; amountMinor: number }[] = [];
+  cancelled: string[] = [];
   sessions = new Map<string, Session>();
   nextCharge: "succeed" | "decline" = "succeed";
   chargeDelayMs = 0;
@@ -74,7 +75,7 @@ class FakeGateway implements CardGateway {
   }
   async chargeSavedCard(args: { amountMinor: number; idempotencyKey: string; metadata: Record<string, string> }): Promise<ChargeResult> {
     if (this.chargeDelayMs) await new Promise((r) => setTimeout(r, this.chargeDelayMs));
-    if (this.nextCharge === "decline") return { status: "needs_checkout", message: "Your card was declined." };
+    if (this.nextCharge === "decline") return { status: "needs_checkout", message: "Your card was declined.", paymentIntentId: `pi_declined_${++this.n}` };
     this.charges.push(args);
     return { status: "succeeded", paymentIntentId: `pi_charge_${++this.n}`, amountMinor: args.amountMinor };
   }
@@ -97,6 +98,9 @@ class FakeGateway implements CardGateway {
   }
   async savedCardFromSession() {
     return { paymentMethodId: "pm_saved", brand: "visa", last4: "4242", expMonth: 12, expYear: 2030 };
+  }
+  async cancelPaymentIntent(id: string) {
+    this.cancelled.push(id);
   }
   async refund(args: { paymentIntentId: string; amountMinor: number }) {
     this.refunds.push(args);
@@ -173,7 +177,8 @@ async function makeItemProduct(opts: { routeType?: "import" | "domestic"; unitsP
   const sup = await makeSupplier(db);
   const p = await makeProduct(db, { unitsPerCase: opts.unitsPerCase ?? null, sellUnit: opts.sellUnit ?? "Booster Box" });
   const route = await makeRoute(db, { productId: p.id, supplierId: sup.id, routeType: opts.routeType ?? "domestic" });
-  await makePriceEpoch(db, { productId: p.id, sourcingRouteId: route.id, priceMinor: 10000 });
+  // $75 cost, $100 price (33% markup, above the 28% floor of $96).
+  await makePriceEpoch(db, { productId: p.id, sourcingRouteId: route.id, costMinor: 7500, markupBps: 3333, priceMinor: 10000 });
   return { product: p, supplier: sup };
 }
 
@@ -330,6 +335,9 @@ describe("accept & pay", () => {
     expect(result.status).toBe("checkout");
     const [row] = await offersFor(a.account.id);
     expect(row!.lastPaymentError).toMatch(/declined/);
+    // The failed attempt is cancelled so it can't also be paid later.
+    expect(gateway.cancelled).toHaveLength(1);
+    expect(gateway.cancelled[0]).toMatch(/^pi_declined_/);
     expect(await db.select().from(payment)).toHaveLength(0);
   });
 
@@ -661,5 +669,39 @@ describe("drop deadline", () => {
     expect((await offersFor(a.account.id)).filter((o) => o.wave > 1)).toHaveLength(0);
     const reserved = (await offersFor(internal.account.id)).filter((o) => o.status === "reserved");
     expect(reserved.reduce((s2, o) => s2 + o.qty, 0)).toBe(1);
+  });
+});
+
+describe("drop price floor", () => {
+  it("refuses a drop price below cost plus the minimum markup, and allows one at or above it", async () => {
+    // Fixture cost is $75.00; default floor 28% => $96.00.
+    const { product: p, supplier: sup } = await makeItemProduct();
+    const drop = await createDrop(db, ownerId, { name: "Floor", supplierId: sup.id, offersCloseAt: hours(48).toISOString() }, T0);
+    await expect(setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 2, unitPriceMinor: 1200, increment: 1 })).rejects.toThrow(
+      /below cost plus the 28\.0% minimum markup \(\$96\.00\)/,
+    );
+    await expect(setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 2, unitPriceMinor: 9599, increment: 1 })).rejects.toThrow(OfferError);
+    const item = await setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 2, unitPriceMinor: 9600, increment: 1 });
+    expect(item.unitPriceMinor).toBe(9600);
+    // A scarce item can be priced well above the floor.
+    const up = await setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 2, unitPriceMinor: 25000, increment: 1 });
+    expect(up.unitPriceMinor).toBe(25000);
+  });
+
+  it("uses the sourcing route's own floor when it has one", async () => {
+    const sup = await makeSupplier(db);
+    const p = await makeProduct(db, { sellUnit: "Booster Box" });
+    const route = await makeRoute(db, { productId: p.id, supplierId: sup.id, routeType: "domestic", markupFloorBpsOverride: 5000 });
+    await makePriceEpoch(db, { productId: p.id, sourcingRouteId: route.id, costMinor: 10000, priceMinor: 16000, markupBps: 6000 });
+    const drop = await createDrop(db, ownerId, { name: "Route floor", supplierId: sup.id, offersCloseAt: hours(48).toISOString() }, T0);
+    await expect(setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 1, unitPriceMinor: 14000 })).rejects.toThrow(/50\.0%.*\$150\.00/);
+    await setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 1, unitPriceMinor: 15000 });
+  });
+
+  it("refuses a product with no cost on file", async () => {
+    const sup = await makeSupplier(db);
+    const p = await makeProduct(db);
+    const drop = await createDrop(db, ownerId, { name: "No cost", supplierId: sup.id, offersCloseAt: hours(48).toISOString() }, T0);
+    await expect(setDropItem(db, ownerId, drop.id, { productId: p.id, availableQty: 1, unitPriceMinor: 99999 })).rejects.toThrow(/no USD cost/);
   });
 });

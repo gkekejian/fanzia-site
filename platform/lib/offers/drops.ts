@@ -26,6 +26,7 @@ import {
   interestByProduct,
   internalAccountId,
   OfferError,
+  priceFloorMinor,
   productFacts,
   scoreAccounts,
 } from "./context";
@@ -174,6 +175,15 @@ export async function setDropItem(
       ? facts?.priceMinor ?? null
       : wholeQty(input.unitPriceMinor, "Price", 1);
   if (!unitPriceMinor || unitPriceMinor <= 0) throw new OfferError("This product has no price yet. Enter a price for the drop.");
+  // Offers are paid the moment a buyer taps Accept & pay, so a typo ("12"
+  // for "120") would sell below cost instantly. Same floor as imports.
+  const floor = await priceFloorMinor(db, productId);
+  if (!floor) throw new OfferError("This product has no USD cost on file, so its drop price can't be checked. Import its price list first.");
+  if (unitPriceMinor < floor.floorMinor) {
+    throw new OfferError(
+      `${formatMoney(unitPriceMinor)} is below cost plus the ${(floor.floorBps / 100).toFixed(1)}% minimum markup (${formatMoney(floor.floorMinor)}). Check the price.`,
+    );
+  }
   const increment =
     input.increment === undefined || input.increment === null || input.increment === ""
       ? incrementFor(p, config.case_only_mode)
