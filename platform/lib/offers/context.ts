@@ -12,6 +12,7 @@ import {
   type ScoreDetail,
 } from "@/db/schema";
 import { latestPriceEpochsByProduct } from "@/lib/catalog/queries";
+import { getSetting, SETTINGS_KEYS } from "@/lib/settings";
 import { unitNoun } from "@/lib/member/shopping";
 import { canOrder, normalizeContactRole } from "@/lib/users/contactRoles";
 import { computeScore, median, wholeMonthsBetween } from "./engine";
@@ -89,6 +90,23 @@ export async function productFacts(db: AnyDb, productIds: string[]): Promise<Map
     });
   }
   return out;
+}
+
+/**
+ * Lowest price a drop may charge for a product: its latest cost plus the
+ * markup floor (the route's override, else Settings → Minimum markup), the
+ * same rule catalog imports enforce. Null when there's no USD cost on file,
+ * so a typed price can't be checked.
+ */
+export async function priceFloorMinor(db: AnyDb, productId: string): Promise<{ floorMinor: number; floorBps: number } | null> {
+  const epoch = (await latestPriceEpochsByProduct(db, [productId])).get(productId);
+  if (!epoch || epoch.currencyCode !== "USD" || !(Number(epoch.costMinor) > 0)) return null;
+  let floorBps = await getSetting<number>(SETTINGS_KEYS.markupFloorBps, 2800, db);
+  if (epoch.sourcingRouteId) {
+    const [route] = await db.select().from(sourcingRoute).where(eq(sourcingRoute.id, epoch.sourcingRouteId)).limit(1);
+    if (route?.markupFloorBpsOverride != null) floorBps = route.markupFloorBpsOverride;
+  }
+  return { floorMinor: Math.ceil((Number(epoch.costMinor) * (10_000 + floorBps)) / 10_000), floorBps };
 }
 
 // ── Accounts ──────────────────────────────────────────────────────────────

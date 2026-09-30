@@ -725,6 +725,13 @@ export async function acceptOffer(
         throw new OfferError("Your payment went through but the offer had just closed. It's being refunded in full.", 409);
       }
       await db.update(allocationOffer).set({ lastPaymentError: charge.message.slice(0, 300) }).where(eq(allocationOffer.id, offer.id));
+      // Don't leave the failed attempt open next to the Checkout below:
+      // a buyer completing 3-D Secure on it later would pay twice.
+      if (charge.paymentIntentId) {
+        await gateway.cancelPaymentIntent(charge.paymentIntentId).catch((err) =>
+          console.error("[offers] could not cancel the unfinished payment", charge.paymentIntentId, (err as Error).message),
+        );
+      }
     }
 
     const session = await gateway.createOfferCheckout({

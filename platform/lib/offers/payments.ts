@@ -22,9 +22,10 @@ export interface CardGateway {
   createCustomer(args: { email: string; name: string; accountId: string }): Promise<string>;
   /**
    * Charge the saved card with the buyer present (they just tapped
-   * "Accept & pay"). Anything short of an immediate success (declined,
-   * needs 3-D Secure, card expired) returns needs_checkout so the buyer can
-   * finish in Stripe Checkout instead.
+   * "Accept & pay"): a customer-initiated, on-session charge, never
+   * flagged as merchant-initiated. Anything short of an immediate success
+   * (declined, needs 3-D Secure, card expired) returns needs_checkout so
+   * the buyer can finish in Stripe Checkout instead.
    */
   chargeSavedCard(args: {
     customerId: string;
@@ -56,6 +57,8 @@ export interface CardGateway {
   /** The payment method a completed setup/payment Checkout session saved. */
   savedCardFromSession(sessionId: string): Promise<CardDetails | null>;
   refund(args: { paymentIntentId: string; amountMinor: number; idempotencyKey: string }): Promise<{ id: string }>;
+  /** Cancel an unfinished PaymentIntent (declined or awaiting 3-D Secure) once the buyer moves to Checkout. */
+  cancelPaymentIntent(paymentIntentId: string): Promise<void>;
 }
 
 /** Stripe requires a Checkout session to live at least 30 minutes. */
@@ -112,8 +115,11 @@ export class StripeCardGateway implements CardGateway {
           currency: args.currency.toLowerCase(),
           customer: args.customerId,
           payment_method: args.paymentMethodId,
+          payment_method_types: ["card"],
           confirm: true,
-          off_session: true,
+          // Buyer is present: on-session. Card-only, so no redirect-based
+          // method needs a return_url; 3-D Secure comes back as
+          // requires_action and falls through to Checkout.
           description: args.description,
           metadata: args.metadata,
         },
@@ -144,7 +150,7 @@ export class StripeCardGateway implements CardGateway {
           },
         ],
         metadata: { ...args.metadata, saveCard: "1" },
-        payment_intent_data: { metadata: args.metadata, setup_future_usage: "off_session" },
+        payment_intent_data: { metadata: args.metadata, setup_future_usage: "on_session" },
         expires_at: Math.floor(args.expiresAt.getTime() / 1000),
         success_url: args.successUrl,
         cancel_url: args.cancelUrl,
@@ -194,6 +200,13 @@ export class StripeCardGateway implements CardGateway {
     const pi = session.payment_intent;
     if (pi && typeof pi !== "string") return cardDetails(pi.payment_method);
     return null;
+  }
+
+  async cancelPaymentIntent(paymentIntentId: string): Promise<void> {
+    const pi = await this.stripe().paymentIntents.retrieve(paymentIntentId);
+    if (["requires_payment_method", "requires_confirmation", "requires_action"].includes(pi.status)) {
+      await this.stripe().paymentIntents.cancel(paymentIntentId);
+    }
   }
 
   async refund(args: { paymentIntentId: string; amountMinor: number; idempotencyKey: string }) {

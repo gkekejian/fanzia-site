@@ -232,6 +232,13 @@
       "when": 1789965905326,
       "tag": "0030_allocation_offers",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790000000000,
+      "tag": "0031_drop_deadline_reconcile",
+      "breakpoints": true
     }
   ]
 }

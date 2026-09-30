@@ -337,7 +337,7 @@ function AddItemForm({
         </button>
       </div>
       <p className="page-sub" style={{ margin: 0 }}>
-        Blank price uses the current catalog price (card fees are built into your prices). Blank step uses the case size
+        Blank price uses the current catalog price (card fees are built into your prices). Prices below cost plus your minimum markup are refused; price scarce items higher. Blank step uses the case size
         when &quot;Sell full cases only&quot; is on.
       </p>
     </form>
