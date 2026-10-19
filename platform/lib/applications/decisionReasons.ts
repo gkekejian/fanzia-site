@@ -15,7 +15,7 @@ const OTHER: DecisionReason = { code: "other", label: "Other (add a note below)"
 
 export const DECISION_REASONS: Record<ApplicationDecision, DecisionReason[]> = {
   approved: [
-    { code: "meets_criteria", label: "Meets all wholesale criteria" },
+    { code: "meets_criteria", label: "Meets all account criteria" },
     { code: "verified_reseller", label: "Verified active reseller" },
     { code: "owner_discretion", label: "Approved at owner discretion" },
     OTHER,
@@ -24,7 +24,7 @@ export const DECISION_REASONS: Record<ApplicationDecision, DecisionReason[]> = {
     { code: "missing_documents", label: "Required documents missing or unreadable" },
     { code: "unverifiable_business", label: "Could not verify the business" },
     { code: "no_resale_permit", label: "No valid seller's permit / resale certificate" },
-    { code: "ineligible_channel", label: "Sales channel not eligible for wholesale" },
+    { code: "ineligible_channel", label: "Sales channel not eligible for an account" },
     { code: "below_minimums", label: "Does not meet order minimums" },
     { code: "duplicate_application", label: "Duplicate application" },
     OTHER,

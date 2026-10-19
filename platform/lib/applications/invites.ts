@@ -78,10 +78,10 @@ export function buildInviteEmail(args: { name: string; code: string; expiresAt: 
   const url = inviteUrl(args.code, args.baseUrl);
   const expires = args.expiresAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   return {
-    subject: "Your invitation to apply for a Fanzia wholesale account",
+    subject: "Your invitation to apply for a Fanzia account",
     text:
       `Hi ${args.name},\n\n` +
-      `You're invited to apply for a Fanzia wholesale account. New accounts are otherwise closed right now, ` +
+      `You're invited to apply for a Fanzia account. New accounts are otherwise closed right now, ` +
       `so this link is just for you:\n\n${url}\n\n` +
       `Your invite code is ${args.code}. It works once, only with this email address, and expires on ${expires}.\n\n` +
       `Have your resale certificate ready to upload. We review every application and email you the result.`,

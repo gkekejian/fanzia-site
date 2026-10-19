@@ -7,7 +7,7 @@ import MotionSection from "@/components/MotionSection";
 export const metadata: Metadata = {
   title: "Policies",
   description:
-    "Fanzia's MAP compliance, marketplace, authenticity, returns, shipping, and wholesale terms policies.",
+    "Fanzia's MAP compliance, marketplace, authenticity, returns, and pickup policies.",
 };
 
 export default function PoliciesPage() {
@@ -25,7 +25,7 @@ export default function PoliciesPage() {
             <Policy title="MAP Compliance">
               <p>
                 Fanzia adheres to manufacturer and distributor Minimum Advertised Price policies
-                across all channels and requires the same of wholesale accounts.
+                across all channels.
               </p>
             </Policy>
 
@@ -55,27 +55,11 @@ export default function PoliciesPage() {
               </p>
             </Policy>
 
-            <Policy title="Shipping & Pickup">
+            <Policy title="Pickup">
               {/* {{TODO: shipping terms}} */}
-              <p>
-                Retail orders can be picked up at the Glendale storefront during posted hours.
-                Wholesale orders ship via parcel carrier or LTL/freight depending on order size;
-                fulfillment method is confirmed with the buyer before shipment. Shipping costs are
-                calculated per order and billed separately.
-              </p>
+              <p>Retail orders can be picked up at the Glendale storefront during posted hours.</p>
             </Policy>
 
-            <Policy title="Wholesale Terms">
-              {/* {{TODO}} */}
-              <p>
-                Net terms, order minimums, and allocation limits are confirmed at account approval
-                and vary by category and release. Contact{" "}
-                <a className="text-brand-red" href="mailto:contact@fanzia.io">
-                  contact@fanzia.io
-                </a>{" "}
-                for current terms.
-              </p>
-            </Policy>
           </div>
         </MotionSection>
       </main>

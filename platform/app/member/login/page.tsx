@@ -39,7 +39,7 @@ function LoginForm() {
     <main className="container">
       <div className="card">
         <h1>Buyer sign-in</h1>
-        <p>Sign in with the email address on your approved Fanzia wholesale account.</p>
+        <p>Sign in with the email address on your approved Fanzia account.</p>
         {sent ? (
           <p role="status">
             If that email is on an approved account, a sign-in link has been sent. Check your

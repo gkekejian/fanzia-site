@@ -25,16 +25,16 @@ export const DRAFT_POLICIES: Record<
 > = {
   terms_of_sale: {
     title: "Terms of Sale",
-    versionLabel: "v1",
+    versionLabel: "v2",
     body: `
 # Terms of Sale
 
-These Terms of Sale govern wholesale purchases from Fanzia (${LEGAL_ENTITY_NAME}) by
-verified business buyers.
+These Terms of Sale govern purchases from Fanzia (${LEGAL_ENTITY_NAME}) by approved
+account holders through this portal.
 
-1. **Business buyers only.** Fanzia sells at wholesale only to verified businesses that have
-   completed the application and approval process.
-2. **No affiliation.** Fanzia is an independent wholesale sourcing and import business. Fanzia
+1. **Approved accounts only.** Purchases through this portal are open only to verified
+   businesses that have completed the application and approval process.
+2. **No affiliation.** Fanzia is an independent business. Fanzia
    is not an authorized distributor and is not affiliated with, authorized by, endorsed by, or
    approved by The Pokémon Company, The Pokémon Company International, Nintendo, Creatures
    Inc., GAME FREAK inc., Konami, Bandai, or any other rights holder.
@@ -47,14 +47,14 @@ verified business buyers.
 5. **Payment and clearance.** Fanzia orders inventory from its suppliers only after payment has
    genuinely cleared according to the hold period applicable to the buyer's chosen payment
    method, as disclosed at checkout.
-6. **Pricing.** Wholesale item price, estimated or fixed outbound shipping, and applicable sales
+6. **Pricing.** Item price, estimated or fixed outbound shipping, and applicable sales
    tax are shown separately before invoicing. Fanzia's supplier cost, sourcing routes, and
    internal markup are never disclosed to buyers.
-7. **All sales final — no returns.** This is a wholesale business. All wholesale sales are
+7. **All sales final — no returns.** All sales through this portal are
    final. Fanzia does not accept returns or exchanges for any reason, including change of
    mind. Claims for visible shipping damage, concealed damage, or incorrect or short goods
    are handled separately under the Returns & Claims Policy and are not returns.
-8. **Account termination.** Fanzia may suspend or terminate a wholesale account at any time,
+8. **Account termination.** Fanzia may suspend or terminate an account at any time,
    for cause or without cause, at Fanzia's sole discretion. Termination does not affect
    completed sales, amounts already owed, or Fanzia's right to collect outstanding balances.
 9. **Exceptions.** If Fanzia cannot fill an accepted allocation after payment, Fanzia will offer
@@ -68,14 +68,14 @@ verified business buyers.
   },
   privacy_policy: {
     title: "Privacy Policy",
-    versionLabel: "v1",
+    versionLabel: "v2",
     body: `
 # Privacy Policy
 
 Effective date: the publication date of this version.
 
 Fanzia (${LEGAL_ENTITY_NAME}) collects the business and contact information necessary to
-verify wholesale buyers, process orders, and comply with tax and resale-certificate
+verify account holders, process orders, and comply with tax and resale-certificate
 requirements.
 
 1. **Categories of personal information collected and shared.** Business identity, contact
@@ -100,11 +100,11 @@ Section 5 — no statement here promises more than the platform does.*
   },
   shipping_policy: {
     title: "Shipping Policy",
-    versionLabel: "v1",
+    versionLabel: "v2",
     body: `
 # Shipping Policy
 
-1. Outbound shipping is quoted and charged separately from the wholesale item price and shown
+1. Outbound shipping is quoted and charged separately from the item price and shown
    on the allocation offer before you accept.
 2. Estimated delivery windows are estimates, not guaranteed delivery dates. If a window changes
    materially, Fanzia will notify you and explain why.
@@ -118,7 +118,7 @@ Section 5 — no statement here promises more than the platform does.*
   },
   returns_policy: {
     title: "Returns & Claims Policy",
-    versionLabel: "v1",
+    versionLabel: "v2",
     body: `
 # Returns & Claims Policy
 
@@ -128,7 +128,7 @@ Fanzia distinguishes between:
 - **Concealed damage** — discovered after unboxing, reported within the claim window stated on
   your packing slip.
 - **Incorrect or short goods** — reported with lot code, quantities, and photos.
-- **Change-of-mind returns** — not accepted. All wholesale sales are final (see Terms of
+- **Change-of-mind returns** — not accepted. All sales through this portal are final (see Terms of
   Sale §7).
 
 Approved claims are resolved as a refund, a buyer-approved replacement, or (only if you elect
@@ -159,15 +159,15 @@ acknowledges:
   },
   ai_data_policy: {
     title: "AI Data-Access Policy",
-    versionLabel: "v1",
+    versionLabel: "v2",
     body: `
 # AI Data-Access Policy
 
 Fanzia (${LEGAL_ENTITY_NAME}) uses automated systems, including artificial intelligence,
-to help operate its wholesale platform. This policy describes what those systems do with
+to help operate its operations platform. This policy describes what those systems do with
 applicant and buyer information.
 
-1. **Where AI is used.** AI assists Fanzia staff in two places: (a) reviewing wholesale
+1. **Where AI is used.** AI assists Fanzia staff in two places: (a) reviewing account
    applications — drafting business summaries and pass/fail checklists from the information
    the applicant provides; and (b) the staff dashboard operator, which drafts suggestions,
    briefs, and routine operational text for staff. AI drafts; it does not decide.
@@ -175,7 +175,7 @@ applicant and buyer information.
    information — is made by a Fanzia staff member. AI output is a draft for human review,
    never a final determination. Approval-gated actions (sending messages, publishing,
    allocating inventory) always require explicit human approval.
-3. **Your consent.** By submitting a wholesale application, you consent to your application
+3. **Your consent.** By submitting an account application, you consent to your application
    information being processed by these automated systems, as described in the AI/automation
    disclosure on the application form.
 4. **What data is processed.** The business and contact information you provide in your

@@ -173,13 +173,13 @@ export async function decideApplication(
 
       const emailBody =
         input.decision === "approved"
-          ? `Good news — your Fanzia wholesale application has been approved. We'll be in touch with next steps.${input.reason ? `\n\nNote: ${input.reason}` : ""}`
-          : `Thanks for applying to Fanzia wholesale. We're unable to approve your application at this time.${input.reason ? `\n\nReason: ${input.reason}` : ""}`;
+          ? `Good news — your Fanzia application has been approved. We'll be in touch with next steps.${input.reason ? `\n\nNote: ${input.reason}` : ""}`
+          : `Thanks for applying for a Fanzia account. We're unable to approve your application at this time.${input.reason ? `\n\nReason: ${input.reason}` : ""}`;
       // Best-effort: the decision is already saved above; a failed notice
       // email must not 500 the request (would invite a retried approval).
       await sendNotificationEmail({
         to: app.contactEmail,
-        subject: input.decision === "approved" ? "Your Fanzia wholesale application: approved" : "Your Fanzia wholesale application: update",
+        subject: input.decision === "approved" ? "Your Fanzia application: approved" : "Your Fanzia application: update",
         text: emailBody,
       }, "application.decision");
 

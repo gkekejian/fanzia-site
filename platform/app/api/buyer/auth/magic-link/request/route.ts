@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     await sendTransactionalEmail({
       to: email,
       subject: "Your Fanzia buyer sign-in link",
-      text: `Sign in to your Fanzia wholesale account:\n\n${url}\n\nThis link expires shortly and can only be used once. If you did not request this, you can ignore this email.`,
+      text: `Sign in to your Fanzia account:\n\n${url}\n\nThis link expires shortly and can only be used once. If you did not request this, you can ignore this email.`,
     });
     await recordAudit({
       actorType: "system",

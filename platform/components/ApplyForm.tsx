@@ -187,7 +187,7 @@ export function ApplyForm({ versionLabel, invite = null }: { versionLabel: strin
         <div className="card" role="status">
           <h1>Application submitted</h1>
           <p>
-            Thanks for applying to Fanzia wholesale. We&apos;ve emailed you a link to check your
+            Thanks for applying for a Fanzia account. We&apos;ve emailed you a link to check your
             status or add documents at any time.
           </p>
         </div>
@@ -198,15 +198,15 @@ export function ApplyForm({ versionLabel, invite = null }: { versionLabel: strin
   return (
     <main className="container">
       <div className="card">
-        <h1>Wholesale application</h1>
+        <h1>Account application</h1>
         {invite && (
           <p className="notice-banner" role="status">
             Welcome, {invite.name}. You&rsquo;re applying with a personal invite.
           </p>
         )}
-        <p>Fanzia sells at wholesale only to verified businesses. Tell us about yours.</p>
+        <p>Accounts are for verified businesses only. Tell us about yours.</p>
         <p className="field-note" style={{ marginTop: "-0.5rem" }}>
-          We currently sell wholesale <strong>only to businesses organized in the United States</strong> with
+          We currently approve accounts <strong>only for businesses organized in the United States</strong> with
           a valid US resale certificate. Applications from non-US entities can&apos;t be approved.
         </p>
 

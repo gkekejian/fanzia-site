@@ -118,7 +118,7 @@ export function MemberCatalog() {
       )}
 
       {!rules.allocationMode && <p className="fee-strip">
-        Wholesale orders have a <strong>{formatMoney(rules.minimumMinor)} minimum</strong>.
+        Orders have a <strong>{formatMoney(rules.minimumMinor)} minimum</strong>.
         {rules.smallOrderFeeMinor > 0 && (
           <>
             {" "}

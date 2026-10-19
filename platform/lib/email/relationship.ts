@@ -15,7 +15,7 @@ const UNSUBSCRIBE_MAILTO =
  * Every message carries:
  * - a List-Unsubscribe header (mailto) — the one-click stop mechanism,
  * - a plain-language stop note in the body,
- * - the same entity/wholesale footer as transactional mail.
+ * - the same entity/affiliation footer as transactional mail.
  *
  * Falls back to console logging when RESEND_API_KEY is unset, same as the
  * transactional sender, so local dev and CI never need a real Resend

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-// Only the Supply parts-quote form still posts here. The wholesale
+// Only the Supply parts-quote form still posts here. The business
 // application, catalog-access, and email "order" kinds were removed on
 // 2026-09-23: they ran a second, unauthenticated intake path around the
 // portal (bypassing its kill switch) and emailed EINs, phone numbers, and

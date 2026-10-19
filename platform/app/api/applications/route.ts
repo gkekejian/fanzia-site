@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
   const portalOpen = await areApplicationsOpen();
   if (!portalOpen && !rawInviteCode) {
     return NextResponse.json(
-      { error: "We are not accepting new wholesale applications right now." },
+      { error: "We are not accepting new applications right now." },
       { status: 403 },
     );
   }
@@ -154,8 +154,8 @@ export async function POST(req: NextRequest) {
     // re-send just means the applicant uses their earlier link.
     await sendNotificationEmail({
       to: duplicate.contactEmail,
-      subject: "Your Fanzia wholesale application is still under review",
-      text: `You already have a wholesale application under review for ${duplicate.businessLegalName} — no need to apply again.\n\nCheck its status or add documents any time at:\n\n${statusUrl}\n\nThis link is valid for ${duplicateTtlHours} hours.`,
+      subject: "Your Fanzia application is still under review",
+      text: `You already have an application under review for ${duplicate.businessLegalName} — no need to apply again.\n\nCheck its status or add documents any time at:\n\n${statusUrl}\n\nThis link is valid for ${duplicateTtlHours} hours.`,
     }, "application.duplicate_resend");
     await recordAudit({
       actorType: "applicant",

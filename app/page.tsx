@@ -3,7 +3,6 @@ import Hero from "@/components/Hero";
 import TrustBar from "@/components/home/TrustBar";
 import WhatWeCarry from "@/components/home/WhatWeCarry";
 import Locations from "@/components/home/Locations";
-import WholesaleTeaser from "@/components/home/WholesaleTeaser";
 import Community from "@/components/home/Community";
 import Footer from "@/components/Footer";
 
@@ -19,7 +18,6 @@ export default function HomePage() {
         <TrustBar />
         <WhatWeCarry />
         <Locations />
-        <WholesaleTeaser />
         <Community />
       </main>
       <Footer />

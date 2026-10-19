@@ -1,12 +1,10 @@
 # Fanzia.io
 
 A clean, modern Next.js 14 (App Router) marketing site for Fanzia, a
-Southern California trading card retailer and wholesale supplier based in
-Glendale, CA.
+Southern California trading card retailer based in Glendale, CA.
 
-Multi-route site (Home, Store, Products, Wholesale, Catalog, Supply, About,
-Contact, Policies) built with Tailwind CSS and Framer Motion. Every form on
-the site (contact, wholesale application, catalog access, wholesale orders,
+Multi-route site (Home, Store, Products, Supply, About, Contact, Policies)
+built with Tailwind CSS and Framer Motion. Every form on the site (contact,
 supply parts quotes) posts to a serverless API route backed by Resend — no
 database, no auth.
 
@@ -33,13 +31,12 @@ The site runs on http://localhost:3000.
 | Variable             | Purpose                                              |
 | -------------------- | ---------------------------------------------------- |
 | `RESEND_API_KEY`     | Resend API key. If unset, submissions are logged.    |
-| `CONTACT_TO_EMAIL`   | Recipient of all form submissions (contact, wholesale, catalog, supply). |
+| `CONTACT_TO_EMAIL`   | Recipient of all form submissions (contact, supply). |
 | `CONTACT_FROM_EMAIL` | Verified sender address in your Resend account.      |
 
 These three variables cover every form on the site — `/api/contact` handles
-the general contact form, and `/api/forms` handles the wholesale
-application, catalog access request, wholesale order request, and supply
-parts quote (routed by a `kind` field on each form).
+the general contact form, and `/api/forms` handles the supply parts quote
+(routed by a `kind` field on the form).
 
 ## Deploying to Vercel
 

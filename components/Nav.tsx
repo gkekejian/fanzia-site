@@ -7,14 +7,11 @@ import { useEffect, useState } from "react";
 
 const PORTAL = process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://app.fanzia.io";
 
-// Five destinations, one primary action. The old header had 7 links plus
-// "Wholesale Application", "Customer Portal", "Apply for Wholesale", and
-// "Sign In" (four ways into two places, two of them pointing at the same
-// closed /apply page). /catalog is gone: it now redirects to the portal.
+// Five destinations, one primary action. /catalog is gone: it now
+// redirects to the portal.
 const LINKS = [
   { href: "/store", label: "Store" },
   { href: "/products", label: "Products" },
-  { href: "/wholesale", label: "Wholesale" },
   { href: "/supply", label: "Supply" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
@@ -75,8 +72,8 @@ export default function Nav() {
           <a href={`${PORTAL}/member/login`} className={`${linkCls} text-white/70`}>
             Buyer sign in
           </a>
-          <Link href="/wholesale" className="btn-primary !px-5 !py-3 text-sm">
-            Buy wholesale
+          <Link href="/store" className="btn-primary !px-5 !py-3 text-sm">
+            Visit the store
           </Link>
         </div>
 
@@ -107,8 +104,8 @@ export default function Nav() {
                 {l.label}
               </Link>
             ))}
-            <Link href="/wholesale" className="btn-primary mt-4 w-full text-center">
-              Buy wholesale
+            <Link href="/store" className="btn-primary mt-4 w-full text-center">
+              Visit the store
             </Link>
             <a
               href={`${PORTAL}/member/login`}

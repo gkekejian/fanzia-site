@@ -56,7 +56,7 @@ export class EmptyDraftError extends InvoicingError {
 export class BelowMinimumError extends InvoicingError {
   constructor(subtotalMinor: number, minimumMinor: number = DEFAULT_ORDER_RULES.minimumMinor) {
     super(
-      `This order is ${formatMoney(subtotalMinor)}, below the ${formatMoney(minimumMinor)} wholesale minimum. Add more items and try again.`,
+      `This order is ${formatMoney(subtotalMinor)}, below the ${formatMoney(minimumMinor)} order minimum. Add more items and try again.`,
       400,
     );
   }
@@ -310,7 +310,7 @@ export async function processExpiredOffer(
           to,
           subject: "Your Fanzia offer was extended 48 hours",
           text:
-            `Good news — your Fanzia wholesale offer of ${total} was automatically extended ` +
+            `Good news — your Fanzia offer of ${total} was automatically extended ` +
             `another 48 hours. It is now valid until ${rolled.expiresAt.toLocaleString()}.\n\n` +
             `This automatic extension happens once per offer; nothing is needed from you right now. ` +
             `If it expires again, you'll be asked to review and reaccept the terms.\n\n` +
@@ -354,7 +354,7 @@ export async function processExpiredOffer(
         to,
         subject: "Your Fanzia offer expired — reaccept or cancel",
         text:
-          `Your Fanzia wholesale offer of ${total} has expired. Its one automatic extension ` +
+          `Your Fanzia offer of ${total} has expired. Its one automatic extension ` +
           `was already used, so it can't be extended silently.\n\n` +
           `You have two options:\n` +
           `1. Review and reaccept the same terms to receive a fresh 48-hour offer.\n` +
@@ -585,7 +585,7 @@ export async function reacceptExpiredOffer(
           to,
           subject: "Your Fanzia offer is renewed",
           text:
-            `You reaccepted your Fanzia wholesale offer of ${total}. A fresh offer is now open ` +
+            `You reaccepted your Fanzia offer of ${total}. A fresh offer is now open ` +
             `and valid until ${fresh!.expiresAt.toLocaleString()}.\n\n` +
             `Our team reviews every request before it becomes an invoice.`,
         },
@@ -679,7 +679,7 @@ export async function cancelOrderRequest(
         to,
         subject: "Your Fanzia offer was cancelled",
         text:
-          `Your Fanzia wholesale offer of ${total} has been cancelled` +
+          `Your Fanzia offer of ${total} has been cancelled` +
           (reason ? ` — reason: ${reason}` : "") +
           `.\n\nNo payment was taken for this offer, so there is nothing to refund. ` +
           `You can submit a new request from the catalog any time.`,
@@ -721,7 +721,7 @@ export async function sendInvoice(db: AnyDb, invoiceId: string) {
         to,
         subject: `Fanzia invoice ${updated!.invoiceNumber}: ${formatMoney(updated!.totalMinor)} due`,
         text:
-          `Your Fanzia wholesale order was approved. Invoice ${updated!.invoiceNumber} ` +
+          `Your Fanzia order was approved. Invoice ${updated!.invoiceNumber} ` +
           `for ${formatMoney(updated!.totalMinor)} is ready.\n\n` +
           `Pay by card or see ACH/wire details here: ${base}/member/invoices\n\n` +
           `We place the supplier order once payment clears.`,

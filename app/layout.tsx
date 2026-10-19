@@ -22,32 +22,32 @@ const SITE_URL = "https://www.fanzia.io";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Fanzia — Trading Card Retail & Wholesale | Glendale, CA",
+    default: "Fanzia — Trading Card Retail | Glendale, CA",
     template: "%s | Fanzia",
   },
   description:
-    "Southern California trading card retailer and wholesale supplier. Pokémon, Magic, and sports cards in packs, boxes, and bundles. Storefront in Glendale.",
+    "Southern California trading card retailer. Sealed Pokémon, Magic, and sports cards in packs, boxes, and bundles. Storefront in Glendale and retail locations across the region.",
   keywords: [
     "trading card store Glendale",
     "Pokemon cards Los Angeles",
-    "Magic the Gathering wholesale",
-    "trading card wholesale supplier",
+    "Magic the Gathering cards Glendale",
+    "Japanese Pokemon cards Los Angeles",
     "sports card retailer Southern California",
   ],
   openGraph: {
     type: "website",
     url: SITE_URL,
     siteName: "Fanzia",
-    title: "Fanzia — Trading Card Retail & Wholesale | Glendale, CA",
+    title: "Fanzia — Trading Card Retail | Glendale, CA",
     description:
-      "Southern California trading card retailer and wholesale supplier. Pokémon, Magic, and sports cards in packs, boxes, and bundles. Storefront in Glendale.",
+      "Southern California trading card retailer. Sealed Pokémon, Magic, and sports cards in packs, boxes, and bundles. Storefront in Glendale and retail locations across the region.",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Fanzia — Trading Card Retail & Wholesale | Glendale, CA",
+    title: "Fanzia — Trading Card Retail | Glendale, CA",
     description:
-      "Southern California trading card retailer and wholesale supplier. Pokémon, Magic, and sports cards in packs, boxes, and bundles. Storefront in Glendale.",
+      "Southern California trading card retailer. Sealed Pokémon, Magic, and sports cards in packs, boxes, and bundles. Storefront in Glendale and retail locations across the region.",
   },
   alternates: { canonical: SITE_URL },
   robots: { index: true, follow: true },

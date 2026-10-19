@@ -40,27 +40,15 @@ export default async function ApplyPage({ searchParams }: { searchParams?: { inv
   }
 
   if (!open && !invite) {
-    // Route demand into a queue the owners can batch-process, not a
-    // personal inbox. The waitlist form lives on the marketing site and
-    // lands in /admin/inbox tagged "waitlist".
-    const waitlistUrl = process.env.WAITLIST_URL ?? "https://www.fanzia.io/wholesale#waitlist";
     return (
       <main className="container" style={{ maxWidth: "640px" }}>
-        <h1>New wholesale accounts are paused</h1>
+        <h1>Applications are closed</h1>
         {inviteError && (
           <p className="field-error" role="alert">
             {inviteError}
           </p>
         )}
-        <p>
-          We onboard buyers in small batches so every approved account gets product. Join the waitlist and
-          we&rsquo;ll email you when the next batch opens. It takes 20 seconds.
-        </p>
-        <p>
-          <a className="btn" href={waitlistUrl}>
-            Join the waitlist
-          </a>
-        </p>
+        <p>We&rsquo;re not accepting new applications right now.</p>
         <p style={{ fontSize: "0.9em" }}>
           Already applied? Your status link from the confirmation email still works.
         </p>

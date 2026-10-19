@@ -90,7 +90,7 @@ export async function createCardCheckout(db: AnyDb, buyer: BuyerIdentity, invoic
         price_data: {
           currency: (inv.currencyCode || "USD").toLowerCase(),
           unit_amount: balance,
-          product_data: { name: `Fanzia wholesale invoice ${inv.invoiceNumber}` },
+          product_data: { name: `Fanzia invoice ${inv.invoiceNumber}` },
         },
         quantity: 1,
       },
