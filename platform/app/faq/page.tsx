@@ -6,8 +6,8 @@
  */
 const FAQS: { q: string; a: string }[] = [
   {
-    q: "Who can buy from Fanzia wholesale?",
-    a: "Fanzia sells at wholesale only to verified businesses. Apply through our wholesale application; every application is reviewed by our team and approvals create a buyer account. Individuals and resale-for-personal-use are not eligible.",
+    q: "Who can have an account?",
+    a: "Accounts are for verified businesses only. Every application is reviewed by our team, and approval creates an account. Individuals and resale-for-personal-use are not eligible. Applications are currently closed.",
   },
   {
     q: "How does the approval process work?",
@@ -55,9 +55,9 @@ export default function FaqPage() {
   return (
     <main className="container" style={{ maxWidth: "800px" }}>
       <div className="card">
-        <h1>Wholesale FAQ</h1>
+        <h1>FAQ</h1>
         <p style={{ color: "var(--fz-muted)" }}>
-          Short answers about applying, ordering, paying, and shipping with Fanzia wholesale.
+          Short answers about applying, ordering, paying, and shipping for Fanzia account holders.
           This page covers the pilot program and may change as it grows.
         </p>
         {FAQS.map((f) => (

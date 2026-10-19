@@ -7,10 +7,10 @@
  * guaranteed (the prohibited-claims CI scan enforces this).
  */
 
-/** Site-wide footer notice: entity line, wholesale-only scope, affiliation disclaimer. */
+/** Site-wide footer notice: entity line, approved-accounts scope, affiliation disclaimer. */
 export const SITE_FOOTER_NOTE =
-  "Fanzia, Inc., a Delaware corporation, sells at wholesale only to verified business buyers. " +
-  "Fanzia is an independent sourcing and import business. It is not an authorized distributor of, and is not " +
+  "Fanzia, Inc., a Delaware corporation. This portal is for approved accounts only. " +
+  "Fanzia is not an authorized distributor of, and is not " +
   "affiliated with, authorized by, or endorsed by, any trading card rights holder.";
 
 /**
@@ -68,5 +68,5 @@ export const IMPORT_CLICKWRAP_TEXT =
 
 /** Plain-text footer appended to transactional emails. */
 export const EMAIL_FOOTER =
-  "Fanzia, Inc., a Delaware corporation. Wholesale only, for approved business accounts. " +
+  "Fanzia, Inc., a Delaware corporation. " +
   "Fanzia is not affiliated with any trading card rights holder. This is an automated message; replies are not monitored.";

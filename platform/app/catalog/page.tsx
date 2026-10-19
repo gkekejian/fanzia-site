@@ -16,8 +16,8 @@ export default async function PublicCatalogPage() {
     <main className="container" style={{ maxWidth: "1100px" }}>
       <h1>Catalog</h1>
       <p>
-        Wholesale pricing and availability are shown to approved buyers only.{" "}
-        <a href="/apply">Apply for a wholesale account</a> or <a href="/member/login">sign in</a>.
+        Pricing and availability are shown to approved account holders only.{" "}
+        <a href="/member/login">Sign in</a>.
       </p>
       {products.length === 0 && <p>No products are listed yet.</p>}
       {products.length > 0 && (

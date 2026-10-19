@@ -3,8 +3,8 @@ import "./globals.css";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "Fanzia Wholesale Platform",
-  description: "Internal wholesale operations platform. Not for public use.",
+  title: "Fanzia",
+  description: "Fanzia internal operations platform. Not for public use.",
   robots: { index: false, follow: false },
 };
 

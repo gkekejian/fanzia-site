@@ -30,7 +30,7 @@ describe("decisionReasons", () => {
 
   it("appends a note to the label", () => {
     expect(composeDecisionReason("approved", "meets_criteria", "  Strong references  ")).toBe(
-      "Meets all wholesale criteria — Strong references",
+      "Meets all account criteria — Strong references",
     );
   });
 

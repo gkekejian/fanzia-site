@@ -1,7 +1,7 @@
 import { SITE_FOOTER_NOTE } from "@/lib/disclaimers";
 
 /**
- * Minimal site footer: policy links plus the wholesale-only / entity /
+ * Minimal site footer: policy links plus the approved-accounts / entity /
  * no-affiliation notice. Rendered by the root layout on every page.
  */
 export function SiteFooter() {
@@ -23,7 +23,7 @@ export function SiteFooter() {
           <a href="/import-policy">Import &amp; Edition Policy</a>
         </nav>
         <p style={{ color: "var(--fz-muted)", fontSize: "0.85rem", margin: 0 }}>
-          {SITE_FOOTER_NOTE} Wholesale only — approved accounts.
+          {SITE_FOOTER_NOTE}
         </p>
       </div>
     </footer>

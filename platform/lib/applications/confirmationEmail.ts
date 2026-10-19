@@ -23,9 +23,9 @@ export function buildApplicationConfirmationEmail(input: {
     ? `We've received your resale certificate — thank you.\n\n`
     : "";
   return {
-    subject: "Your Fanzia wholesale application — a few things needed",
+    subject: "Your Fanzia application — a few things needed",
     text:
-      `Thanks for applying to Fanzia wholesale, ${input.businessLegalName}.\n\n` +
+      `Thanks for applying for a Fanzia account, ${input.businessLegalName}.\n\n` +
       certLine +
       `To complete your application, please upload a copy of your seller's permit on your status page — we can't approve your application until it's on file.` +
       onlineAsk +

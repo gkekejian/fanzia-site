@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     await sendTransactionalEmail({
       to: email,
       subject: "You've been invited to the Fanzia platform",
-      text: `You've been invited as ${role === "owner" ? "an owner" : "an AI operator"} on the Fanzia wholesale platform.\n\nSign in here:\n\n${url}\n\nThis link expires shortly and can only be used once. Owners must also set up two-factor authentication after signing in.`,
+      text: `You've been invited as ${role === "owner" ? "an owner" : "an AI operator"} on the Fanzia operations platform.\n\nSign in here:\n\n${url}\n\nThis link expires shortly and can only be used once. Owners must also set up two-factor authentication after signing in.`,
     });
   }
 

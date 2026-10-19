@@ -135,7 +135,7 @@ export async function markShipmentShipped(db: AnyDb, shipmentId: string, ownerId
         to,
         subject: `Your Fanzia order has shipped${inv ? ` (${inv.invoiceNumber})` : ""}`,
         text:
-          `Your Fanzia wholesale order${inv ? ` for invoice ${inv.invoiceNumber}` : ""} has shipped.\n\n` +
+          `Your Fanzia order${inv ? ` for invoice ${inv.invoiceNumber}` : ""} has shipped.\n\n` +
           `Carrier: ${row.carrier}\nTracking: ${row.trackingNumber}\n\n` +
           `Track it with your carrier using the number above.`,
       },
@@ -190,7 +190,7 @@ export async function markShipmentDelivered(db: AnyDb, shipmentId: string, owner
         to,
         subject: `Your Fanzia order was delivered${inv ? ` (${inv.invoiceNumber})` : ""}`,
         text:
-          `Your Fanzia wholesale order${inv ? ` for invoice ${inv.invoiceNumber}` : ""} was marked delivered ` +
+          `Your Fanzia order${inv ? ` for invoice ${inv.invoiceNumber}` : ""} was marked delivered ` +
           `by ${row.carrier}.\n\nTracking: ${row.trackingNumber}\n\n` +
           `If anything arrived damaged or short, let us know promptly so we can make it right.`,
       },

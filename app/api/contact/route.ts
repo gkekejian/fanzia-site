@@ -6,20 +6,16 @@ export const runtime = "nodejs";
 // Body schema. `website` is a honeypot: legitimate visitors won't see or
 // fill it; bots crawling the form will. Any non-empty value short-circuits
 // as spam without leaking that it was detected.
-// `topic: "waitlist"` is the wholesale waitlist (components/wholesale/
-// WaitlistForm.tsx): no free-text message, structured fields instead.
 const schema = z
   .object({
-    topic: z.enum(["contact", "waitlist"]).optional().default("contact"),
+    topic: z.enum(["contact"]).optional().default("contact"),
     name: z.string().trim().min(1).max(200),
     email: z.string().trim().email().max(320),
     message: z.string().trim().max(5000).optional().default(""),
-    channel: z.string().trim().max(80).optional().default(""),
-    volume: z.string().trim().max(80).optional().default(""),
     website: z.string().optional().default(""),
     _start: z.number().optional(),
   })
-  .refine((d) => d.topic === "waitlist" || d.message.length > 0, { path: ["message"] });
+  .refine((d) => d.message.length > 0, { path: ["message"] });
 
 // In-memory rate limit: at most 5 submissions per IP per 10 min window.
 // Sufficient for low-volume marketing traffic; swap for Vercel KV /
@@ -157,20 +153,8 @@ export async function POST(req: Request) {
 
   const name = stripControls(parsed.data.name);
   const email = stripControls(parsed.data.email);
-  const isWaitlist = parsed.data.topic === "waitlist";
-  const message = isWaitlist
-    ? stripControls(
-        [
-          "Wholesale waitlist signup",
-          `Business: ${parsed.data.name}`,
-          `Channel: ${parsed.data.channel || "not given"}`,
-          `Monthly volume: ${parsed.data.volume || "not given"}`,
-        ].join("\n"),
-      )
-    : stripControls(parsed.data.message);
-  const meta = isWaitlist
-    ? { source: "waitlist", subject: `Waitlist: ${name}` }
-    : { source: "website", subject: "" };
+  const message = stripControls(parsed.data.message);
+  const meta = { source: "website", subject: "" };
 
   // Primary path: the website inbox in the Fanzia admin portal, where the
   // team reads and replies. Fallback: email, so no message is ever lost.

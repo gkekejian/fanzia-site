@@ -8,7 +8,7 @@ import ContactForm from "@/components/ContactForm";
 export const metadata: Metadata = {
   title: "Contact",
   description:
-    "Get in touch with Fanzia — Glendale storefront address, phone, email, and hours. Wholesale and supply inquiries routed directly.",
+    "Get in touch with Fanzia — Glendale storefront address, phone, email, and hours. Supply inquiries routed directly.",
 };
 
 export default function ContactPage() {
@@ -26,7 +26,7 @@ export default function ContactPage() {
               <p className="eyebrow">Contact</p>
               <h1 className="h-section">Get in touch.</h1>
               <p className="mt-6 max-w-lg text-lg text-white/70">
-                Questions about the storefront, wholesale accounts, or supply parts &mdash; reach
+                Questions about the storefront, our products, or supply parts &mdash; reach
                 out and we&rsquo;ll route it to the right person.
               </p>
 
@@ -37,9 +37,6 @@ export default function ContactPage() {
               </div>
 
               <div className="mt-10 flex flex-wrap gap-4">
-                <Link href="/wholesale" className="btn-ghost">
-                  Wholesale Inquiries
-                </Link>
                 <Link href="/supply" className="btn-ghost">
                   Supply Inquiries
                 </Link>

@@ -8,7 +8,7 @@ import WavePattern from "@/components/WavePattern";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Fanzia started in 2021 in Glendale, California. We're collectors first, operating a storefront, retail locations, and a wholesale arm across Southern California.",
+    "Fanzia started in 2021 in Glendale, California. We're collectors first, operating a storefront and retail locations across Southern California.",
 };
 
 const VALUES = [
@@ -17,12 +17,12 @@ const VALUES = [
     copy: "Every unit sourced through authorized channels.",
   },
   {
-    title: "Sized for independents.",
-    copy: "Quantities and mixes that fit real retail footprints.",
+    title: "Collectors first.",
+    copy: "We track release calendars and the print runs that matter.",
   },
   {
-    title: "Operators serving operators.",
-    copy: "We run retail ourselves.",
+    title: "Local and in person.",
+    copy: "A Glendale storefront and retail locations across Southern California.",
   },
 ];
 
@@ -50,9 +50,8 @@ export default function AboutPage() {
                 to and the standard we sell to.
               </p>
               <p className="mt-5 max-w-2xl text-lg text-white/75 md:text-xl">
-                Today Fanzia operates a Glendale storefront, retail locations across Southern
-                California, and a wholesale arm supplying vending operators, live sellers, and
-                specialty retailers with Japanese and Chinese import trading card product.
+                Today Fanzia operates a Glendale storefront and retail locations across Southern
+                California, carrying sealed US, Japanese, and Chinese trading card product.
               </p>
 
               <dl className="mt-10 grid gap-0 border-[3px] border-brand-red md:grid-cols-3">

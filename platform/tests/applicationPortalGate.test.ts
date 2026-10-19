@@ -130,7 +130,7 @@ describe("application portal kill switch", () => {
     const res = await submitApplication(buildSubmitRequest());
     expect(res.status).toBe(403);
     const body = await res.json();
-    expect(body.error).toMatch(/not accepting new wholesale applications/i);
+    expect(body.error).toMatch(/not accepting new applications/i);
     expect(putObjectMock).not.toHaveBeenCalled();
     expect(await testDb().select().from(application)).toHaveLength(0);
   });

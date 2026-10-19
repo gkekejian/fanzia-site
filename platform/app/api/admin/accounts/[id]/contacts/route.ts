@@ -56,8 +56,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const url = `${process.env.APP_BASE_URL ?? "http://localhost:3100"}/api/buyer/auth/magic-link/verify?token=${link.raw}`;
     await sendTransactionalEmail({
       to: email,
-      subject: `You've been added to ${acct[0].legalName} on Fanzia wholesale`,
-      text: `You've been added as a ${role} on the Fanzia wholesale account for ${acct[0].legalName}.\n\nSign in here:\n\n${url}\n\nThis link expires shortly and can only be used once.`,
+      subject: `You've been added to ${acct[0].legalName} on Fanzia`,
+      text: `You've been added as a ${role} on the Fanzia account for ${acct[0].legalName}.\n\nSign in here:\n\n${url}\n\nThis link expires shortly and can only be used once.`,
     });
   }
 

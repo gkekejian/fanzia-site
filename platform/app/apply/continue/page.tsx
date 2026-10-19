@@ -110,7 +110,7 @@ function ContinueForm() {
         </p>
         <p style={{ color: "var(--fz-muted)" }}>
           {data.status === "approved"
-            ? "Your application was approved — check your email for sign-in instructions to your wholesale account."
+            ? "Your application was approved — check your email for sign-in instructions to your account."
             : data.status === "declined"
               ? "Your application was not approved — check your email for the details."
               : "What's next: our team reviews every application, usually within a few business days. Please upload a copy of your seller's permit above — we can't approve your application until it's on file. We'll email you when a decision is made."}

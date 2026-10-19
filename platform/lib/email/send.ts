@@ -21,7 +21,7 @@ export async function sendTransactionalEmail(params: {
   html?: string;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
-  // Entity/wholesale-only footer on every transactional email (pending
+  // Entity/affiliation footer on every transactional email (pending
   // attorney review of the full disclaimer set — see lib/disclaimers.ts).
   const textWithFooter = `${params.text}\n\n---\n${EMAIL_FOOTER}`;
   if (!apiKey) {

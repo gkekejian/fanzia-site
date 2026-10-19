@@ -15,7 +15,7 @@ import { formatMoney } from "@/lib/format";
  * took payment, so the cancel path honestly says there is nothing to refund.
  */
 
-/** Buyer-local formatting for an expiry timestamp (PT, since buyers are West-Coast wholesale). */
+/** Buyer-local formatting for an expiry timestamp (PT, since buyers are on the West Coast). */
 export function formatExpiryPacific(when: Date): string {
   return new Intl.DateTimeFormat("en-US", {
     weekday: "long",
@@ -53,7 +53,7 @@ export function finalExpiryEmail(input: FinalExpiryEmailInput): {
     to: input.to,
     subject: "Your Fanzia offer expired — reaccept or cancel",
     text:
-      `Your Fanzia wholesale offer of ${total} has expired. Its one automatic extension ` +
+      `Your Fanzia offer of ${total} has expired. Its one automatic extension ` +
       `was already used, so it can't be extended again.\n\n` +
       `You have two options:\n` +
       `1. Review and reaccept the same terms to receive a fresh ${input.expiryHours}-hour offer.\n` +
@@ -94,7 +94,7 @@ export function preExpiryNudgeEmail(input: PreExpiryNudgeEmailInput): {
     to: input.to,
     subject: "Your Fanzia offer expires tomorrow",
     text:
-      `Heads up — your Fanzia wholesale offer of ${total} expires tomorrow ` +
+      `Heads up — your Fanzia offer of ${total} expires tomorrow ` +
       `(${formatExpiryPacific(input.expiresAt)}).\n\n` +
       `${afterLapse}\n\n` +
       `Review your offer here: ${input.offerUrl}`,

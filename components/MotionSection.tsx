@@ -12,7 +12,7 @@ type Props = HTMLMotionProps<"section"> & {
  * server-rendered every section at opacity:0 until JS hydrated and the
  * section scrolled into view: link-preview bots, some crawlers, full-page
  * screenshots, and anyone with slow JS saw large black voids (the
- * /wholesale and /catalog pages rendered mostly empty in a headless
+ * longer pages rendered mostly empty in a headless
  * capture). Now only a small translate animates; opacity stays 1, and
  * reduced-motion users get no animation at all.
  */

@@ -33,7 +33,7 @@ export default function Hero() {
         >
           <span className="inline-flex items-center gap-3 border border-brand-red bg-black px-3 py-1.5 font-display text-[11px] uppercase tracking-[0.3em] text-brand-red">
             <span className="h-1.5 w-1.5 bg-brand-red" />
-            Trading Card Retail &amp; Wholesale
+            Trading Card Retail
           </span>
 
           <h1 className="mt-8 display text-[3.6rem] leading-[0.95] text-white sm:text-7xl md:text-[6.5rem] lg:text-[6.5rem] xl:text-[7.5rem]">
@@ -42,18 +42,17 @@ export default function Hero() {
           </h1>
 
           <p className="mt-8 max-w-xl text-lg text-white/75 md:text-xl">
-            Fanzia is a Southern California trading card retailer and
-            wholesale supplier. A storefront in Glendale, retail locations
-            across the region, and wholesale Japanese and Chinese import
-            product for operators and sellers.
+            Fanzia is a Southern California trading card retailer. A
+            storefront in Glendale and retail locations across the region,
+            carrying sealed US, Japanese, and Chinese product.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <Link href="/store" className="btn-primary">
               Visit the Store
             </Link>
-            <Link href="/wholesale" className="btn-ghost">
-              Buy Wholesale
+            <Link href="/products" className="btn-ghost">
+              See What We Carry
             </Link>
           </div>
 

@@ -18,7 +18,7 @@ function redirectTo(req: NextRequest, path: string) {
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
   if (!token) return redirectTo(req, "/member/login?error=missing_token");
-  return magicLinkInterstitial({ action: "/api/buyer/auth/magic-link/verify", token, heading: "Sign in to Fanzia Wholesale", button: "Sign in" });
+  return magicLinkInterstitial({ action: "/api/buyer/auth/magic-link/verify", token, heading: "Sign in to Fanzia", button: "Sign in" });
 }
 
 export async function POST(req: NextRequest) {
